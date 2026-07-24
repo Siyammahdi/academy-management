@@ -1,0 +1,218 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { PageHeader } from '../layout/page-header';
+import { Card } from '../ui/card';
+import { Pill } from '../ui/pill';
+import type { PillStatus } from '../ui/pill';
+import { formatDate } from '../../lib/format';
+import { getBatch, getCourse, getRoster } from '../../lib/admin-api';
+import type { BatchWithSeats, Course, RosterEntry } from '../../lib/admin-api';
+
+// Roster entries are enrollment-lifecycle rows, not money rows — there is
+// no amount to show. Reusing the ledger StatusPill for the
+// enrollment-status column borrows its tone mapping rather than its
+// financial meaning: "active" reads as the settled/paid tone, "pending" as
+// pending, "withdrawn" as neutral.
+const ENROLLMENT_STATUS_PILL: Record<
+  string,
+  { status: PillStatus; label: string }
+> = {
+  active: { status: 'paid', label: 'Active' },
+  pending: { status: 'pending', label: 'Pending' },
+  withdrawn: { status: 'unpaid', label: 'Withdrawn' },
+};
+
+export interface BatchRosterProps {
+  batchId: string;
+  eyebrow?: string;
+  /** Shown in the error state when the batch can't be loaded (e.g. a
+   * manager isn't assigned to it, vs. it simply not existing). */
+  loadErrorMessage?: string;
+}
+
+// Used by both /admin/batches/:id (any batch, admin's own management
+// surface) and /manager/batches/:id (only batches the manager is assigned
+// to — GET /batches/:id itself is public, but GET .../roster is guarded by
+// BatchScopeGuard, so an unassigned manager simply gets the error state).
+export function BatchRoster({
+  batchId,
+  loadErrorMessage = 'This batch could not be loaded.',
+}: BatchRosterProps) {
+  const [batch, setBatch] = useState<BatchWithSeats | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [roster, setRoster] = useState<RosterEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load(): Promise<void> {
+      try {
+        const loadedBatch = await getBatch(batchId);
+        if (cancelled) {
+          return;
+        }
+        setBatch(loadedBatch);
+        const [loadedCourse, loadedRoster] = await Promise.all([
+          getCourse(loadedBatch.courseId),
+          getRoster(batchId),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setCourse(loadedCourse);
+        setRoster(loadedRoster);
+      } catch {
+        if (!cancelled) {
+          setError(loadErrorMessage);
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [batchId, loadErrorMessage]);
+
+  if (error) {
+    return (
+      <p className="font-body text-sm text-overdue" role="alert">
+        {error}
+      </p>
+    );
+  }
+
+  if (!batch) {
+    return <p className="font-body text-body text-ink-muted">Loading…</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow={course?.title ?? 'Batch'}
+        title={batch.name}
+        description={`${batch.seatsRemaining} of ${batch.capacity} seats remaining · Course starts ${formatDate(batch.courseStartDate)}`}
+      />
+
+      <Card className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+            Enrollment opens
+          </span>
+          <span className="font-numeric text-body text-ink">
+            {formatDate(batch.enrollmentOpensAt)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+            Enrollment closes
+          </span>
+          <span className="font-numeric text-body text-ink">
+            {formatDate(batch.enrollmentClosesAt)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+            Due days
+          </span>
+          <span className="font-numeric text-body text-ink">
+            {batch.dueDayStart}–{batch.dueDayEnd}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+            Managers
+          </span>
+          <span className="font-body text-body text-ink">
+            {batch.managers.length > 0
+              ? batch.managers.map((m) => m.email).join(', ')
+              : 'None assigned'}
+          </span>
+        </div>
+      </Card>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="font-display text-h3 font-semibold text-ink">
+          Roster
+        </h2>
+        {roster && roster.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
+            <p className="font-body text-body text-ink-muted">
+              No students enrolled in this batch yet.
+            </p>
+          </div>
+        ) : null}
+        {roster && roster.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-paper-sunken">
+                  <th
+                    scope="col"
+                    className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
+                  >
+                    Student
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
+                  >
+                    Phone
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
+                  >
+                    Enrolled
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
+                  >
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((entry) => {
+                  const pill = ENROLLMENT_STATUS_PILL[entry.enrollmentStatus];
+                  return (
+                    <tr
+                      key={entry.studentId}
+                      className="border-t border-rule hover:bg-paper-sunken"
+                    >
+                      <td className="px-3 py-3 font-body text-body text-ink">
+                        {entry.fullName}{' '}
+                        <span className="font-numeric text-sm text-ink-faint">
+                          {entry.studentId}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 font-numeric text-body text-ink-muted">
+                        {entry.phone}
+                      </td>
+                      <td className="px-3 py-3 font-numeric text-body text-ink-muted">
+                        {formatDate(entry.enrolledAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        {pill ? (
+                          <Pill status={pill.status} label={pill.label} />
+                        ) : (
+                          entry.enrollmentStatus
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        {!roster ? (
+          <p className="font-body text-body text-ink-muted">Loading…</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum RoleName {
+  admin
+  manager
+  student
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum StudentStatus {
+  active
+  inactive
+}
+
+enum BillingType {
+  monthly
+  one_time
+}
+
+enum CourseStatus {
+  active
+  archived
+}
+
+enum BatchStatus {
+  upcoming
+  enrolling
+  running
+  completed
+}
+
+enum EnrollmentStatus {
+  pending
+  active
+  withdrawn
+}
+
+enum PeriodStatus {
+  unpaid
+  pending
+  partially_paid
+  paid
+}
+
+enum PaymentMethod {
+  gateway
+  manual
+}
+
+enum PaymentStatus {
+  pending
+  verified
+  rejected
+  expired
+}
+
+enum PaidBy {
+  student
+  guest
+}
+
+enum RequestType {
+  grace
+  partial_payment
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum NotificationChannel {
+  dashboard
+  email
+  // sms — deferred; adding a value requires no logic change (NTF-05)
+}
+
+// ─────────────────────────────────────────────
+// AUTH & IDENTITY
+// ─────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  roles         UserRole[]
+  student       Student?
+  managedBatches BatchManager[]
+  refreshTokens RefreshToken[]
+
+  // Actions this user has taken
+  verifiedPayments Payment[]  @relation("PaymentVerifier")
+  decidedRequests  Request[]  @relation("RequestDecider")
+  issuedRefunds    Refund[]   @relation("RefundIssuer")
+  auditEntries     AuditLog[] @relation("AuditActor")
+  notifications    Notification[]
+
+  @@index([status])
+  @@map("users")
+}
+
+/// A user holds a SET of roles — one person may be both manager and student (RBAC-01).
+model UserRole {
+  id     String   @id @default(cuid())
+  userId String   @map("user_id")
+  role   RoleName
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// Academic/financial profile. userId is OPTIONAL — a student may have no login.
+model Student {
+  id        String        @id @default(cuid())
+  studentId String        @unique @map("student_id")              // ANA-0001, sequential, guest-facing
+  userId    String?       @unique @map("user_id")
+  fullName  String        @map("full_name")
+  phone     String
+  status    StudentStatus @default(active)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enrollments Enrollment[]
+
+  @@index([phone])        // guest lookup by phone
+  @@index([status])
+  @@map("students")
+}
+
+/// Backs sequential studentId generation. Single row, incremented in a transaction.
+model StudentIdSequence {
+  id      Int @id @default(1)
+  current Int @default(0)
+
+  @@map("student_id_sequence")
+}
+
+// ─────────────────────────────────────────────
+// CATALOG
+// ─────────────────────────────────────────────
+
+/// The template — current price list. Batches SNAPSHOT these fees (FEE-02).
+/// Editing them never affects existing batches (FEE-03).
+model Course {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?
+  billingType   BillingType  @map("billing_type")
+  enrollmentFee Decimal      @map("enrollment_fee") @db.Decimal(10, 2)
+  monthlyFee    Decimal      @map("monthly_fee") @db.Decimal(10, 2)   // unused when one_time (FEE-07)
+  parts         Json?        // [{ name, durationMonths }] — descriptive only, drives nothing
+  status        CourseStatus @default(active)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  batches Batch[]
+
+  @@index([status])
+  @@map("courses")
+}
+
+/// The ENROLLABLE UNIT. Freezes course pricing at creation.
+model Batch {
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  name     String
+
+  // Frozen snapshot — never re-read from Course (FEE-02)
+  enrollmentFee        Decimal @map("enrollment_fee") @db.Decimal(10, 2)  // also the penalty amount (PEN-03)
+  monthlyFee           Decimal @map("monthly_fee") @db.Decimal(10, 2)
+  entryDiscountPercent Int     @default(0) @map("entry_discount_percent")         // 0–100, entry ONLY (FEE-06)
+
+  capacity          Int
+  courseStartDate   DateTime    @map("course_start_date")   // its month = first billing period (BIL-03)
+  enrollmentOpensAt DateTime    @map("enrollment_opens_at")
+  enrollmentClosesAt DateTime   @map("enrollment_closes_at")
+  dueDayStart       Int         @default(1) @map("due_day_start")
+  dueDayEnd         Int         @default(5) @map("due_day_end")
+  status            BatchStatus @default(upcoming)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  managers    BatchManager[]
+  enrollments Enrollment[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([enrollmentOpensAt, enrollmentClosesAt])
+  @@map("batches")
+}
+
+/// A batch may have SEVERAL managers; a manager may hold several batches.
+model BatchManager {
+  id         String   @id @default(cuid())
+  batchId    String   @map("batch_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, userId])
+  @@index([userId])          // "which batches does this manager have?" — hot path for BatchScopeGuard
+  @@map("batch_managers")
+}
+
+// ─────────────────────────────────────────────
+// ENROLLMENT & BILLING
+// ─────────────────────────────────────────────
+
+/// THE SPINE. Everything financial hangs off this.
+model Enrollment {
+  id         String           @id @default(cuid())
+  studentId  String           @map("student_id")
+  batchId    String           @map("batch_id")
+  status     EnrollmentStatus @default(pending)
+  inPenalty  Boolean          @default(false) @map("in_penalty")   // guard against stacking (PEN-06)
+  enrolledAt DateTime         @default(now()) @map("enrolled_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  batch          Batch           @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  billingPeriods BillingPeriod[]
+
+  @@unique([studentId, batchId])   // no double enrollment (ENR-10)
+  @@index([batchId, status])       // roster queries
+  @@index([studentId])
+  @@index([inPenalty])
+  @@map("enrollments")
+}
+
+/// One month's LEDGER. Tracks money, not merely status (BIL-07).
+model BillingPeriod {
+  id           String       @id @default(cuid())
+  enrollmentId String       @map("enrollment_id")
+  periodMonth  DateTime     @map("period_month") @db.Date    // first day of month, UTC (TIME-04)
+  amountOwed   Decimal      @map("amount_owed") @db.Decimal(10, 2)
+  amountPaid   Decimal      @default(0) @map("amount_paid") @db.Decimal(10, 2)  // VERIFIED payments only (BIL-08)
+  dueDate      DateTime     @map("due_date")
+  status       PeriodStatus @default(unpaid)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  payments   Payment[]
+  requests   Request[]
+
+  @@unique([enrollmentId, periodMonth])  // idempotent generation (BIL-12)
+  @@index([status, dueDate])             // penalty job scan
+  @@index([enrollmentId])
+  @@map("billing_periods")
+}
+
+// ─────────────────────────────────────────────
+// MONEY MOVEMENT
+// ─────────────────────────────────────────────
+
+/// One payment settles EXACTLY ONE period (PAY-01).
+model Payment {
+  id                   String        @id @default(cuid())
+  billingPeriodId      String        @map("billing_period_id")
+  amount               Decimal       @db.Decimal(10, 2)
+  method               PaymentMethod
+  status               PaymentStatus @default(pending)
+  paidBy               PaidBy        @map("paid_by")
+  guestName            String?       @map("guest_name")
+  guestPhone           String?       @map("guest_phone")
+  transactionReference String?       @unique @map("transaction_reference")   // idempotency anchor for webhooks (PAY-04)
+  proofUrl             String?       @map("proof_url")                 // manual only
+  verifiedById         String?       @map("verified_by_id")
+  verifiedAt           DateTime?     @map("verified_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Restrict)
+  verifiedBy    User?         @relation("PaymentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  refunds       Refund[]
+
+  @@index([billingPeriodId])
+  @@index([status, method])        // "pending manual payments" queue
+  @@index([status, createdAt])     // gateway expiry sweep (PAY-05)
+  @@map("payments")
+}
+
+/// Admin-only. Reverses a payment and reopens the balance (RFD-04).
+model Refund {
+  id           String   @id @default(cuid())
+  paymentId    String   @map("payment_id")
+  amount       Decimal  @db.Decimal(10, 2)
+  reason       String
+  refundedById String   @map("refunded_by_id")
+  refundedAt   DateTime @default(now()) @map("refunded_at")
+
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  refundedBy User    @relation("RefundIssuer", fields: [refundedById], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+/// Grace (moves a DATE) and partial payment (moves MONEY) — one shape, two types.
+model Request {
+  id              String        @id @default(cuid())
+  billingPeriodId String        @map("billing_period_id")
+  type            RequestType
+  status          RequestStatus @default(pending)
+  requestedAmount Decimal?      @map("requested_amount") @db.Decimal(10, 2)  // partial_payment only
+  extendedDueDate DateTime?     @map("extended_due_date")                          // grace only
+  reason          String
+  decidedById     String?       @map("decided_by_id")
+  decidedAt       DateTime?     @map("decided_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Cascade)
+  decidedBy     User?         @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([billingPeriodId])
+  @@index([status, type])   // pending queues, split by approver authority
+  @@map("requests")
+}
+
+// ─────────────────────────────────────────────
+// SUPPORTING
+// ─────────────────────────────────────────────
+
+model Notification {
+  id              String              @id @default(cuid())
+  recipientUserId String              @map("recipient_user_id")
+  eventType       String              @map("event_type")
+  channel         NotificationChannel
+  relatedType     String?             @map("related_type")
+  relatedId       String?             @map("related_id")
+  readAt          DateTime?           @map("read_at")
+  sentAt          DateTime            @default(now()) @map("sent_at")
+
+  recipient User @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, readAt])   // unread badge
+  @@map("notifications")
+}
+
+/// APPEND-ONLY. Never updated, never deleted (AUD-03).
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?  @map("actor_user_id")             // null = system actor (the penalty job)
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

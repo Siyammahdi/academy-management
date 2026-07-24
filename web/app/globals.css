@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* docs/09-ui-design-system.md §2 — Palette (verbatim) */
+:root {
+  /* Surface */
+  --paper: #faf7fd; /* page background — marketing */
+  --paper-app: #fcfcfd; /* page background — application */
+  --paper-raised: #ffffff; /* cards, table surfaces */
+  --paper-sunken: #f3f1ec; /* input fills, table headers, empty states */
+
+  /* Ink */
+  --ink: #1a1917; /* primary text */
+  --ink-muted: #57544e; /* secondary text, labels */
+  --ink-faint: #8b8780; /* metadata, placeholders */
+
+  /* Rules */
+  --rule: #e4e1d9; /* hairline dividers, the ledger line */
+  --rule-strong: #cbc7bc; /* table headers, emphasis borders */
+
+  /* Accent — deep purple. Restrained; used for action, never decoration. */
+  --purple-deep: #4c2a72;
+  --purple: #a372da;
+  --purple-wash: #f1ebf8;
+  --purple-tint: #faf7fd;
+
+  /* Status */
+  --paid: #2f6b3d; /* settled */
+  --paid-wash: #e8f1ea;
+  --pending: #8a6114; /* awaiting verification */
+  --pending-wash: #faf0dc;
+  --overdue: #9a2b25; /* unpaid past due, penalty */
+  --overdue-wash: #fbecea;
+  --neutral: #57544e; /* upcoming, informational */
+  --neutral-wash: #f0eee9;
+
+  --text-display: 2.75rem; /* 44px — page hero, display face */
+  --text-h1: 2rem; /* 32px */
+  --text-h2: 1.5rem; /* 24px */
+  --text-h3: 1.125rem; /* 18px */
+  --text-body: 0.9375rem; /* 15px — base */
+  --text-sm: 0.8125rem; /* 13px — labels, metadata */
+  --text-xs: 0.6875rem; /* 11px — eyebrows, pill text */
+
+  /* §4 — Space and layout (8px base scale) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  --radius-sm: 4px; /* inputs, pills */
+  --radius-md: 8px; /* cards, panels */
+
+  /* Two shadows exist in this system. */
+  --shadow-overlay: 0 8px 32px rgba(26, 25, 23, 0.12); /* modals, drawers */
+  --shadow-card: 0 2px 8px rgba(26, 25, 23, 0.06); /* marketing cards only */
+}
+
+@layer base {
+  /* §3 — Typography. next/font (app/layout.tsx) sets these three variables
+     on <html> under these exact names, with metric-matched fallback fonts
+     to prevent layout shift; that unlayered rule always wins over this one
+     (CSS Cascade Layers: unlayered beats layered regardless of source
+     order). This is only the doc's literal fallback stack, for contexts
+     where a component renders without the root layout (e.g. isolation). */
+  :root {
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-numeric: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--paper);
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: var(--text-body);
+    line-height: 1.4; /* UI baseline (doc 09 §3); prose containers opt into leading-prose */
+    font-weight: 400;
+  }
+
+  /* doc 09 §5 / task brief — focus rings are always visible, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--purple);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* doc 09 §3 — the numeric face always carries tabular figures, so columns
+     of money align and a 500.00 never optically outweighs a 1500.00. */
+  .font-numeric {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -28,6 +28,8 @@ import { GatewayService } from '../gateway/gateway.service';
 import type { SslcommerzWebhookPayload } from '../gateway/gateway.service';
 import { PayManualDto } from './dto/pay-manual.dto';
 import { RefundDto } from './dto/refund.dto';
+import { GuestPayGatewayDto } from './dto/guest-pay-gateway.dto';
+import { GuestPayManualDto } from './dto/guest-pay-manual.dto';
 import {
   Paginated,
   PaginationQuery,
@@ -79,56 +81,29 @@ export class PaymentsService {
     actor: AuthUser,
   ): Promise<{ redirectUrl: string }> {
     const studentId = this.requireStudentId(actor);
-    const period = await this.loadOwnPeriodForPayment(
-      billingPeriodId,
-      studentId,
-    );
+    const period = await this.loadPeriodForPayment(billingPeriodId, studentId);
     const student = await this.prisma.student.findUniqueOrThrow({
       where: { id: studentId },
     });
-
     const outstanding = period.amountOwed.minus(period.amountPaid);
-    const transactionReference = `GW-${randomUUID()}`;
 
-    // PAY-02 — the Payment row is created only once the gateway session
-    // actually succeeds; if it fails, the student was never redirected.
-    const { redirectUrl } = await this.gateway.initiateSession({
-      transactionReference,
-      amount: formatMoney(outstanding),
-      customerName: student.fullName,
-      customerPhone: student.phone,
-    });
-
-    // BIL-09/PEN-05 — a pending payment must flip the period's persisted
-    // status immediately (not just on read), since the penalty job queries
-    // the database directly.
-    await this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.create({
-        data: {
-          billingPeriodId,
-          amount: outstanding,
-          method: 'gateway',
-          status: 'pending',
-          paidBy: 'student',
-          transactionReference,
-        },
-      });
-      await this.recomputePeriodStatus(tx, billingPeriodId);
-      await this.audit.record(
-        {
-          actorUserId: actor.id,
-          action: 'payment_submitted',
-          targetType: 'Payment',
-          targetId: payment.id,
-          details: {
-            method: 'gateway',
-            amount: formatMoney(outstanding),
-            billingPeriodId,
-          },
-        },
-        tx,
+    const { redirectUrl, transactionReference } =
+      await this.startGatewaySession(
+        outstanding,
+        student.fullName,
+        student.phone,
       );
-    });
+
+    await this.prisma.$transaction((tx) =>
+      this.createPendingPayment(tx, {
+        billingPeriodId,
+        amount: outstanding,
+        method: 'gateway',
+        paidBy: 'student',
+        transactionReference,
+        actorUserId: actor.id,
+      }),
+    );
 
     return { redirectUrl };
   }
@@ -139,40 +114,142 @@ export class PaymentsService {
     actor: AuthUser,
   ): Promise<Payment> {
     const studentId = this.requireStudentId(actor);
-    await this.loadOwnPeriodForPayment(billingPeriodId, studentId);
+    await this.loadPeriodForPayment(billingPeriodId, studentId);
 
-    // BIL-09/PEN-05 — a pending payment must flip the period's persisted
-    // status immediately (not just on read), since the penalty job queries
-    // the database directly.
-    return this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.create({
-        data: {
-          billingPeriodId,
-          amount: dto.amount,
-          method: 'manual',
-          status: 'pending',
-          paidBy: 'student',
-          transactionReference: dto.transactionReference,
-          proofUrl: dto.proofUrl,
-        },
-      });
-      await this.recomputePeriodStatus(tx, billingPeriodId);
-      await this.audit.record(
-        {
-          actorUserId: actor.id,
-          action: 'payment_submitted',
-          targetType: 'Payment',
-          targetId: payment.id,
-          details: {
-            method: 'manual',
-            amount: formatMoney(new Prisma.Decimal(dto.amount)),
-            billingPeriodId,
-          },
-        },
-        tx,
+    return this.prisma.$transaction((tx) =>
+      this.createPendingPayment(tx, {
+        billingPeriodId,
+        amount: new Prisma.Decimal(dto.amount),
+        method: 'manual',
+        paidBy: 'student',
+        transactionReference: dto.transactionReference,
+        proofUrl: dto.proofUrl,
+        actorUserId: actor.id,
+      }),
+    );
+  }
+
+  // GST-01/PAY-11 — the same payment logic authenticated students use,
+  // just without a token: no ownership check (the billingPeriodId is only
+  // ever discoverable via a prior /guest/lookup response), paidBy 'guest',
+  // and guestName/guestPhone recorded on the Payment. BIL-10, BIL-08, and
+  // the BIL-09 persisted-status fix apply identically — same helpers.
+  async guestPayGateway(
+    billingPeriodId: string,
+    dto: GuestPayGatewayDto,
+  ): Promise<{ redirectUrl: string }> {
+    const period = await this.loadPeriodForPayment(billingPeriodId);
+    const outstanding = period.amountOwed.minus(period.amountPaid);
+
+    const { redirectUrl, transactionReference } =
+      await this.startGatewaySession(
+        outstanding,
+        dto.guestName,
+        dto.guestPhone,
       );
-      return payment;
+
+    await this.prisma.$transaction((tx) =>
+      this.createPendingPayment(tx, {
+        billingPeriodId,
+        amount: outstanding,
+        method: 'gateway',
+        paidBy: 'guest',
+        transactionReference,
+        guestName: dto.guestName,
+        guestPhone: dto.guestPhone,
+        actorUserId: null,
+      }),
+    );
+
+    return { redirectUrl };
+  }
+
+  async guestPayManual(
+    billingPeriodId: string,
+    dto: GuestPayManualDto,
+  ): Promise<Payment> {
+    await this.loadPeriodForPayment(billingPeriodId);
+
+    return this.prisma.$transaction((tx) =>
+      this.createPendingPayment(tx, {
+        billingPeriodId,
+        amount: new Prisma.Decimal(dto.amount),
+        method: 'manual',
+        paidBy: 'guest',
+        transactionReference: dto.transactionReference,
+        proofUrl: dto.proofUrl,
+        guestName: dto.guestName,
+        guestPhone: dto.guestPhone,
+        actorUserId: null,
+      }),
+    );
+  }
+
+  // PAY-02 — the Payment row is created only once the gateway session
+  // actually succeeds; if it fails, the payer was never redirected.
+  private async startGatewaySession(
+    outstanding: Prisma.Decimal,
+    customerName: string,
+    customerPhone: string,
+  ): Promise<{ redirectUrl: string; transactionReference: string }> {
+    const transactionReference = `GW-${randomUUID()}`;
+    const { redirectUrl } = await this.gateway.initiateSession({
+      transactionReference,
+      amount: formatMoney(outstanding),
+      customerName,
+      customerPhone,
     });
+    return { redirectUrl, transactionReference };
+  }
+
+  // BIL-09/PEN-05 — a pending payment must flip the period's persisted
+  // status immediately (not just on read), since the penalty job queries
+  // the database directly. Shared by every payment-creation path —
+  // authenticated student and guest, gateway and manual.
+  private async createPendingPayment(
+    tx: Prisma.TransactionClient,
+    params: {
+      billingPeriodId: string;
+      amount: Prisma.Decimal;
+      method: 'gateway' | 'manual';
+      paidBy: 'student' | 'guest';
+      transactionReference: string;
+      proofUrl?: string;
+      guestName?: string;
+      guestPhone?: string;
+      actorUserId: string | null;
+    },
+  ): Promise<Payment> {
+    const payment = await tx.payment.create({
+      data: {
+        billingPeriodId: params.billingPeriodId,
+        amount: params.amount,
+        method: params.method,
+        status: 'pending',
+        paidBy: params.paidBy,
+        transactionReference: params.transactionReference,
+        proofUrl: params.proofUrl,
+        guestName: params.guestName,
+        guestPhone: params.guestPhone,
+      },
+    });
+    await this.recomputePeriodStatus(tx, params.billingPeriodId);
+    await this.audit.record(
+      {
+        actorUserId: params.actorUserId,
+        action: 'payment_submitted',
+        targetType: 'Payment',
+        targetId: payment.id,
+        details: {
+          method: params.method,
+          paidBy: params.paidBy,
+          amount: formatMoney(params.amount),
+          billingPeriodId: params.billingPeriodId,
+        },
+      },
+      tx,
+    );
+    return payment;
   }
 
   // doc 05 index rationale — payments (status, method) is specifically the
@@ -459,17 +536,24 @@ export class PaymentsService {
     return actor.studentId;
   }
 
-  private async loadOwnPeriodForPayment(
+  // Shared by the authenticated student flow (studentId provided — must
+  // own the period, doc 04 §4.3 leaks "not found" rather than "forbidden")
+  // and the guest flow (studentId omitted — a guest has no token to own
+  // anything against; the billingPeriodId itself is only ever discoverable
+  // via a prior successful /guest/lookup response). BIL-10 and
+  // PeriodAlreadyPaid apply identically either way.
+  private async loadPeriodForPayment(
     billingPeriodId: string,
-    studentId: string,
+    studentId?: string,
   ): Promise<BillingPeriod & { enrollment: Enrollment }> {
     const period = await this.prisma.billingPeriod.findUnique({
       where: { id: billingPeriodId },
       include: { enrollment: true },
     });
-    // Never leak existence through authorization (doc 04 §4.3) — a period
-    // that isn't this student's reads as "not found", not "forbidden".
-    if (!period || period.enrollment.studentId !== studentId) {
+    if (
+      !period ||
+      (studentId !== undefined && period.enrollment.studentId !== studentId)
+    ) {
       throw new NotFoundException('Not found');
     }
     if (period.status === 'paid') {
@@ -522,6 +606,13 @@ export class PaymentsService {
       payment.billingPeriodId,
     );
     await this.maybeClearPenaltyFlag(tx, period.enrollmentId);
+    // ENR-06/07 — a verified payment (gateway webhook or manual verify,
+    // both settle through here) activates the enrollment. The `pending`
+    // guard makes this a no-op if it's already active or was withdrawn.
+    await tx.enrollment.updateMany({
+      where: { id: period.enrollmentId, status: 'pending' },
+      data: { status: 'active' },
+    });
 
     await this.audit.record(
       {

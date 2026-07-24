@@ -13,6 +13,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { StudentsModule } from './modules/students/students.module';
 import { UsersModule } from './modules/users/users.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { GuestModule } from './modules/guest/guest.module';
+import { HomeworkModule } from './modules/homework/homework.module';
 import { JobsModule } from './jobs/jobs.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -31,6 +33,8 @@ import { MoneySerializationInterceptor } from './common/interceptors/money-seria
     StudentsModule,
     UsersModule,
     BillingModule,
+    GuestModule,
+    HomeworkModule,
     JobsModule,
   ],
   controllers: [AppController],

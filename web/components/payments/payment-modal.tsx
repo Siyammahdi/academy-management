@@ -5,26 +5,11 @@ import type { FormEvent } from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ApiError } from '../../lib/api';
-import { apiErrorMessage } from '../../lib/error-message';
+import { payErrorMessage } from '../../lib/error-message';
 import { formatMoney } from '../../lib/format';
 import { payGateway, payManual } from '../../lib/admin-api';
 
 const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/;
-
-function payErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) {
-    // BIL-10 — advance payment refused while earlier periods are unpaid.
-    if (err.body.error === 'ARREARS_EXIST') {
-      return 'Pay your earlier dues first — this period is next in line after that.';
-    }
-    if (err.body.error === 'PERIOD_ALREADY_PAID') {
-      return 'This period is already fully paid.';
-    }
-    return apiErrorMessage(err.body, fallback);
-  }
-  return fallback;
-}
 
 export interface PaymentModalProps {
   isOpen: boolean;

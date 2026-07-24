@@ -216,4 +216,113 @@ describe('Courses/Batches (real Postgres)', () => {
       );
     });
   });
+
+  describe('Class links', () => {
+    async function createCourseAndBatch(): Promise<string> {
+      const courseRes = await request(app.getHttpServer())
+        .post('/api/v1/courses')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          title: `Class Link Course ${Date.now()}-${Math.random()}`,
+          billingType: 'monthly',
+          enrollmentFee: '1000.00',
+          monthlyFee: '500.00',
+        })
+        .expect(201);
+      const courseId = (courseRes.body as CourseBody).id;
+
+      const batchRes = await request(app.getHttpServer())
+        .post('/api/v1/batches')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          courseId,
+          name: `Class Link Batch ${Date.now()}`,
+          capacity: 30,
+          courseStartDate: '2027-01-01T00:00:00.000Z',
+          enrollmentOpensAt: '2026-12-01T00:00:00.000Z',
+          enrollmentClosesAt: '2026-12-31T00:00:00.000Z',
+        })
+        .expect(201);
+      return (batchRes.body as BatchBody).id;
+    }
+
+    it('rejects a manager not assigned to the batch with 403 BATCH_NOT_ASSIGNED', async () => {
+      const batchId = await createCourseAndBatch();
+
+      // `managerToken`'s user is never assigned to any batch in this file.
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/batches/${batchId}/class-link`)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({ classLink: 'https://meet.google.com/abc-defg-hij' })
+        .expect(403);
+      expect((res.body as ErrorResponseBody).error).toBe('BATCH_NOT_ASSIGNED');
+
+      const batch = await prisma.batch.findUniqueOrThrow({
+        where: { id: batchId },
+      });
+      expect(batch.classLink).toBeNull();
+    });
+
+    it('lets the assigned manager set the link and writes class_link_updated', async () => {
+      const batchId = await createCourseAndBatch();
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const assignedManagerToken = await createUserWithRole(
+        `assigned-manager-${suffix}@example.com`,
+        'manager',
+      );
+      const assignedManager = await prisma.user.findUniqueOrThrow({
+        where: { email: `assigned-manager-${suffix}@example.com` },
+      });
+      await request(app.getHttpServer())
+        .post(`/api/v1/batches/${batchId}/managers`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId: assignedManager.id })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/batches/${batchId}/class-link`)
+        .set('Authorization', `Bearer ${assignedManagerToken}`)
+        .send({ classLink: 'https://meet.google.com/abc-defg-hij' })
+        .expect(200);
+      expect((res.body as BatchBody & { classLink: string }).classLink).toBe(
+        'https://meet.google.com/abc-defg-hij',
+      );
+
+      const audit = await prisma.auditLog.findFirst({
+        where: { action: 'class_link_updated', targetId: batchId },
+      });
+      expect(audit).not.toBeNull();
+
+      const getRes = await request(app.getHttpServer())
+        .get(`/api/v1/batches/${batchId}`)
+        .expect(200);
+      expect((getRes.body as BatchBody & { classLink: string }).classLink).toBe(
+        'https://meet.google.com/abc-defg-hij',
+      );
+    });
+
+    it('an admin may set the link on any batch regardless of assignment', async () => {
+      const batchId = await createCourseAndBatch();
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/batches/${batchId}/class-link`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ classLink: 'https://t.me/an_nahda_batch' })
+        .expect(200);
+      expect((res.body as BatchBody & { classLink: string }).classLink).toBe(
+        'https://t.me/an_nahda_batch',
+      );
+    });
+
+    it('rejects a non-URL value with a validation error', async () => {
+      const batchId = await createCourseAndBatch();
+
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/batches/${batchId}/class-link`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ classLink: 'not-a-url' })
+        .expect(400);
+      expect((res.body as ErrorResponseBody).error).toBe('VALIDATION_ERROR');
+    });
+  });
 });

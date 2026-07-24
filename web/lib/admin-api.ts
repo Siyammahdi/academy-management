@@ -67,6 +67,7 @@ export interface Batch {
   dueDayStart: number;
   dueDayEnd: number;
   status: BatchStatus;
+  classLink: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -247,6 +248,16 @@ export function updateBatch(
   });
 }
 
+export function updateClassLink(
+  id: string,
+  classLink: string,
+): Promise<Batch> {
+  return apiFetch(`/batches/${id}/class-link`, {
+    method: 'PATCH',
+    body: JSON.stringify({ classLink }),
+  });
+}
+
 export function changeBatchStatus(
   id: string,
   status: BatchStatus,
@@ -373,4 +384,57 @@ export interface EnrollResult {
 
 export function enrollInBatch(batchId: string): Promise<EnrollResult> {
   return apiFetch(`/batches/${batchId}/enroll`, { method: 'POST' });
+}
+
+export interface Homework {
+  id: string;
+  batchId: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  createdAt: string;
+}
+
+export type HomeworkWithContext = Homework & {
+  batch: Batch & { course: Course };
+};
+
+export interface CreateHomeworkInput {
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
+export type UpdateHomeworkInput = Partial<CreateHomeworkInput>;
+
+export function listBatchHomework(batchId: string): Promise<Homework[]> {
+  return apiFetch(`/batches/${batchId}/homework`);
+}
+
+export function createHomework(
+  batchId: string,
+  input: CreateHomeworkInput,
+): Promise<Homework> {
+  return apiFetch(`/batches/${batchId}/homework`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateHomework(
+  id: string,
+  input: UpdateHomeworkInput,
+): Promise<Homework> {
+  return apiFetch(`/homework/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteHomework(id: string): Promise<void> {
+  return apiFetch(`/homework/${id}`, { method: 'DELETE' });
+}
+
+export function listMyHomework(): Promise<HomeworkWithContext[]> {
+  return apiFetch('/me/homework');
 }

@@ -12,6 +12,7 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 import { ChangeBatchStatusDto } from './dto/change-batch-status.dto';
 import { AssignManagerDto } from './dto/assign-manager.dto';
+import { UpdateClassLinkDto } from './dto/update-class-link.dto';
 import {
   Paginated,
   PaginationQuery,
@@ -278,6 +279,44 @@ export class BatchesService {
           details: {
             before: { status: before.status },
             after: { status: after.status },
+          },
+        },
+        tx,
+      );
+
+      return after;
+    });
+  }
+
+  // Class links (Telegram/Zoom) — the first deferred course-management
+  // feature (doc 07 §12's extensibility principle): attaches to Batch,
+  // touches nothing else. Manager (own batch, via BatchScopeGuard at the
+  // controller) or admin.
+  async updateClassLink(
+    id: string,
+    dto: UpdateClassLinkDto,
+    actor: AuthUser,
+  ): Promise<Batch> {
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.batch.findUnique({ where: { id } });
+      if (!before) {
+        throw new NotFoundException('Not found');
+      }
+
+      const after = await tx.batch.update({
+        where: { id },
+        data: { classLink: dto.classLink },
+      });
+
+      await this.audit.record(
+        {
+          actorUserId: actor.id,
+          action: 'class_link_updated',
+          targetType: 'Batch',
+          targetId: id,
+          details: {
+            before: { classLink: before.classLink },
+            after: { classLink: after.classLink },
           },
         },
         tx,

@@ -216,6 +216,60 @@ describe('BatchesService', () => {
     });
   });
 
+  describe('updateClassLink', () => {
+    it('records the new link and writes a class_link_updated audit entry', async () => {
+      const before = { id: 'batch1', classLink: null };
+      const after = {
+        id: 'batch1',
+        classLink: 'https://meet.example.com/room',
+      };
+      const tx = {
+        batch: {
+          findUnique: jest.fn().mockResolvedValue(before),
+          update: jest.fn().mockResolvedValue(after),
+        },
+      };
+      const { service, audit } = createService(tx);
+
+      const result = await service.updateClassLink(
+        'batch1',
+        { classLink: 'https://meet.example.com/room' },
+        admin,
+      );
+
+      expect(result.classLink).toBe('https://meet.example.com/room');
+      expect(tx.batch.update).toHaveBeenCalledWith({
+        where: { id: 'batch1' },
+        data: { classLink: 'https://meet.example.com/room' },
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'class_link_updated',
+          targetType: 'Batch',
+          targetId: 'batch1',
+          details: {
+            before: { classLink: null },
+            after: { classLink: 'https://meet.example.com/room' },
+          },
+        }),
+        tx,
+      );
+    });
+
+    it('throws NotFoundException when the batch does not exist', async () => {
+      const tx = { batch: { findUnique: jest.fn().mockResolvedValue(null) } };
+      const { service } = createService(tx);
+
+      await expect(
+        service.updateClassLink(
+          'missing',
+          { classLink: 'https://meet.example.com/room' },
+          admin,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('assignManager', () => {
     it('rejects a duplicate assignment with ConflictException', async () => {
       const { service } = createService(

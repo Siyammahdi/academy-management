@@ -27,6 +27,7 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 import { ChangeBatchStatusDto } from './dto/change-batch-status.dto';
 import { AssignManagerDto } from './dto/assign-manager.dto';
+import { UpdateClassLinkDto } from './dto/update-class-link.dto';
 import type { Paginated } from '../../common/utils/pagination';
 
 @Controller('batches')
@@ -99,5 +100,17 @@ export class BatchesController {
   @Get(':id/roster')
   getRoster(@Param('id') id: string): Promise<RosterEntry[]> {
     return this.batchesService.getRoster(id);
+  }
+
+  @Roles('manager', 'admin')
+  @TargetResource('batch')
+  @UseGuards(RolesGuard, BatchScopeGuard)
+  @Patch(':id/class-link')
+  updateClassLink(
+    @Param('id') id: string,
+    @Body() dto: UpdateClassLinkDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<Batch> {
+    return this.batchesService.updateClassLink(id, dto, user);
   }
 }

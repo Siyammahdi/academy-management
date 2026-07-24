@@ -5,9 +5,19 @@ import { PageHeader } from '../layout/page-header';
 import { Card } from '../ui/card';
 import { Pill } from '../ui/pill';
 import type { PillStatus } from '../ui/pill';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { HomeworkPanel } from './homework-panel';
 import { formatDate } from '../../lib/format';
-import { getBatch, getCourse, getRoster } from '../../lib/admin-api';
+import {
+  getBatch,
+  getCourse,
+  getRoster,
+  updateClassLink,
+} from '../../lib/admin-api';
 import type { BatchWithSeats, Course, RosterEntry } from '../../lib/admin-api';
+import { apiErrorMessage } from '../../lib/error-message';
+import { ApiError } from '../../lib/api';
 
 // Roster entries are enrollment-lifecycle rows, not money rows — there is
 // no amount to show. Reusing the ledger StatusPill for the
@@ -43,6 +53,9 @@ export function BatchRoster({
   const [course, setCourse] = useState<Course | null>(null);
   const [roster, setRoster] = useState<RosterEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [classLinkInput, setClassLinkInput] = useState('');
+  const [savingClassLink, setSavingClassLink] = useState(false);
+  const [classLinkError, setClassLinkError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +67,7 @@ export function BatchRoster({
           return;
         }
         setBatch(loadedBatch);
+        setClassLinkInput(loadedBatch.classLink ?? '');
         const [loadedCourse, loadedRoster] = await Promise.all([
           getCourse(loadedBatch.courseId),
           getRoster(batchId),
@@ -75,6 +89,26 @@ export function BatchRoster({
       cancelled = true;
     };
   }, [batchId, loadErrorMessage]);
+
+  async function handleSaveClassLink(): Promise<void> {
+    setClassLinkError(null);
+    setSavingClassLink(true);
+    try {
+      const updated = await updateClassLink(batchId, classLinkInput.trim());
+      setBatch((prev) => (prev ? { ...prev, classLink: updated.classLink } : prev));
+      setClassLinkInput(updated.classLink ?? '');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setClassLinkError(
+          apiErrorMessage(err.body, 'Could not save the class link.'),
+        );
+      } else {
+        setClassLinkError('Could not save the class link.');
+      }
+    } finally {
+      setSavingClassLink(false);
+    }
+  }
 
   if (error) {
     return (
@@ -132,6 +166,37 @@ export function BatchRoster({
           </span>
         </div>
       </Card>
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-display text-h3 font-semibold text-ink">
+          Class link
+        </h2>
+        <p className="font-body text-sm text-ink-muted">
+          Where students join class — a Telegram group or a Zoom/Meet room.
+          Teaching itself happens off-platform.
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <Input
+              type="url"
+              label="Class link"
+              placeholder="https://t.me/your-batch or https://meet.google.com/..."
+              value={classLinkInput}
+              onChange={(e) => setClassLinkInput(e.target.value)}
+              error={classLinkError ?? undefined}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={() => void handleSaveClassLink()}
+            disabled={savingClassLink}
+          >
+            {savingClassLink ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </Card>
+
+      <HomeworkPanel batchId={batchId} />
 
       <div className="flex flex-col gap-3">
         <h2 className="font-display text-h3 font-semibold text-ink">

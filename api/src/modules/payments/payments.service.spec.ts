@@ -175,6 +175,49 @@ describe('PaymentsService', () => {
     });
   });
 
+  describe('ENR-06/07: a verified payment activates the enrollment', () => {
+    it('sets a pending enrollment to active when its payment is verified', async () => {
+      const tx = createTxMock({
+        payment: {
+          update: jest.fn().mockResolvedValue({
+            id: 'pay1',
+            billingPeriodId: 'period1',
+            amount: decimal('500.00'),
+            status: 'verified',
+          }),
+          count: jest.fn().mockResolvedValue(0),
+        },
+        billingPeriod: {
+          update: jest
+            .fn()
+            .mockImplementation((args: { data: Record<string, unknown> }) =>
+              Promise.resolve({
+                id: 'period1',
+                enrollmentId: 'enr1',
+                ...args.data,
+              }),
+            ),
+          findUniqueOrThrow: jest.fn().mockResolvedValue({
+            id: 'period1',
+            enrollmentId: 'enr1',
+            amountOwed: decimal('500.00'),
+            amountPaid: decimal('500.00'),
+          }),
+          count: jest.fn().mockResolvedValue(0),
+        },
+      });
+      const { service } = createService(tx);
+
+      await service.verify('pay1', staffActor('admin1'));
+
+      const enrollmentDelegate = tx.enrollment as { updateMany: jest.Mock };
+      expect(enrollmentDelegate.updateMany).toHaveBeenCalledWith({
+        where: { id: 'enr1', status: 'pending' },
+        data: { status: 'active' },
+      });
+    });
+  });
+
   describe('BIL-08: a pending payment does not increase amountPaid', () => {
     it('rejecting a payment never touches amountPaid', async () => {
       const tx = createTxMock({

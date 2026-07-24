@@ -215,12 +215,14 @@ model Batch {
   dueDayStart       Int         @default(1) @map("due_day_start")
   dueDayEnd         Int         @default(5) @map("due_day_end")
   status            BatchStatus @default(upcoming)
+  classLink         String?     @map("class_link")   // Telegram/Zoom link — teaching happens off-platform
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
   course      Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
   managers    BatchManager[]
   enrollments Enrollment[]
+  homework    Homework[]
 
   @@index([courseId])
   @@index([status])
@@ -241,6 +243,24 @@ model BatchManager {
   @@unique([batchId, userId])
   @@index([userId])          // "which batches does this manager have?" — hot path for BatchScopeGuard
   @@map("batch_managers")
+}
+
+/// A deferred course-management feature (doc 07 §12): attaches to Batch,
+/// touches nothing else. dueDate is a real point-in-time deadline (end of
+/// the chosen Dhaka calendar day), the same convention BillingPeriod.dueDate
+/// uses (TIME-02/TIME-03) — not a bare calendar date.
+model Homework {
+  id          String   @id @default(cuid())
+  batchId     String   @map("batch_id")
+  title       String
+  description String
+  dueDate     DateTime @map("due_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, dueDate])
+  @@map("homeworks")
 }
 
 // ─────────────────────────────────────────────

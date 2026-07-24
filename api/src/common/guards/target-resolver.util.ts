@@ -5,7 +5,9 @@ import { TargetResourceKind } from '../decorators/target-resource.decorator';
 
 export interface ResolvedTarget {
   batchId: string;
-  studentId: string;
+  // Undefined for resource kinds with no owning student (e.g. 'homework') —
+  // SelfApprovalGuard is never applied to those routes.
+  studentId?: string;
 }
 
 /**
@@ -58,6 +60,12 @@ export async function resolveTarget(
           batchId: enrollment.batchId,
           studentId: enrollment.studentId,
         };
+      }
+      case 'homework': {
+        const homework = await prisma.homework.findUniqueOrThrow({
+          where: { id },
+        });
+        return { batchId: homework.batchId };
       }
     }
   } catch (error) {

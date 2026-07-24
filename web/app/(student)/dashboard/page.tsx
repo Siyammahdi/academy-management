@@ -5,33 +5,43 @@ import Link from 'next/link';
 import { PageHeader } from '../../../components/layout/page-header';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
+import { Pill } from '../../../components/ui/pill';
 import { LedgerLine } from '../../../components/ledger/ledger-line';
 import { PaymentModal } from '../../../components/payments/payment-modal';
 import { formatDate } from '../../../lib/format';
+import { isPastDue } from '../../../lib/homework-status';
 import { PERIOD_STATUS_PILL } from '../../../lib/period-status';
 import {
   listMyBillingPeriods,
   listMyEnrollments,
+  listMyHomework,
 } from '../../../lib/admin-api';
 import type {
   BillingPeriodWithContext,
   EnrollmentWithBatch,
+  HomeworkWithContext,
 } from '../../../lib/admin-api';
 
 interface DashboardData {
   enrollments: EnrollmentWithBatch[];
   periods: BillingPeriodWithContext[];
+  homework: HomeworkWithContext[];
 }
 
 // Plain fetcher (no setState) so the effect can call it directly without
 // tripping react-hooks/set-state-in-effect — the actual setState happens in
 // the effect's own .then()/.catch().
 async function fetchDashboardData(): Promise<DashboardData> {
-  const [enrollmentResult, periodResult] = await Promise.all([
+  const [enrollmentResult, periodResult, homework] = await Promise.all([
     listMyEnrollments(1, 100),
     listMyBillingPeriods(undefined, 1, 100),
+    listMyHomework(),
   ]);
-  return { enrollments: enrollmentResult.data, periods: periodResult.data };
+  return {
+    enrollments: enrollmentResult.data,
+    periods: periodResult.data,
+    homework,
+  };
 }
 
 export default function StudentDashboardPage() {
@@ -39,6 +49,9 @@ export default function StudentDashboardPage() {
     null,
   );
   const [periods, setPeriods] = useState<BillingPeriodWithContext[] | null>(
+    null,
+  );
+  const [homework, setHomework] = useState<HomeworkWithContext[] | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +63,7 @@ export default function StudentDashboardPage() {
       const data = await fetchDashboardData();
       setEnrollments(data.enrollments);
       setPeriods(data.periods);
+      setHomework(data.homework);
     } catch {
       setError('Your dashboard could not be loaded. Try again.');
     }
@@ -62,6 +76,7 @@ export default function StudentDashboardPage() {
         if (!cancelled) {
           setEnrollments(data.enrollments);
           setPeriods(data.periods);
+          setHomework(data.homework);
         }
       })
       .catch(() => {
@@ -159,9 +174,56 @@ export default function StudentDashboardPage() {
                     No billing period yet.
                   </p>
                 )}
+                {enrollment.status === 'active' && enrollment.batch.classLink ? (
+                  <a
+                    href={enrollment.batch.classLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="self-start font-body text-sm font-medium text-purple underline underline-offset-2"
+                  >
+                    Join class →
+                  </a>
+                ) : null}
               </Card>
             );
           })}
+        </div>
+      ) : null}
+
+      {homework && homework.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <h2 className="font-display text-h3 font-semibold text-ink">
+            Homework
+          </h2>
+          <div className="flex flex-col gap-4">
+            {homework.map((hw) => {
+              const pastDue = isPastDue(hw.dueDate);
+              return (
+                <Card key={hw.id} className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-body text-body font-medium text-ink">
+                      {hw.title}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Pill
+                        status={pastDue ? 'overdue' : 'unpaid'}
+                        label={pastDue ? 'Past due' : 'Upcoming'}
+                      />
+                      <span className="font-numeric text-sm text-ink-faint">
+                        Due {formatDate(hw.dueDate)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-body text-sm text-ink-muted">
+                    {hw.batch.course.title} · {hw.batch.name}
+                  </span>
+                  <p className="font-body text-sm text-ink-muted">
+                    {hw.description}
+                  </p>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 

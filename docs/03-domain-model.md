@@ -36,6 +36,10 @@ Course ──spawns──▶ Batch ──has──▶ Enrollment ──owns─�
 | `Request` | Grace or partial-payment application |
 | `Notification` | Dispatched message record |
 | `AuditLog` | Append-only record of who did what |
+| `Homework` | Batch homework with a due date (added scope) |
+| `RecordedClass` | Batch YouTube recording (added scope) |
+
+*`Batch` also carries a `classLink` field (added scope). `Homework` and `RecordedClass` are covered in §12.*
 
 ---
 
@@ -309,6 +313,34 @@ These hold across the whole model and MUST be enforced in the service layer:
 
 ---
 
+## 12. Class-management entities (added scope)
+
+These attach to `Batch` and touch no billing table. They are the proof of the extensibility principle in practice.
+
+### `Homework`
+| Field | Notes |
+|---|---|
+| `id`, `batchId` | |
+| `title`, `description` | |
+| `dueDate` | End-of-Dhaka-day instant for the supplied calendar date |
+| `createdAt` | Indexed on `(batchId, dueDate)` |
+
+Students read homework across their **active** enrollments via `/me/homework`. Manager writes are batch-scoped.
+
+### `RecordedClass`
+| Field | Notes |
+|---|---|
+| `id`, `batchId` | |
+| `title` | |
+| `youtubeVideoId` | The **id**, not a URL — extracted on input |
+| `recordedFor` | The class date (plain date; no deadline semantics) |
+| `createdAt` | Indexed on `(batchId, recordedFor)` |
+
+### `Batch.classLink`
+A nullable field on `Batch`, not a separate entity — a single live-class link, manager-editable, shown to students on their active enrollments.
+
+---
+
 ## What deliberately does not exist
 
 Named here so implementers do not add them:
@@ -317,4 +349,5 @@ Named here so implementers do not add them:
 - **No `currentPart` on `Enrollment`** — derived from the batch timeline.
 - **No waitlist** — a full batch simply refuses enrollment.
 - **No merged balance across enrollments** — each enrollment bills independently.
-- **No attendance, homework, exam, or certificate entities** — deferred. They will attach to `Enrollment` and `Batch` without altering existing tables.
+- **No attendance, exam, or certificate entities** — deferred. They will attach to `Enrollment` and `Batch` without altering existing tables. *(Homework and recorded classes, once deferred, are now built — see §12.)*
+- **No `Resource` entity yet** — planned; will attach to `Batch` with a `url` field first, object storage later.

@@ -17,8 +17,13 @@
 | **07** | [Architecture](./07-architecture.md) | Adding a module, job, or cross-cutting concern |
 | **08** | [Development Guidelines](./08-development-guidelines.md) | **Always.** Standards, testing, and agent instructions |
 | **09** | [UI Design System](./09-ui-design-system.md) | Building any interface |
+| **10** | [Current State](./10-current-state.md) | **First, before building on anything.** What's built, tested, verified, and broken |
+| **11** | [Hardening Backlog](./11-hardening.md) | Before production; the security and robustness gaps |
+| **12** | [Roadmap](./12-roadmap.md) | Picking up the next feature — what's left and in what order |
 
 **Precedence:** `02-business-rules.md` outranks every other document. If two documents disagree, the business rules win.
+
+**Start here if you are picking up the project:** read `10-current-state.md` first. It tells you what is solid ground and what is thin ice. Then `12-roadmap.md` for what to build next, and `11-hardening.md` for what must be true before real money flows.
 
 ---
 
@@ -88,8 +93,10 @@ Before writing code for any module:
 
 ---
 
-## Explicitly out of scope
+## Scope status
 
-Attendance · homework · exams · class reports · certificates · course content delivery · in-app messaging · SMS · a `Teacher` role · waitlists
+**Built beyond the original core:** guest payments · class links · homework · recorded classes (YouTube).
 
-These are deferred to later phases. They will attach to `Enrollment` and `Batch` as new tables without altering existing ones. **Do not build them, and do not add fields anticipating them.**
+**Still out of scope** (deferred; attach to `Enrollment`/`Batch` as new tables without altering existing ones — do not build or pre-anticipate): attendance · exams · class reports · certificates · course content delivery · in-app messaging · SMS · a `Teacher` role · waitlists · file uploads (resources will use link fields first).
+
+**Specified but not yet built** (see `12-roadmap.md`): notifications · grace/partial-payment requests · reporting + export · role-management UI.

@@ -438,3 +438,56 @@ export function deleteHomework(id: string): Promise<void> {
 export function listMyHomework(): Promise<HomeworkWithContext[]> {
   return apiFetch('/me/homework');
 }
+
+export interface Recording {
+  id: string;
+  batchId: string;
+  title: string;
+  youtubeVideoId: string;
+  recordedFor: string;
+  createdAt: string;
+}
+
+export type RecordingWithContext = Recording & {
+  batch: Batch & { course: Course };
+};
+
+export interface CreateRecordingInput {
+  title: string;
+  youtubeVideoId: string;
+  recordedFor: string;
+}
+
+export type UpdateRecordingInput = Partial<CreateRecordingInput>;
+
+export function listBatchRecordings(batchId: string): Promise<Recording[]> {
+  return apiFetch(`/batches/${batchId}/recordings`);
+}
+
+export function createRecording(
+  batchId: string,
+  input: CreateRecordingInput,
+): Promise<Recording> {
+  return apiFetch(`/batches/${batchId}/recordings`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateRecording(
+  id: string,
+  input: UpdateRecordingInput,
+): Promise<Recording> {
+  return apiFetch(`/recordings/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteRecording(id: string): Promise<void> {
+  return apiFetch(`/recordings/${id}`, { method: 'DELETE' });
+}
+
+export function listMyRecordings(): Promise<RecordingWithContext[]> {
+  return apiFetch('/me/recordings');
+}

@@ -47,6 +47,8 @@ Every error returns this envelope. No exceptions.
 
 `BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE`
 
+Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
+
 ### Pagination
 
 List endpoints accept `?page=1&limit=20` (max `100`) and return:
@@ -244,6 +246,8 @@ Unauthenticated. The only public write surface besides auth.
 
 **Each due is listed separately and never merged** (GST-03) — a payer often intends to cover one specific course. An unmatched identifier returns `404 STUDENT_NOT_FOUND` with no other detail (GST-04).
 
+**Implementation note:** the live response omits `studentId` (shown above for illustration), following GST-05's rule to expose only name and amounts over doc 06's illustrative JSON. When these disagree, the GST rule wins.
+
 ---
 
 ## 9. Requests
@@ -304,6 +308,42 @@ Managers receive their batches only; the service applies the scope, never the cl
 | `POST` | `/me/notifications/read-all` | Auth |
 
 ---
+
+## 12b. Class management (added scope)
+
+Content that attaches to a batch. All manager-write routes are batch-scoped via `BatchScopeGuard` (manager on their own batch, or admin); the batch is resolved from the resource id on `PATCH`/`DELETE` via the shared target-resolver.
+
+**Class link**
+
+| Method | Path | Auth |
+|---|---|---|
+| `PATCH` | `/batches/:id/class-link` | Manager (own) / Admin |
+
+The link is returned by `GET /batches/:id` and surfaced to students on `GET /me/enrollments`.
+
+**Homework**
+
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/batches/:id/homework` | Manager (own) / Admin |
+| `GET` | `/batches/:id/homework` | Manager (own) / Admin |
+| `PATCH` | `/homework/:id` | Manager (own) / Admin |
+| `DELETE` | `/homework/:id` | Manager (own) / Admin |
+| `GET` | `/me/homework` | Student — across active enrollments, sorted by dueDate |
+
+`dueDate` stores the end-of-Dhaka-day instant for the calendar date supplied, so upcoming/past-due comparison is a plain instant comparison.
+
+**Recorded classes**
+
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/batches/:id/recordings` | Manager (own) / Admin |
+| `GET` | `/batches/:id/recordings` | Manager (own) / Admin |
+| `PATCH` | `/recordings/:id` | Manager (own) / Admin |
+| `DELETE` | `/recordings/:id` | Manager (own) / Admin |
+| `GET` | `/me/recordings` | Student — active enrollments, newest first |
+
+The API stores the **YouTube video id**, not a URL — a pasted full link (`youtube.com/watch`, `youtu.be`, `/shorts/`, `/embed/`, `m.youtube.com`) is reduced to the id on input. The frontend builds the embed from the id via `youtube-nocookie.com`.
 
 ## 13. Validation
 

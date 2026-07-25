@@ -67,6 +67,12 @@ export async function resolveTarget(
         });
         return { batchId: homework.batchId };
       }
+      case 'recording': {
+        const recording = await prisma.recordedClass.findUniqueOrThrow({
+          where: { id },
+        });
+        return { batchId: recording.batchId };
+      }
     }
   } catch (error) {
     if (

@@ -234,7 +234,9 @@ A 100% discount yields an entry amount of `0.00`.
 **AUD-03** — Audit entries MUST be **append-only**. They MUST NOT be updated or deleted.
 
 **AUD-04** — Actions requiring an audit entry:
-`enrollment_created`, `enrollment_status_changed`, `batch_created`, `batch_status_changed`, `course_created`, `course_updated`, `payment_submitted`, `payment_verified`, `payment_rejected`, `penalty_applied`, `penalty_reversed`, `refund_issued`, `request_created`, `request_decided`, `grace_granted`, `late_joiner_added`, `student_removed`, `user_role_changed`, `period_marked_paid_manually`, `class_link_updated`, `homework_created`, `homework_updated`, `homework_deleted`.
+`enrollment_created`, `enrollment_status_changed`, `batch_created`, `batch_status_changed`, `course_created`, `course_updated`, `payment_submitted`, `payment_verified`, `payment_rejected`, `payment_expired`, `penalty_applied`, `penalty_reversed`, `refund_issued`, `request_created`, `request_decided`, `grace_granted`, `late_joiner_added`, `student_removed`, `user_role_changed`, `period_marked_paid_manually`, `class_link_updated`, `homework_created`, `homework_updated`, `homework_deleted`, `recording_added`, `recording_updated`, `recording_deleted`.
+
+*The last eight were added during implementation as the payment-expiry and class-management features were built. Any new money-affecting or content-mutating action MUST extend this list rather than skip the audit trail.*
 
 ---
 

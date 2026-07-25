@@ -223,6 +223,7 @@ model Batch {
   managers    BatchManager[]
   enrollments Enrollment[]
   homework    Homework[]
+  recordings  RecordedClass[]
 
   @@index([courseId])
   @@index([status])
@@ -261,6 +262,26 @@ model Homework {
 
   @@index([batchId, dueDate])
   @@map("homeworks")
+}
+
+/// A deferred course-management feature (doc 07 §12): attaches to Batch,
+/// touches nothing else. Stores only the YouTube video id, never a URL —
+/// the frontend builds the embed from it. recordedFor is a pure calendar
+/// date (the class date, no deadline semantics), so — unlike Homework's
+/// dueDate — it is stored as-is (TIME-04's periodMonth convention), not
+/// resolved through the Dhaka end-of-day helper.
+model RecordedClass {
+  id             String   @id @default(cuid())
+  batchId        String   @map("batch_id")
+  title          String
+  youtubeVideoId String   @map("youtube_video_id")
+  recordedFor    DateTime @map("recorded_for")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, recordedFor])
+  @@map("recorded_classes")
 }
 
 // ─────────────────────────────────────────────

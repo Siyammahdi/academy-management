@@ -8,6 +8,7 @@ import type { PillStatus } from '../ui/pill';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { HomeworkPanel } from './homework-panel';
+import { RecordingsPanel } from './recordings-panel';
 import { formatDate } from '../../lib/format';
 import {
   getBatch,
@@ -197,6 +198,8 @@ export function BatchRoster({
       </Card>
 
       <HomeworkPanel batchId={batchId} />
+
+      <RecordingsPanel batchId={batchId} />
 
       <div className="flex flex-col gap-3">
         <h2 className="font-display text-h3 font-semibold text-ink">

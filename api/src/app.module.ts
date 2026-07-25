@@ -15,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { GuestModule } from './modules/guest/guest.module';
 import { HomeworkModule } from './modules/homework/homework.module';
+import { RecordingsModule } from './modules/recordings/recordings.module';
 import { JobsModule } from './jobs/jobs.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -35,6 +36,7 @@ import { MoneySerializationInterceptor } from './common/interceptors/money-seria
     BillingModule,
     GuestModule,
     HomeworkModule,
+    RecordingsModule,
     JobsModule,
   ],
   controllers: [AppController],

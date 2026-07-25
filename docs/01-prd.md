@@ -30,10 +30,22 @@ The system manages courses, batches, enrollments, monthly subscription billing, 
 
 Explicitly out of scope. These are **not** to be built, and no code should anticipate them beyond not blocking them:
 
-- Course content delivery, live classes, or in-app messaging (lives in Telegram/Zoom).
-- Attendance tracking, homework, exams, class reports, certificates — **deferred to a later phase**.
+- Course content delivery or live classes (teaching lives in Telegram/Zoom).
+- In-app messaging.
+- Attendance tracking, exams/assessments, class reports, certificates — **deferred to a later phase**.
 - SMS notifications — deferred; the notification architecture must not block adding it.
 - A `Teacher` role. Teachers operate off-platform and do not log in.
+
+### Scope added since v1.0 (now built)
+
+The client expanded scope after the original PRD. These attach to `Batch` and touch no core billing table, and are **built** (see `10-current-state.md`):
+
+- **Class links** — a manager sets a live-class link on a batch; students see it on their dashboard.
+- **Homework** — managers assign homework with a due date; students see it across their active enrollments.
+- **Recorded classes** — managers share YouTube recordings, embedded and viewable on the site.
+- **Resources / notes** — *planned, not yet built* — managers share links to materials; file upload deferred to object storage later.
+
+These are course-management features on top of the enrollment/billing core, not a shift away from the product's identity as a billing back-office.
 
 ---
 
@@ -189,6 +201,8 @@ Scope follows the permission boundary: **managers see only their batch(es); admi
 
 ## 13. Extensibility principle
 
-Future features (class reports, homework, exams, certificates, attendance, SMS) attach to `Enrollment` and `Batch` without schema changes to existing tables.
+Future features (exams, certificates, attendance, class reports, SMS, file uploads) attach to `Enrollment` and `Batch` without schema changes to existing tables.
+
+**This has been proven in practice.** Five features — guest payments, class links, homework, recorded classes, and the penalty engine — attached without a single migration to a core billing table. The class features each added one table (or one field) referencing `Batch` and reused the existing `BatchScopeGuard` unchanged.
 
 **The rule for implementers:** do not build deferred features, and do not add speculative fields or abstractions for them. Extensibility is protected by correct boundaries — payment attributed to a period, notifications behind a rule table, a deterministic billing engine with all discretion pushed into logged human actions — not by anticipatory code.

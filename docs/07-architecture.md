@@ -80,10 +80,13 @@ src/
 │   ├── payments/              # manual + gateway, verification, refunds
 │   ├── gateway/               # SSLCommerz adapter, webhook handling
 │   ├── guest/                 # unauthenticated lookup + payment
-│   ├── requests/              # grace, partial payment
-│   ├── notifications/         # dispatch, rule table, email queue
-│   ├── reporting/             # revenue, outstanding, ledger, export
-│   └── audit/                 # append-only log
+│   ├── homework/              # batch homework (added scope)
+│   ├── recordings/            # batch YouTube recordings (added scope)
+│   ├── audit/                 # append-only log
+│   ├── requests/              # grace, partial payment        [NOT BUILT — doc 12]
+│   ├── notifications/         # dispatch, rule table, email    [NOT BUILT — doc 12]
+│   └── reporting/             # revenue, outstanding, export   [NOT BUILT — doc 12]
+│       # class-link lives on the batches module (it is a Batch field)
 │
 └── jobs/
     ├── queues.ts              # queue names, typed job payloads

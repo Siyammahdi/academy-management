@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/button';
 import { Pill } from '../../../components/ui/pill';
 import { LedgerLine } from '../../../components/ledger/ledger-line';
 import { PaymentModal } from '../../../components/payments/payment-modal';
+import { YoutubeEmbed } from '../../../components/media/youtube-embed';
 import { formatDate } from '../../../lib/format';
 import { isPastDue } from '../../../lib/homework-status';
 import { PERIOD_STATUS_PILL } from '../../../lib/period-status';
@@ -15,32 +16,38 @@ import {
   listMyBillingPeriods,
   listMyEnrollments,
   listMyHomework,
+  listMyRecordings,
 } from '../../../lib/admin-api';
 import type {
   BillingPeriodWithContext,
   EnrollmentWithBatch,
   HomeworkWithContext,
+  RecordingWithContext,
 } from '../../../lib/admin-api';
 
 interface DashboardData {
   enrollments: EnrollmentWithBatch[];
   periods: BillingPeriodWithContext[];
   homework: HomeworkWithContext[];
+  recordings: RecordingWithContext[];
 }
 
 // Plain fetcher (no setState) so the effect can call it directly without
 // tripping react-hooks/set-state-in-effect — the actual setState happens in
 // the effect's own .then()/.catch().
 async function fetchDashboardData(): Promise<DashboardData> {
-  const [enrollmentResult, periodResult, homework] = await Promise.all([
-    listMyEnrollments(1, 100),
-    listMyBillingPeriods(undefined, 1, 100),
-    listMyHomework(),
-  ]);
+  const [enrollmentResult, periodResult, homework, recordings] =
+    await Promise.all([
+      listMyEnrollments(1, 100),
+      listMyBillingPeriods(undefined, 1, 100),
+      listMyHomework(),
+      listMyRecordings(),
+    ]);
   return {
     enrollments: enrollmentResult.data,
     periods: periodResult.data,
     homework,
+    recordings,
   };
 }
 
@@ -54,6 +61,9 @@ export default function StudentDashboardPage() {
   const [homework, setHomework] = useState<HomeworkWithContext[] | null>(
     null,
   );
+  const [recordings, setRecordings] = useState<
+    RecordingWithContext[] | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [payingPeriod, setPayingPeriod] =
     useState<BillingPeriodWithContext | null>(null);
@@ -64,6 +74,7 @@ export default function StudentDashboardPage() {
       setEnrollments(data.enrollments);
       setPeriods(data.periods);
       setHomework(data.homework);
+      setRecordings(data.recordings);
     } catch {
       setError('Your dashboard could not be loaded. Try again.');
     }
@@ -77,6 +88,7 @@ export default function StudentDashboardPage() {
           setEnrollments(data.enrollments);
           setPeriods(data.periods);
           setHomework(data.homework);
+          setRecordings(data.recordings);
         }
       })
       .catch(() => {
@@ -223,6 +235,30 @@ export default function StudentDashboardPage() {
                 </Card>
               );
             })}
+          </div>
+        </div>
+      ) : null}
+
+      {recordings && recordings.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <h2 className="font-display text-h3 font-semibold text-ink">
+            Recorded classes
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {recordings.map((rec) => (
+              <Card key={rec.id} className="flex flex-col gap-2">
+                <YoutubeEmbed videoId={rec.youtubeVideoId} title={rec.title} />
+                <span className="font-body text-body font-medium text-ink">
+                  {rec.title}
+                </span>
+                <span className="font-body text-sm text-ink-muted">
+                  {rec.batch.course.title} · {rec.batch.name}
+                </span>
+                <span className="font-numeric text-sm text-ink-faint">
+                  Recorded {formatDate(rec.recordedFor)}
+                </span>
+              </Card>
+            ))}
           </div>
         </div>
       ) : null}

@@ -6,7 +6,13 @@ import { SetMetadata } from '@nestjs/common';
  * means the `:id` param IS the batch id directly.
  */
 export type TargetResourceKind =
-  'batch' | 'enrollment' | 'billingPeriod' | 'payment' | 'request' | 'homework';
+  | 'batch'
+  | 'enrollment'
+  | 'billingPeriod'
+  | 'payment'
+  | 'request'
+  | 'homework'
+  | 'recording';
 
 export const TARGET_RESOURCE_KEY = 'targetResource';
 

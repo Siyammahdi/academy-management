@@ -221,16 +221,31 @@ This project has a complete specification. **The specification is the source of 
 
 ---
 
-## 9. Definition of done
+## 9. Lessons from implementation
+
+Real bugs that shipped and were caught later. Each one teaches a rule that now applies to all new work.
+
+**A state transition that no test exercised end to end can silently never happen.**
+`Enrollment.status` never moved `pending → active` on payment verification — the code updated the period and penalty flag but forgot the enrollment. Every "active enrollment" filter returned nothing, silently, and the unit tests passed because they never paid-verified-then-read as one flow. **A feature that depends on a state change MUST have a test that drives the whole transition and asserts the persisted result**, not the intermediate steps.
+
+**State derived at read-time is a lie to every other reader.**
+Period status was once corrected only inside one GET endpoint, leaving the database column stale — which the penalty job, reading the column directly, would have misread and penalized paid-up students. **Persist derived state at write time. Never patch it at read time in one consumer.**
+
+**"Tests pass" is not "works."** No page in this system has been verified in a browser. The two bugs above are what that gap looks like. Before any feature is called done, its flow is walked as the relevant role.
+
+## 10. Definition of done
 
 A feature is complete when:
 
 - [ ] The rules it implements are satisfied, with rule IDs referenced
 - [ ] Tests exist and pass, named for their rule IDs
+- [ ] **A test drives any state transition the feature relies on, end to end, and asserts the persisted result**
+- [ ] Derived state is persisted at write time, not corrected at read time
 - [ ] Money uses `Decimal`; business dates use the Dhaka helpers
 - [ ] Multi-row mutations run in a transaction
-- [ ] Money-affecting actions write an audit entry
+- [ ] Money-affecting and content-mutating actions write an audit entry
 - [ ] Guards enforce the RBAC constraints
 - [ ] Errors use domain exceptions with stable codes
 - [ ] No `any`, no `!`, no `@ts-ignore`
 - [ ] Lint and typecheck pass
+- [ ] **The flow has been walked in a browser as the relevant role**

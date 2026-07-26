@@ -1,8 +1,11 @@
-import { ApiError } from './api'
+import { ApiError, NetworkApiError } from './api'
 import type { ApiErrorBody } from './api'
 import { apiErrorMessage } from './error-message'
 
 export function loginErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
   if (err instanceof ApiError) {
     return mapAuthError(err.body, {
       INVALID_CREDENTIALS: 'Incorrect email or password.',
@@ -13,6 +16,9 @@ export function loginErrorMessage(err: unknown): string {
 }
 
 export function registerErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
   if (err instanceof ApiError) {
     return mapAuthError(err.body, {
       EMAIL_ALREADY_REGISTERED:
@@ -25,6 +31,9 @@ export function registerErrorMessage(err: unknown): string {
 }
 
 export function forgotPasswordErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
   if (err instanceof ApiError) {
     return mapAuthError(err.body, {
       TOO_MANY_REQUESTS:
@@ -36,6 +45,9 @@ export function forgotPasswordErrorMessage(err: unknown): string {
 }
 
 export function resetPasswordErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
   if (err instanceof ApiError) {
     return mapAuthError(err.body, {
       INVALID_RESET_TOKEN:

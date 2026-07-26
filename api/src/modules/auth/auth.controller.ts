@@ -5,7 +5,9 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
@@ -13,6 +15,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 
 @Controller('auth')
@@ -37,6 +41,24 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshDto): Promise<AuthResponseDto> {
     return this.authService.refresh(dto);
+  }
+
+  // Always 200 — never reveals whether the email is registered.
+  // Rate-limited: 5 requests / IP / minute.
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    return this.authService.resetPassword(dto);
   }
 
   @HttpCode(HttpStatus.OK)

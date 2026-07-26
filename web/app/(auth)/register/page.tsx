@@ -1,130 +1,224 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Input } from '../../../components/ui/input';
-import { Button } from '../../../components/ui/button';
-import { apiFetch, ApiError } from '../../../lib/api';
-import type { ApiErrorBody } from '../../../lib/api';
-import { storeSession } from '../../../lib/session';
+import { useState, useTransition } from 'react'
+import type { FormEvent } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Loader2Icon } from 'lucide-react'
 
-interface RegisterResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: { id: string; email: string; roles: string[]; studentId: string | null };
-}
+import { AuthShell } from '@/components/auth/auth-shell'
+import { PasswordInput } from '@/components/auth/password-input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
+import { register } from '@/lib/auth'
+import { registerErrorMessage } from '@/lib/auth-errors'
 
-// doc 06 §1 — switch on the error code, never the message.
-function registerErrorMessage(body: ApiErrorBody): string {
-  if (body.error === 'EMAIL_ALREADY_REGISTERED') {
-    return 'This email is already registered. Try logging in instead.';
-  }
-  if (
-    body.error === 'VALIDATION_ERROR' &&
-    Array.isArray(body.details) &&
-    body.details.length > 0
-  ) {
-    return body.details.join(' ');
-  }
-  return 'Registration could not be completed. Try again or contact an admin.';
+interface FieldErrors {
+  fullName?: string
+  phone?: string
+  email?: string
+  password?: string
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const result = await apiFetch<RegisterResponse>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ fullName, phone, email, password }),
-      });
-      storeSession(result.accessToken, result.refreshToken, result.user.roles);
-      // doc 06 §2 — registration always assigns the student role.
-      router.push('/dashboard');
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? registerErrorMessage(err.body)
-          : 'Registration could not be completed. Try again or contact an admin.',
-      );
-    } finally {
-      setIsSubmitting(false);
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+
+  function clearField(key: keyof FieldErrors): void {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  function validate(): boolean {
+    const next: FieldErrors = {}
+    if (!fullName.trim()) next.fullName = 'Enter your full name.'
+    if (!phone.trim()) next.phone = 'Enter a phone number.'
+    if (!email.trim()) next.email = 'Enter your email.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      next.email = 'Enter a valid email address.'
     }
+    if (!password) next.password = 'Choose a password.'
+    else if (password.length < 8) {
+      next.password = 'Use at least 8 characters.'
+    }
+    setFieldErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault()
+    setError(null)
+    if (!validate()) return
+
+    startTransition(async () => {
+      try {
+        await register({
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          password,
+        })
+        // Registration always assigns the student role (doc 06 §2).
+        router.replace('/dashboard')
+        router.refresh()
+      } catch (err) {
+        setError(registerErrorMessage(err))
+      }
+    })
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-h2 font-semibold text-ink">
-          Create an account
-        </h1>
-        <p className="font-body text-body text-ink-muted">
-          Register to enroll in a batch and track your dues.
-        </p>
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <Input
-          label="Full name"
-          name="fullName"
-          autoComplete="name"
-          required
-          value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
-        />
-        <Input
-          label="Phone"
-          type="tel"
-          name="phone"
-          autoComplete="tel"
-          required
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-        />
-        <Input
-          label="Email"
-          type="email"
-          name="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <Input
-          label="Password"
-          type="password"
-          name="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+    <AuthShell
+      title="Create your account"
+      description="Register to enroll in a batch and track your dues."
+      footer={
+        <>
+          Already registered?{' '}
+          <Link
+            href="/login"
+            className="font-medium text-primary-strong underline-offset-4 hover:underline"
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <FieldGroup className="gap-5">
+          <Field data-invalid={Boolean(fieldErrors.fullName) || undefined}>
+            <FieldLabel htmlFor="fullName">Full name</FieldLabel>
+            <Input
+              id="fullName"
+              name="fullName"
+              autoComplete="name"
+              placeholder="Abdullah Rahman"
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                clearField('fullName')
+              }}
+              aria-invalid={Boolean(fieldErrors.fullName) || undefined}
+              disabled={isPending}
+            />
+            {fieldErrors.fullName ? (
+              <FieldError>{fieldErrors.fullName}</FieldError>
+            ) : null}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.phone) || undefined}>
+            <FieldLabel htmlFor="phone">Phone</FieldLabel>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="01XXXXXXXXX"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value)
+                clearField('phone')
+              }}
+              aria-invalid={Boolean(fieldErrors.phone) || undefined}
+              disabled={isPending}
+            />
+            {fieldErrors.phone ? (
+              <FieldError>{fieldErrors.phone}</FieldError>
+            ) : (
+              <FieldDescription>
+                Used for guest payment lookup and account recovery.
+              </FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                clearField('email')
+              }}
+              aria-invalid={Boolean(fieldErrors.email) || undefined}
+              disabled={isPending}
+            />
+            {fieldErrors.email ? (
+              <FieldError>{fieldErrors.email}</FieldError>
+            ) : null}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.password) || undefined}>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                clearField('password')
+              }}
+              invalid={Boolean(fieldErrors.password)}
+              disabled={isPending}
+            />
+            {fieldErrors.password ? (
+              <FieldError>{fieldErrors.password}</FieldError>
+            ) : (
+              <FieldDescription>Minimum 8 characters.</FieldDescription>
+            )}
+          </Field>
+        </FieldGroup>
+
         {error ? (
-          <p className="font-body text-sm text-overdue" role="alert">
+          <div
+            role="alert"
+            className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+          >
             {error}
-          </p>
+          </div>
         ) : null}
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating account…' : 'Create account'}
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="animate-spin" />
+              Creating account…
+            </>
+          ) : (
+            'Create account'
+          )}
         </Button>
       </form>
-      <p className="font-body text-sm text-ink-muted">
-        Already registered?{' '}
-        <Link href="/login" className="text-purple hover:text-purple-deep">
-          Log in
-        </Link>
-      </p>
-    </div>
-  );
+    </AuthShell>
+  )
 }

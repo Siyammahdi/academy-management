@@ -8,7 +8,7 @@ import {
   getStudentCount,
   listBatches,
   listPendingPayments,
-} from '../../../lib/admin-api';
+} from '../../../lib/api-client';
 
 interface OverviewStats {
   activeBatches: number;

@@ -21,7 +21,7 @@ import {
   listUsers,
   removeManager,
   updateBatch,
-} from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
 import type {
   Batch,
   BatchStatus,
@@ -30,7 +30,7 @@ import type {
   CreateBatchInput,
   UpdateBatchInput,
   UserSummary,
-} from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
 
 const STATUS_OPTIONS: BatchStatus[] = [
   'upcoming',

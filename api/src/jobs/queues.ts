@@ -6,6 +6,7 @@ export const QUEUE_NAMES = {
   penaltySweep: 'penalty-sweep',
   billingGeneration: 'billing-generation',
   gatewayExpiry: 'gateway-expiry',
+  emailDispatch: 'email-dispatch',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -17,6 +18,7 @@ export const JOB_NAMES = {
   penaltySweep: 'sweep',
   billingGeneration: 'generate',
   gatewayExpiry: 'expire',
+  emailDispatch: 'dispatch',
 } as const;
 
 // doc 07 §5's exact schedules, Asia/Dhaka explicit (PEN-01/TIME-03, BIL-04).
@@ -31,3 +33,14 @@ export const JOB_SCHEDULES = {
 export type PenaltySweepJobData = Record<string, never>;
 export type BillingGenerationJobData = Record<string, never>;
 export type GatewayExpiryJobData = Record<string, never>;
+
+// Email is on-demand (NTF-03) — the message travels with the job so the
+// worker never re-derives copy from business state.
+export interface EmailDispatchJobData {
+  message: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+  };
+}

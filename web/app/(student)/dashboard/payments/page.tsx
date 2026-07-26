@@ -5,8 +5,8 @@ import { PageHeader } from '../../../../components/layout/page-header';
 import { Pill } from '../../../../components/ui/pill';
 import type { PillStatus } from '../../../../components/ui/pill';
 import { formatDate, formatMoney } from '../../../../lib/format';
-import { listMyPayments } from '../../../../lib/admin-api';
-import type { PaymentStatus, PaymentWithContext } from '../../../../lib/admin-api';
+import { listMyPayments } from '../../../../lib/api-client';
+import type { PaymentStatus, PaymentWithContext } from '../../../../lib/api-client';
 
 const PAYMENT_STATUS_PILL: Record<
   PaymentStatus,

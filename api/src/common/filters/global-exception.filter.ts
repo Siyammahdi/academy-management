@@ -23,6 +23,7 @@ const STATUS_ERROR_CODES: Partial<Record<number, string>> = {
   [HttpStatus.NOT_FOUND]: 'NOT_FOUND',
   [HttpStatus.CONFLICT]: 'CONFLICT',
   [HttpStatus.UNPROCESSABLE_ENTITY]: 'UNPROCESSABLE_ENTITY',
+  [HttpStatus.TOO_MANY_REQUESTS]: 'TOO_MANY_REQUESTS',
 };
 
 /// doc 07 §8 — the single filter producing the doc 06 §1 error envelope.

@@ -8,11 +8,11 @@ import { LedgerLine } from '../../../../components/ledger/ledger-line';
 import { PaymentModal } from '../../../../components/payments/payment-modal';
 import { formatDate } from '../../../../lib/format';
 import { PERIOD_STATUS_PILL } from '../../../../lib/period-status';
-import { listMyBillingPeriods } from '../../../../lib/admin-api';
+import { listMyBillingPeriods } from '../../../../lib/api-client';
 import type {
   BillingPeriodWithContext,
   PeriodStatus,
-} from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
 
 const STATUS_OPTIONS: PeriodStatus[] = [
   'unpaid',

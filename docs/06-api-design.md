@@ -45,7 +45,7 @@ Every error returns this envelope. No exceptions.
 
 ### Error codes
 
-`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE`
+`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
 
 Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
 
@@ -72,6 +72,8 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
 | `POST` | `/auth/register` | Public | Creates `User` + `Student`, assigns `student` role |
 | `POST` | `/auth/login` | Public | Returns access + refresh token |
 | `POST` | `/auth/refresh` | Public | Rotates the refresh token |
+| `POST` | `/auth/forgot-password` | Public | Always `200`. Emails a reset link when the address is registered; never reveals whether it is. Rate-limited (5/min/IP). |
+| `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` — single-use, 30-min token; revokes all refresh tokens on success |
 | `POST` | `/auth/logout` | Auth | Revokes the refresh token |
 | `GET` | `/auth/me` | Auth | Current user, roles, linked student |
 
@@ -87,6 +89,15 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
     "studentId": "ANA-0042"
   }
 }
+```
+
+```jsonc
+// POST /auth/forgot-password → 200 (empty body)
+{ "email": "student@example.com" }
+
+// POST /auth/reset-password → 200 (empty body)
+{ "token": "…", "newPassword": "at-least-8-chars" }
+// Errors: 400 INVALID_RESET_TOKEN · 400 RESET_TOKEN_EXPIRED · 429 TOO_MANY_REQUESTS (forgot only)
 ```
 
 ---
@@ -178,11 +189,13 @@ Errors: `409 BATCH_FULL` · `409 ALREADY_ENROLLED` · `403 ENROLLMENT_WINDOW_CLO
 
 ## 6. Billing
 
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| `GET` | `/me/billing-periods` | Student | Filter `?status=unpaid` |
-| `GET` | `/enrollments/:id/billing-periods` | Manager (own) / Admin | |
-| `POST` | `/billing-periods/:id/mark-paid` | **Admin** | Waiver — no money (RBAC-04) |
+| Method | Path | Auth | Notes | Built? |
+|---|---|---|---|---|
+| `GET` | `/me/billing-periods` | Student | Filter `?status=unpaid` | ✅ |
+| `GET` | `/enrollments/:id/billing-periods` | Manager (own) / Admin | | ⛔ **NOT BUILT** |
+| `POST` | `/billing-periods/:id/mark-paid` | **Admin** | Waiver — no money (RBAC-04) | ⛔ **NOT BUILT** |
+
+The two unbuilt rows have no controller, service method, or route today — see `10-current-state.md` §2 and `12-roadmap.md`. Do not build a frontend call against them yet.
 
 ---
 
@@ -252,6 +265,8 @@ Unauthenticated. The only public write surface besides auth.
 
 ## 9. Requests
 
+⛔ **NOT BUILT.** The `Request` model exists in the schema (doc 05 §2); `src/modules/requests/` is an empty module stub, registered nowhere. None of the routes below exist yet. This section describes the target shape for `12-roadmap.md` R-02 — do not build a frontend call against any of them.
+
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `POST` | `/billing-periods/:id/requests` | Student | `grace` or `partial_payment` |
@@ -286,6 +301,8 @@ Redirect endpoints (`/payments/success`, `/payments/fail`, `/payments/cancel`) a
 
 ## 11. Reporting
 
+⛔ **NOT BUILT.** `src/modules/reporting/` is an empty module stub, registered nowhere. No revenue, outstanding, enrollment, ledger, export, or audit-log-read endpoint exists yet — including `GET /audit-logs`: the audit trail is written on every mutation (doc 02 AUD-01) but has no read endpoint. This section is the target shape for `12-roadmap.md` R-03 — do not build a frontend call against any of them.
+
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `GET` | `/reports/revenue` | Manager (own) / Admin | `?from=&to=&batchId=` |
@@ -300,6 +317,8 @@ Managers receive their batches only; the service applies the scope, never the cl
 ---
 
 ## 12. Notifications
+
+⛔ **NOT BUILT.** `src/modules/notifications/` is an empty module stub, registered nowhere. Nothing dispatches, and there is no read endpoint. This is the target shape for `12-roadmap.md` R-01 — the single largest functional gap against the original PRD (nothing currently tells a student they owe money). Do not build a frontend call against any of them.
 
 | Method | Path | Auth |
 |---|---|---|

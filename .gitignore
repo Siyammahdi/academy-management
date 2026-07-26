@@ -27,6 +27,7 @@ coverage/
 .agents/
 .windsurf/
 .claude
+.cursorrules
 
 # Caches
 .turbo/

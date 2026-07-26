@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '../layout/page-header';
 import { Button } from '../ui/button';
-import { listMyPayments } from '../../lib/admin-api';
-import type { PaymentWithContext } from '../../lib/admin-api';
+import { listMyPayments } from '../../lib/api-client';
+import type { PaymentWithContext } from '../../lib/api-client';
 
 export type PaymentRedirectIntent = 'success' | 'fail' | 'cancel';
 

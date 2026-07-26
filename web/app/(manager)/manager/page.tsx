@@ -8,7 +8,7 @@ import {
   getAtRiskCount,
   getManagedBatches,
   listPendingPayments,
-} from '../../../lib/admin-api';
+} from '../../../lib/api-client';
 
 interface OverviewStats {
   assignedBatches: number;

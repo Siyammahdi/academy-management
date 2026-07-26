@@ -11,8 +11,8 @@ import {
   getBatch,
   listBatches,
   listCourses,
-} from '../../../../lib/admin-api';
-import type { BatchWithSeats, Course } from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
+import type { BatchWithSeats, Course } from '../../../../lib/api-client';
 
 function enrollErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {

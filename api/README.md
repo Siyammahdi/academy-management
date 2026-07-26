@@ -1,257 +1,72 @@
+# An Nahda Academy — API
 
+NestJS backend for the enrollment and subscription-billing back-office. Read the root [`../README.md`](../README.md) and [`../docs/`](../docs) before changing anything here — `../docs/02-business-rules.md` outranks this file and every other doc if they disagree.
 
+**If you're picking this up fresh:** read [`../docs/10-current-state.md`](../docs/10-current-state.md) first.
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Setup
 
 ```bash
-$ pnpm install
+pnpm install
+cp .env.example .env    # fill in real values — see the comments in the file
 ```
 
-## Compile and run the project
+Requires Postgres and Redis running (`docker compose up -d` from the repo root) and a migrated, seeded database:
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm db:migrate
+pnpm db:seed
 ```
 
-## Run tests
+## Running
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm start:dev      # API, watch mode — listens on PORT (.env.example: 4000)
+pnpm start:worker   # background jobs (penalty sweep, billing generation, gateway expiry)
 ```
 
-## Deployment
+The worker is a **separate process** with no HTTP listener — it only consumes the BullMQ queues the API schedules and can manually trigger (`POST /jobs/:name/trigger`, admin-only). Without it running, enqueued jobs sit in Redis until a worker starts.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Other scripts: `pnpm build` · `pnpm start:prod` · `pnpm db:studio` (Prisma Studio — also the only way to assign a user's roles today, see `../docs/10-current-state.md`) · `pnpm format`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Testing
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm test        # unit tests — Prisma mocked, no database needed
+pnpm test:e2e    # e2e tests — hit a real Postgres, run serially for reliability:
+pnpm exec jest --config ./test/jest-e2e.json --runInBand
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Running e2e tests with parallel workers (the bare `pnpm test:e2e`) can intermittently fail under Postgres connection-pool contention when many suites spin up a full `AppModule` at once — this is test-infrastructure flakiness, not a code defect. `--runInBand` is the reliable way to run the full suite.
 
-## Resources
+Tests are named for the business-rule IDs they verify (e.g. `describe('PEN-06: the penalty must not stack', ...)`) per `../docs/08-development-guidelines.md` §6 — when adding a rule, add a test named for it.
 
-Check out a few resources that may come in handy when working with NestJS:
+## Module layout
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```
+src/
+├── modules/       one folder per domain — <name>.module.ts / .service.ts / .controller.ts / dto/
+├── jobs/          BullMQ queue definitions, processors, scheduler, worker bootstrap (worker.ts)
+├── common/        guards (RolesGuard, BatchScopeGuard, SelfApprovalGuard, JwtAuthGuard),
+│                  decorators (@Roles, @TargetResource, @CurrentUser, @Public), exceptions,
+│                  shared utils (dhaka-time.ts, period.ts, pagination.ts, youtube.ts)
+└── prisma/        PrismaService (Prisma 7 driver-adapter wiring)
+```
 
-## Support
+Three of `modules/*` (`requests`, `notifications`, `reporting`) are empty stub files, not registered in `app.module.ts` — placeholders for `../docs/12-roadmap.md`, not bugs. Every other module follows the same shape; copy an existing one (e.g. `homework/`) as the template for a new batch-scoped feature.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Adding a batch-scoped resource
 
-## Stay in touch
+The `homework`/`recordings` modules are the reference pattern for "a new table that attaches to `Batch`" (`../docs/01-prd.md` §13's extensibility principle, proven five times over). To add another:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. Add the Prisma model with `batchId`, `onDelete: Cascade` to `Batch`, `@@map` to a plural snake_case table name. Additive-only migration — never alter an existing table for this.
+2. Add the resource kind to `TargetResourceKind` (`common/decorators/target-resource.decorator.ts`) and a case in `resolveTarget()` (`common/guards/target-resolver.util.ts`) if `PATCH`/`DELETE` routes address the resource by its own id rather than the batch id.
+3. Controller routes reuse `@Roles('manager', 'admin')` + `@TargetResource('batch' | 'yourKind')` + `BatchScopeGuard` — manager-own-batch-or-admin, enforced identically every time.
+4. Add the audit action(s) to `../docs/02-business-rules.md` AUD-04's list and write them via `AuditService.record()` inside the same transaction as the mutation.
+5. Unit tests (mocked Prisma) + an e2e test proving an unassigned manager gets `403 BATCH_NOT_ASSIGNED`.
 
-## License
+## Conventions
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+See `../docs/08-development-guidelines.md` for the full standard. The non-negotiables: money is `Prisma.Decimal` everywhere, never a JS `number`; every multi-row mutation runs in `prisma.$transaction`; controllers contain no business logic; every money-affecting or content-mutating action writes an `AuditLog` entry inside that same transaction.

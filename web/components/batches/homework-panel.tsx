@@ -17,8 +17,8 @@ import {
   deleteHomework,
   listBatchHomework,
   updateHomework,
-} from '../../lib/admin-api';
-import type { Homework } from '../../lib/admin-api';
+} from '../../lib/api-client';
+import type { Homework } from '../../lib/api-client';
 
 function isoToDateInput(iso: string): string {
   return iso.slice(0, 10);

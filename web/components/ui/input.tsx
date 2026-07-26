@@ -1,54 +1,59 @@
-'use client';
+"use client"
 
-import { forwardRef, useId } from 'react';
-import type { InputHTMLAttributes } from 'react';
-import { cx } from '../../lib/cx';
+import * as React from "react"
+import { Input as InputPrimitive } from "@base-ui/react/input"
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  // doc 09 §5 — state what to do, not merely what failed
-  // ("Enter an amount of ৳500.00 or less" beats "Invalid amount").
-  error?: string;
+import { cn } from "@/lib/utils"
+
+type InputProps = React.ComponentProps<"input"> & {
+  /** @deprecated Prefer Field + FieldLabel. Kept for pages not yet migrated. */
+  label?: string
+  /** @deprecated Prefer FieldError. Kept for pages not yet migrated. */
+  error?: string
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, id, className, ...props }, ref) => {
-    const generatedId = useId();
-    const inputId = id ?? generatedId;
-    const errorId = `${inputId}-error`;
+function Input({ className, type, label, error, id, ...props }: InputProps) {
+  const generatedId = React.useId()
+  const inputId = id ?? generatedId
+  const errorId = `${inputId}-error`
 
-    return (
-      <div className="flex flex-col gap-1">
-        {label ? (
-          <label
-            htmlFor={inputId}
-            className="font-body text-sm font-medium text-ink-muted"
-          >
-            {label}
-          </label>
-        ) : null}
-        <input
-          ref={ref}
-          id={inputId}
-          className={cx(
-            'h-control w-full rounded-sm border border-rule bg-paper-sunken px-3 font-body text-body text-ink placeholder:text-ink-faint',
-            // doc 09 §5 — focus: border --purple + 2px --purple-wash ring.
-            // The default outline is replaced by this ring, not removed.
-            'focus-visible:border-purple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-wash',
-            error && 'border-overdue',
-            className,
-          )}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
-          {...props}
-        />
-        {error ? (
-          <p id={errorId} className="font-body text-sm text-overdue">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    );
-  },
-);
-Input.displayName = 'Input';
+  const control = (
+    <InputPrimitive
+      id={inputId}
+      type={type}
+      data-slot="input"
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? errorId : undefined}
+      className={cn(
+        "h-9 w-full min-w-0 rounded-3xl border border-transparent bg-input/50 px-3 py-1 text-base transition-[color,box-shadow,background-color] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+
+  if (!label && !error) {
+    return control
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label ? (
+        <label
+          htmlFor={inputId}
+          className="text-sm font-medium text-muted-foreground"
+        >
+          {label}
+        </label>
+      ) : null}
+      {control}
+      {error ? (
+        <p id={errorId} className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+export { Input }

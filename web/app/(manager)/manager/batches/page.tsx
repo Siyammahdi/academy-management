@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '../../../../components/layout/page-header';
-import { getManagedBatches, listCourses } from '../../../../lib/admin-api';
-import type { BatchStatus, BatchWithSeats, Course } from '../../../../lib/admin-api';
+import { getManagedBatches, listCourses } from '../../../../lib/api-client';
+import type { BatchStatus, BatchWithSeats, Course } from '../../../../lib/api-client';
 
 const STATUS_LABELS: Record<BatchStatus, string> = {
   upcoming: 'Upcoming',

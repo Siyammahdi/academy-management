@@ -3,6 +3,7 @@ import { AppModule } from '../app.module';
 import { PenaltyProcessor } from './penalty.processor';
 import { BillingGenerationProcessor } from './billing-generation.processor';
 import { GatewayExpiryProcessor } from './gateway-expiry.processor';
+import { EmailProcessor } from './email.processor';
 
 // worker.ts's root module — imports AppModule wholesale so every business
 // module (Prisma, Payments, Billing, …) is the exact same code the HTTP
@@ -16,6 +17,7 @@ import { GatewayExpiryProcessor } from './gateway-expiry.processor';
     PenaltyProcessor,
     BillingGenerationProcessor,
     GatewayExpiryProcessor,
+    EmailProcessor,
   ],
 })
 export class WorkerModule {}

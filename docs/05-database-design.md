@@ -24,6 +24,12 @@ Floating-point arithmetic drifts. `amountOwed − amountPaid` must be exact or l
 
 ## 2. Prisma schema
 
+**Prisma 7.** The `datasource` block carries only the provider — the connection URL lives in `prisma.config.ts` (loaded via `dotenv`), not in the schema file. Prisma 7 has no built-in query engine for SQL providers: `PrismaClient` is constructed with a driver adapter (`PrismaPg` from `@prisma/adapter-pg`) rather than a bare `new PrismaClient()`. See §2.1.
+
+Every field whose camelCase Prisma name differs from its snake_case column carries an explicit `@map(...)` — Prisma does not snake_case columns on its own, only `@@map(...)` renames the table itself. Without the field-level `@map`, the columns referenced by the raw SQL in §3 would not exist.
+
+This is the actual, current `api/prisma/schema.prisma` — kept verbatim here so this document cannot drift from the real schema. If they ever disagree, `api/prisma/schema.prisma` is correct and this copy is stale; fix the copy.
+
 ```prisma
 generator client {
   provider = "prisma-client-js"
@@ -31,7 +37,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -125,15 +130,16 @@ enum NotificationChannel {
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
-  passwordHash String
+  passwordHash String     @map("password_hash")
   status       UserStatus @default(active)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   roles         UserRole[]
   student       Student?
   managedBatches BatchManager[]
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   // Actions this user has taken
   verifiedPayments Payment[]  @relation("PaymentVerifier")
@@ -149,7 +155,7 @@ model User {
 /// A user holds a SET of roles — one person may be both manager and student (RBAC-01).
 model UserRole {
   id     String   @id @default(cuid())
-  userId String
+  userId String   @map("user_id")
   role   RoleName
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -161,11 +167,11 @@ model UserRole {
 
 model RefreshToken {
   id        String    @id @default(cuid())
-  userId    String
-  tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -174,16 +180,35 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+/// Single-use password-reset token. Only the SHA-256 hash is stored —
+/// the raw token is emailed once and never persisted. Same hashing
+/// pattern as RefreshToken. Expires in 30 minutes; `usedAt` marks
+/// single-use consumption.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
 /// Academic/financial profile. userId is OPTIONAL — a student may have no login.
 model Student {
   id        String        @id @default(cuid())
-  studentId String        @unique              // ANA-0001, sequential, guest-facing
-  userId    String?       @unique
-  fullName  String
+  studentId String        @unique @map("student_id")              // ANA-0001, sequential, guest-facing
+  userId    String?       @unique @map("user_id")
+  fullName  String        @map("full_name")
   phone     String
   status    StudentStatus @default(active)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
   user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   enrollments Enrollment[]
@@ -211,13 +236,13 @@ model Course {
   id            String       @id @default(cuid())
   title         String
   description   String?
-  billingType   BillingType
-  enrollmentFee Decimal      @db.Decimal(10, 2)
-  monthlyFee    Decimal      @db.Decimal(10, 2)   // unused when one_time (FEE-07)
+  billingType   BillingType  @map("billing_type")
+  enrollmentFee Decimal      @map("enrollment_fee") @db.Decimal(10, 2)
+  monthlyFee    Decimal      @map("monthly_fee") @db.Decimal(10, 2)   // unused when one_time (FEE-07)
   parts         Json?        // [{ name, durationMonths }] — descriptive only, drives nothing
   status        CourseStatus @default(active)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
   batches Batch[]
 
@@ -228,26 +253,26 @@ model Course {
 /// The ENROLLABLE UNIT. Freezes course pricing at creation.
 model Batch {
   id       String @id @default(cuid())
-  courseId String
+  courseId String @map("course_id")
   name     String
 
   // Frozen snapshot — never re-read from Course (FEE-02)
-  enrollmentFee        Decimal @db.Decimal(10, 2)  // also the penalty amount (PEN-03)
-  monthlyFee           Decimal @db.Decimal(10, 2)
-  entryDiscountPercent Int     @default(0)         // 0–100, entry ONLY (FEE-06)
+  enrollmentFee        Decimal @map("enrollment_fee") @db.Decimal(10, 2)  // also the penalty amount (PEN-03)
+  monthlyFee           Decimal @map("monthly_fee") @db.Decimal(10, 2)
+  entryDiscountPercent Int     @default(0) @map("entry_discount_percent")         // 0–100, entry ONLY (FEE-06)
 
   capacity          Int
-  courseStartDate   DateTime    // its month = first billing period (BIL-03)
-  enrollmentOpensAt DateTime
-  enrollmentClosesAt DateTime
-  dueDayStart       Int         @default(1)
-  dueDayEnd         Int         @default(5)
+  courseStartDate   DateTime    @map("course_start_date")   // its month = first billing period (BIL-03)
+  enrollmentOpensAt DateTime    @map("enrollment_opens_at")
+  enrollmentClosesAt DateTime   @map("enrollment_closes_at")
+  dueDayStart       Int         @default(1) @map("due_day_start")
+  dueDayEnd         Int         @default(5) @map("due_day_end")
   status            BatchStatus @default(upcoming)
-  classLink         String?                        // added scope — live-class link, manager-editable
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  classLink         String?     @map("class_link")   // Telegram/Zoom link — teaching happens off-platform
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  course      Course          @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
   managers    BatchManager[]
   enrollments Enrollment[]
   homework    Homework[]
@@ -262,9 +287,9 @@ model Batch {
 /// A batch may have SEVERAL managers; a manager may hold several batches.
 model BatchManager {
   id         String   @id @default(cuid())
-  batchId    String
-  userId     String
-  assignedAt DateTime @default(now())
+  batchId    String   @map("batch_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
 
   batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -274,6 +299,44 @@ model BatchManager {
   @@map("batch_managers")
 }
 
+/// A deferred course-management feature (doc 07 §12): attaches to Batch,
+/// touches nothing else. dueDate is a real point-in-time deadline (end of
+/// the chosen Dhaka calendar day), the same convention BillingPeriod.dueDate
+/// uses (TIME-02/TIME-03) — not a bare calendar date.
+model Homework {
+  id          String   @id @default(cuid())
+  batchId     String   @map("batch_id")
+  title       String
+  description String
+  dueDate     DateTime @map("due_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, dueDate])
+  @@map("homeworks")
+}
+
+/// A deferred course-management feature (doc 07 §12): attaches to Batch,
+/// touches nothing else. Stores only the YouTube video id, never a URL —
+/// the frontend builds the embed from it. recordedFor is a pure calendar
+/// date (the class date, no deadline semantics), so — unlike Homework's
+/// dueDate — it is stored as-is (TIME-04's periodMonth convention), not
+/// resolved through the Dhaka end-of-day helper.
+model RecordedClass {
+  id             String   @id @default(cuid())
+  batchId        String   @map("batch_id")
+  title          String
+  youtubeVideoId String   @map("youtube_video_id")
+  recordedFor    DateTime @map("recorded_for")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, recordedFor])
+  @@map("recorded_classes")
+}
+
 // ─────────────────────────────────────────────
 // ENROLLMENT & BILLING
 // ─────────────────────────────────────────────
@@ -281,12 +344,12 @@ model BatchManager {
 /// THE SPINE. Everything financial hangs off this.
 model Enrollment {
   id         String           @id @default(cuid())
-  studentId  String
-  batchId    String
+  studentId  String           @map("student_id")
+  batchId    String           @map("batch_id")
   status     EnrollmentStatus @default(pending)
-  inPenalty  Boolean          @default(false)   // guard against stacking (PEN-06)
-  enrolledAt DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  inPenalty  Boolean          @default(false) @map("in_penalty")   // guard against stacking (PEN-06)
+  enrolledAt DateTime         @default(now()) @map("enrolled_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
 
   student        Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
   batch          Batch           @relation(fields: [batchId], references: [id], onDelete: Restrict)
@@ -302,14 +365,14 @@ model Enrollment {
 /// One month's LEDGER. Tracks money, not merely status (BIL-07).
 model BillingPeriod {
   id           String       @id @default(cuid())
-  enrollmentId String
-  periodMonth  DateTime     @db.Date    // first day of month, UTC (TIME-04)
-  amountOwed   Decimal      @db.Decimal(10, 2)
-  amountPaid   Decimal      @default(0) @db.Decimal(10, 2)  // VERIFIED payments only (BIL-08)
-  dueDate      DateTime
+  enrollmentId String       @map("enrollment_id")
+  periodMonth  DateTime     @map("period_month") @db.Date    // first day of month, UTC (TIME-04)
+  amountOwed   Decimal      @map("amount_owed") @db.Decimal(10, 2)
+  amountPaid   Decimal      @default(0) @map("amount_paid") @db.Decimal(10, 2)  // VERIFIED payments only (BIL-08)
+  dueDate      DateTime     @map("due_date")
   status       PeriodStatus @default(unpaid)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   payments   Payment[]
@@ -328,19 +391,19 @@ model BillingPeriod {
 /// One payment settles EXACTLY ONE period (PAY-01).
 model Payment {
   id                   String        @id @default(cuid())
-  billingPeriodId      String
+  billingPeriodId      String        @map("billing_period_id")
   amount               Decimal       @db.Decimal(10, 2)
   method               PaymentMethod
   status               PaymentStatus @default(pending)
-  paidBy               PaidBy
-  guestName            String?
-  guestPhone           String?
-  transactionReference String?       @unique   // idempotency anchor for webhooks (PAY-04)
-  proofUrl             String?                 // manual only
-  verifiedById         String?
-  verifiedAt           DateTime?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  paidBy               PaidBy        @map("paid_by")
+  guestName            String?       @map("guest_name")
+  guestPhone           String?       @map("guest_phone")
+  transactionReference String?       @unique @map("transaction_reference")   // idempotency anchor for webhooks (PAY-04)
+  proofUrl             String?       @map("proof_url")                 // manual only
+  verifiedById         String?       @map("verified_by_id")
+  verifiedAt           DateTime?     @map("verified_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
   billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Restrict)
   verifiedBy    User?         @relation("PaymentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
@@ -355,11 +418,11 @@ model Payment {
 /// Admin-only. Reverses a payment and reopens the balance (RFD-04).
 model Refund {
   id           String   @id @default(cuid())
-  paymentId    String
+  paymentId    String   @map("payment_id")
   amount       Decimal  @db.Decimal(10, 2)
   reason       String
-  refundedById String
-  refundedAt   DateTime @default(now())
+  refundedById String   @map("refunded_by_id")
+  refundedAt   DateTime @default(now()) @map("refunded_at")
 
   payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   refundedBy User    @relation("RefundIssuer", fields: [refundedById], references: [id], onDelete: Restrict)
@@ -371,15 +434,15 @@ model Refund {
 /// Grace (moves a DATE) and partial payment (moves MONEY) — one shape, two types.
 model Request {
   id              String        @id @default(cuid())
-  billingPeriodId String
+  billingPeriodId String        @map("billing_period_id")
   type            RequestType
   status          RequestStatus @default(pending)
-  requestedAmount Decimal?      @db.Decimal(10, 2)  // partial_payment only
-  extendedDueDate DateTime?                          // grace only
+  requestedAmount Decimal?      @map("requested_amount") @db.Decimal(10, 2)  // partial_payment only
+  extendedDueDate DateTime?     @map("extended_due_date")                          // grace only
   reason          String
-  decidedById     String?
-  decidedAt       DateTime?
-  createdAt       DateTime      @default(now())
+  decidedById     String?       @map("decided_by_id")
+  decidedAt       DateTime?     @map("decided_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
 
   billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Cascade)
   decidedBy     User?         @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
@@ -395,13 +458,13 @@ model Request {
 
 model Notification {
   id              String              @id @default(cuid())
-  recipientUserId String
-  eventType       String
+  recipientUserId String              @map("recipient_user_id")
+  eventType       String              @map("event_type")
   channel         NotificationChannel
-  relatedType     String?
-  relatedId       String?
-  readAt          DateTime?
-  sentAt          DateTime            @default(now())
+  relatedType     String?             @map("related_type")
+  relatedId       String?             @map("related_id")
+  readAt          DateTime?           @map("read_at")
+  sentAt          DateTime            @default(now()) @map("sent_at")
 
   recipient User @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
 
@@ -412,12 +475,12 @@ model Notification {
 /// APPEND-ONLY. Never updated, never deleted (AUD-03).
 model AuditLog {
   id          String   @id @default(cuid())
-  actorUserId String?              // null = system actor (the penalty job)
+  actorUserId String?  @map("actor_user_id")             // null = system actor (the penalty job)
   action      String
-  targetType  String
-  targetId    String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
   details     Json?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
@@ -426,41 +489,59 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+```
 
-// ─────────────────────────────────────────────
-// CLASS MANAGEMENT (added scope — attaches to Batch, touches no billing table)
-// ─────────────────────────────────────────────
+---
 
-/// Homework assigned to a batch, with a due date.
-model Homework {
-  id          String   @id @default(cuid())
-  batchId     String
-  title       String
-  description String
-  dueDate     DateTime            // end-of-Dhaka-day instant for the supplied date
-  createdAt   DateTime @default(now())
+### 2.1 Client setup (Prisma 7)
 
-  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+The connection URL is not in `schema.prisma`. It lives in `prisma.config.ts` at the project root, loaded via `dotenv`:
 
-  @@index([batchId, dueDate])
-  @@map("homework")
-}
+```ts
+import 'dotenv/config';
+import { defineConfig } from 'prisma/config';
 
-/// A recorded class shared to a batch. Stores the YouTube video id, never a URL.
-model RecordedClass {
-  id             String   @id @default(cuid())
-  batchId        String
-  title          String
-  youtubeVideoId String              // the id only — extracted from any pasted link on input
-  recordedFor    DateTime @db.Date   // the class date; no deadline semantics
-  createdAt      DateTime @default(now())
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: {
+    path: 'prisma/migrations',
+    seed: 'tsx prisma/seed.ts',
+  },
+  datasource: {
+    url: process.env['DATABASE_URL'],
+  },
+});
+```
 
-  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+`PrismaClient` has no built-in query engine for SQL providers in v7 — it must be constructed with a driver adapter. `src/prisma/prisma.service.ts` wires this up once, behind NestJS's module lifecycle:
 
-  @@index([batchId, recordedFor])
-  @@map("recorded_classes")
+```ts
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    super({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.$connect();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.$disconnect();
+  }
 }
 ```
+
+Every other module injects `PrismaService`, never instantiates `PrismaClient` directly.
 
 ---
 
@@ -529,6 +610,8 @@ ALTER TABLE payments
 
 **Deliberately not a database constraint:** `amountPaid <= amountOwed`. Overpayment is possible in reality (a guest pays too much), and the correct handling is a business decision surfaced to an admin, not a hard database rejection that loses the record of money received.
 
+**Applied.** All of the above are live via `prisma/migrations/20260723131350_add_check_constraints/migration.sql` — confirmed present, not just documented intent.
+
 ---
 
 ## 4. Transactional patterns
@@ -556,7 +639,7 @@ await prisma.$transaction(async (tx) => {
 }, { isolationLevel: 'Serializable' });
 ```
 
-The unique constraint on `(studentId, batchId)` is the second line of defence against duplicate enrollment.
+The unique constraint on `(studentId, batchId)` is the second line of defence against duplicate enrollment. The real implementation also bounds retries on Postgres's Serializable-conflict error (`P2034`) rather than looping unbounded — see `enrollment.service.ts`.
 
 ### 4.2 Payment verification (PAY-08)
 
@@ -580,6 +663,16 @@ await prisma.$transaction(async (tx) => {
   });
 
   await maybeClearPenaltyFlag(tx, period.enrollmentId);   // PEN-07
+
+  // ENR-06/07 — a verified payment (manual or gateway) also activates the
+  // enrollment. Real code guards this with `where: { status: 'pending' }`
+  // so it's a no-op if already active or withdrawn — see "Lessons from
+  // implementation" in doc 08 for why this transition was once missing.
+  await tx.enrollment.updateMany({
+    where: { id: period.enrollmentId, status: 'pending' },
+    data: { status: 'active' },
+  });
+
   await tx.auditLog.create({ ...paymentVerified });
 });
 ```
@@ -634,6 +727,8 @@ Every index answers a specific hot query. Do not add others speculatively.
 | `students (phone)` | Guest lookup by phone |
 | `requests (status, type)` | Pending queues split by approver authority |
 | `notifications (recipientUserId, readAt)` | Unread badge |
+| `homeworks (batchId, dueDate)` | Batch homework list + student's `/me/homework`, both ordered by due date |
+| `recorded_classes (batchId, recordedFor)` | Batch recordings list + student's `/me/recordings`, both ordered newest-first |
 
 ---
 
@@ -651,7 +746,7 @@ const studentId = `ANA-${String(seq.current).padStart(4, '0')}`;
 
 The `UPDATE ... RETURNING` is atomic, so concurrent requests cannot collide.
 
-**Known tradeoff:** sequential IDs are enumerable, and the guest lookup returns a name for any valid ID. Rate limiting on the lookup endpoint is the mitigation, deferred per `07-architecture.md`.
+**Known tradeoff:** sequential IDs are enumerable, and the guest lookup returns a name for any valid ID. Rate limiting on the lookup endpoint is the mitigation, deferred — see `11-hardening.md` H-04.
 
 ---
 
@@ -661,6 +756,7 @@ The `UPDATE ... RETURNING` is atomic, so concurrent requests cannot collide.
 - **Migrations are immutable once merged.** Fix forward with a new migration; never edit a committed one.
 - **Raw SQL constraints (§3) live in their own migration**, applied after the tables exist.
 - **Seed data** (`prisma/seed.ts`) creates: one admin user, one sample course, one open batch. It MUST be idempotent — safe to run repeatedly.
+- **Class-management tables (`homeworks`, `recorded_classes`) and the `Batch.classLink` field were each added as their own additive-only migration** — no existing table was altered. This is the extensibility principle (doc 01 §13) proven in practice; follow the same pattern for the next addition (see `12-roadmap.md`).
 
 ---
 
@@ -669,5 +765,6 @@ The `UPDATE ... RETURNING` is atomic, so concurrent requests cannot collide.
 - **No `currentPart` on `Enrollment`** — derived from the batch timeline.
 - **No waitlist table** — a full batch refuses enrollment.
 - **No `Teacher` table** — teachers work off-platform.
-- **No attendance, homework, exam, or certificate tables** — deferred. They will attach to `Enrollment` and `Batch` as new tables without altering these.
+- **No attendance, exam, or certificate tables** — deferred. They will attach to `Enrollment` and `Batch` as new tables without altering these. *(Homework and recorded-class tables, once on this list, are now built — see §2's schema.)*
+- **No `Resource` table yet** — planned (`12-roadmap.md` R-05): will attach to `Batch` with a `url` field first, object storage later.
 - **No soft-delete columns** — status fields handle archival; financial records are never deleted.

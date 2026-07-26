@@ -43,6 +43,7 @@ function parseRedisConnection(url: string): {
       { name: QUEUE_NAMES.penaltySweep },
       { name: QUEUE_NAMES.billingGeneration },
       { name: QUEUE_NAMES.gatewayExpiry },
+      { name: QUEUE_NAMES.emailDispatch },
     ),
   ],
   controllers: [JobsController],

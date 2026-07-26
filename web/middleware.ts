@@ -1,50 +1,65 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-const ACCESS_TOKEN_COOKIE = 'nahda_access_token';
-const ROLES_COOKIE = 'nahda_roles';
+const ACCESS_TOKEN_COOKIE = 'nahda_access_token'
+const ROLES_COOKIE = 'nahda_roles'
 
-// doc 07 §11 — this is a UX gate only. The access token carries no roles
-// (it's just `{ sub }`; see the API's JwtStrategy) and this middleware
-// cannot verify the token's signature without the API's secret, so it can
-// only check "does a plausible session exist and did the last login say
-// this role". The API's own RolesGuard on every route is the real
-// authority — a forged cookie gets past this middleware but not past that.
+// UX gate only — the API RolesGuard is the real authority (doc 07 §11).
 const REQUIRED_ROLE_BY_PREFIX: Array<{ prefix: string; role: string }> = [
   { prefix: '/admin', role: 'admin' },
   { prefix: '/manager', role: 'manager' },
   { prefix: '/dashboard', role: 'student' },
-  // Gateway redirect landing pages — reached mid-flow by an authenticated
-  // student, same as /dashboard. Guest checkout, if it exists, lives under
-  // a separate /guest prefix (doc 06 §8), not here.
   { prefix: '/payments', role: 'student' },
-];
+]
+
+const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/reset-password']
+
+function homePathForRoles(roles: string[]): string {
+  if (roles.includes('admin')) return '/admin'
+  if (roles.includes('manager')) return '/manager'
+  if (roles.includes('student')) return '/dashboard'
+  return '/'
+}
 
 export function middleware(request: NextRequest): NextResponse {
-  const match = REQUIRED_ROLE_BY_PREFIX.find(({ prefix }) =>
-    request.nextUrl.pathname.startsWith(prefix),
-  );
-  if (!match) {
-    return NextResponse.next();
+  const { pathname } = request.nextUrl
+  const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value
+  const roles =
+    request.cookies.get(ROLES_COOKIE)?.value?.split(',').filter(Boolean) ?? []
+
+  // Already signed in → leave auth pages for the role home.
+  if (AUTH_PAGES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    if (token && roles.length > 0) {
+      return NextResponse.redirect(new URL(homePathForRoles(roles), request.url))
+    }
+    return NextResponse.next()
   }
 
-  const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  const roles = request.cookies.get(ROLES_COOKIE)?.value?.split(',') ?? [];
+  const match = REQUIRED_ROLE_BY_PREFIX.find(({ prefix }) =>
+    pathname.startsWith(prefix),
+  )
+  if (!match) {
+    return NextResponse.next()
+  }
 
   if (!token || !roles.includes(match.role)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('from', request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('from', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return NextResponse.next();
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
     '/admin/:path*',
     '/manager/:path*',
     '/dashboard/:path*',
     '/payments/:path*',
   ],
-};
+}

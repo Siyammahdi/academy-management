@@ -2,7 +2,7 @@
 
 An enrollment and subscription-billing back-office for a madrasa-style academy. Teaching happens off-platform (Telegram, Zoom); this system is the source of truth for **who is enrolled and who has paid**.
 
-It is not a learning platform. Attendance, homework, exams, and course content delivery are explicitly out of scope — see [`docs/README.md`](./docs/README.md).
+It is not a learning platform — teaching content delivery, attendance, exams, and certificates remain explicitly out of scope. (Class links, homework, and recorded classes were added to scope after the original PRD as course-management conveniences on top of the billing core; see [`docs/README.md`](./docs/README.md) for the current boundary.)
 
 **The shape in one line:** Course defines → Batch freezes → Enrollment subscribes → BillingPeriod owes → Payment settles, with Request/Refund as human-override paths and AuditLog observing all of it.
 
@@ -23,6 +23,9 @@ It is not a learning platform. Attendance, homework, exams, and course content d
 | [07-architecture.md](./docs/07-architecture.md) | Module layout, background jobs, layering |
 | [08-development-guidelines.md](./docs/08-development-guidelines.md) | Standards, testing conventions |
 | [09-ui-design-system.md](./docs/09-ui-design-system.md) | Design tokens and components |
+| [10-current-state.md](./docs/10-current-state.md) | **Read this first if picking up the project** — what's built, tested, and known-broken |
+| [11-hardening.md](./docs/11-hardening.md) | Security/robustness gaps to close before real money flows |
+| [12-roadmap.md](./docs/12-roadmap.md) | What's left, in priority order, with rule IDs |
 
 ---
 
@@ -36,7 +39,10 @@ academy-management/
 ├── docker-compose.yml  local Postgres + Redis
 ├── api/                NestJS backend
 │   ├── src/
-│   │   ├── modules/    one folder per domain (auth, courses, batches, payments, …)
+│   │   ├── modules/    one folder per domain (auth, courses, batches, payments,
+│   │   │               enrollment, billing, gateway, guest, homework, recordings,
+│   │   │               audit, students, users — plus empty stubs for requests/
+│   │   │               notifications/reporting, not yet built, see doc 10 §2)
 │   │   ├── jobs/        BullMQ queues, processors, worker bootstrap
 │   │   ├── common/      guards, decorators, exceptions, shared utils
 │   │   └── prisma/      PrismaService
@@ -44,11 +50,11 @@ academy-management/
 │   └── test/            e2e specs (run against real Postgres)
 └── web/                Next.js frontend
     └── app/
-        ├── (public)/    marketing (home, about, contact)
+        ├── (public)/    marketing (home, about, contact, guest payment)
         ├── (auth)/      login, register
         ├── (admin)/     admin console
         ├── (manager)/   manager console
-        └── (student)/   student dashboard + payment flow
+        └── (student)/   student dashboard, dues, payments, homework, recordings
 ```
 
 ---
@@ -82,26 +88,11 @@ cd api
 pnpm install
 ```
 
-Create `api/.env` (not committed — see `.gitignore`) with at least:
-
 ```bash
-DATABASE_URL="postgresql://nahda:nahda_dev_password@localhost:5432/nahda?schema=public"
-REDIS_URL="redis://localhost:6379"
-
-JWT_ACCESS_SECRET="<random secret>"
-JWT_REFRESH_SECRET="<random secret>"
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
-
-SSLCOMMERZ_STORE_ID="testbox"
-SSLCOMMERZ_STORE_PASSWORD="qwerty1234"
-SSLCOMMERZ_IS_SANDBOX=true
-
-APP_URL="http://localhost:3001"
-API_URL="http://localhost:3000"
+cp .env.example .env
 ```
 
-`SSLCOMMERZ_STORE_ID`/`SSLCOMMERZ_STORE_PASSWORD` above are the public SSLCommerz sandbox test credentials — real payment initiation will fail against them; the webhook path and signature verification can still be exercised locally (see `api/test/payments.e2e-spec.ts`).
+`api/.env.example` documents every variable the API reads (see `src/modules/auth/jwt.config.ts` and `src/main.ts` for what's required vs defaulted). Fill in real values; the copied `.env` is git-ignored. `SSLCOMMERZ_STORE_ID`/`SSLCOMMERZ_STORE_PASSWORD` in the example are the public SSLCommerz sandbox test credentials — real payment initiation will fail against them; the webhook path and signature verification can still be exercised locally (see `api/test/payments.e2e-spec.ts`).
 
 Run migrations and seed data:
 
@@ -116,7 +107,7 @@ Start the API:
 pnpm start:dev
 ```
 
-The API listens on `:3000` by default and serves under the `/api/v1` prefix.
+The API listens on the port in `PORT` (`api/.env.example` sets `4000` to avoid colliding with the frontend's default `3000`) and serves under the `/api/v1` prefix.
 
 ### 3. Background jobs (optional, but required for penalty/billing/expiry to actually run)
 
@@ -134,10 +125,11 @@ This is a separate process — it registers no HTTP listener, only the job proce
 ```bash
 cd web
 pnpm install
+cp .env.example .env.local
 pnpm dev
 ```
 
-The frontend defaults to `NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1` if unset. **Both `next dev` and `nest start` default to port 3000** — if you run them at the same time, one will silently bind first and the other's requests will 404 against the wrong server. Either start the API first (`next dev` will fall back to `:3001`), or set `NEXT_PUBLIC_API_URL` explicitly in `web/.env.local`.
+`web/.env.example` sets `NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1`, matching the API's `.env.example` port — no collision, no start-order dependency. (Historical note: without these example files, `next dev` and `nest start` both default to port 3000; if you ever run against code defaults instead of the example env files, start the API first — `next dev` falls back to `:3001` — or set `NEXT_PUBLIC_API_URL` explicitly.)
 
 ---
 
@@ -155,13 +147,11 @@ Tests are named for the business-rule IDs they verify (e.g. `PEN-06: the penalty
 
 ## Current status
 
-Built and wired into `app.module.ts`: auth, courses, batches, enrollment, payments (manual + gateway + webhook), the SSLCommerz gateway adapter, billing (period generation and the student-facing billing-periods read), students, users, and the background jobs (penalty sweep, billing generation, gateway-expiry cleanup).
+**This section intentionally does not duplicate a feature list — it goes stale.** The authoritative, kept-current inventory is [`docs/10-current-state.md`](./docs/10-current-state.md): what's built, what's tested against real Postgres, what's only visually unverified, and what's a known issue. Read it before touching anything.
 
-Frontend: marketing pages, auth, and three role-scoped consoles — admin (courses, batches, roster, payment verification), manager (own-batch roster and payment verification), and student (dashboard, dues, payment history, browse-and-enroll, gateway redirect landing pages).
+In short, as of the state that doc describes: the core product (enrollment, billing, the penalty engine, payments — manual, gateway, and guest) plus the class features (class links, homework, recorded classes) are functionally complete and tested. Notifications, grace/partial-payment requests, reporting, and role-management are specified but not built — see [`docs/12-roadmap.md`](./docs/12-roadmap.md) for what's left and in what order, and [`docs/11-hardening.md`](./docs/11-hardening.md) for what must be true before real money flows through it.
 
-**Scaffolded but not implemented** (empty module stubs in `api/src/modules/`, not registered in `app.module.ts`): guest payment (unauthenticated checkout), grace/partial-payment requests, reporting (revenue, outstanding, ledger, export), and notifications (including the `email-dispatch` job). The audit trail is written on every money-affecting action but has no read endpoint yet (`GET /audit-logs` is documented, not built).
-
-Consult `docs/07-architecture.md` §12 for what's deliberately deferred versus what's simply not built yet — they are not the same list.
+**No page in this application has been visually verified in a browser** — automated tests confirm the API contracts, not that the UI renders correctly. This is the single largest open item; see doc 10 §3–4.
 
 ---
 

@@ -17,13 +17,13 @@ import {
   listMyEnrollments,
   listMyHomework,
   listMyRecordings,
-} from '../../../lib/admin-api';
+} from '../../../lib/api-client';
 import type {
   BillingPeriodWithContext,
   EnrollmentWithBatch,
   HomeworkWithContext,
   RecordingWithContext,
-} from '../../../lib/admin-api';
+} from '../../../lib/api-client';
 
 interface DashboardData {
   enrollments: EnrollmentWithBatch[];

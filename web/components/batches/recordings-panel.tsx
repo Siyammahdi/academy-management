@@ -14,8 +14,8 @@ import {
   deleteRecording,
   listBatchRecordings,
   updateRecording,
-} from '../../lib/admin-api';
-import type { Recording } from '../../lib/admin-api';
+} from '../../lib/api-client';
+import type { Recording } from '../../lib/api-client';
 
 function isoToDateInput(iso: string): string {
   return iso.slice(0, 10);

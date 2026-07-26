@@ -15,8 +15,8 @@ import {
   getCourse,
   getRoster,
   updateClassLink,
-} from '../../lib/admin-api';
-import type { BatchWithSeats, Course, RosterEntry } from '../../lib/admin-api';
+} from '../../lib/api-client';
+import type { BatchWithSeats, Course, RosterEntry } from '../../lib/api-client';
 import { apiErrorMessage } from '../../lib/error-message';
 import { ApiError } from '../../lib/api';
 

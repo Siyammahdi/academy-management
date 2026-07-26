@@ -12,8 +12,8 @@ import {
   listPendingPayments,
   rejectPayment,
   verifyPayment,
-} from '../../lib/admin-api';
-import type { PendingPayment } from '../../lib/admin-api';
+} from '../../lib/api-client';
+import type { PendingPayment } from '../../lib/api-client';
 
 const LIMIT = 20;
 

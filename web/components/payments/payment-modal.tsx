@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { payErrorMessage } from '../../lib/error-message';
 import { formatMoney } from '../../lib/format';
-import { payGateway, payManual } from '../../lib/admin-api';
+import { payGateway, payManual } from '../../lib/api-client';
 
 const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/;
 

@@ -1,5 +1,5 @@
 import type { PillStatus } from '../components/ui/pill';
-import type { PeriodStatus } from './admin-api';
+import type { PeriodStatus } from './api-client';
 
 // doc 09 §5 — the status pill token-pair table, applied to PeriodStatus
 // specifically (shared by the dashboard, dues, and payments pages).

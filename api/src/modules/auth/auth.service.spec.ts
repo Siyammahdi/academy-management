@@ -1,16 +1,38 @@
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { EmailAlreadyRegisteredException } from '../../common/exceptions/email-already-registered.exception';
 import { InvalidCredentialsException } from '../../common/exceptions/invalid-credentials.exception';
+import { InvalidResetTokenException } from '../../common/exceptions/invalid-reset-token.exception';
+import { ResetTokenExpiredException } from '../../common/exceptions/reset-token-expired.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 function createJwtServiceMock(): JwtService {
   return {
     signAsync: jest.fn().mockResolvedValue('signed-token'),
     verifyAsync: jest.fn(),
   } as unknown as JwtService;
+}
+
+function createMailMock(): MailService {
+  return {
+    enqueue: jest.fn().mockResolvedValue(undefined),
+    deliver: jest.fn().mockResolvedValue(undefined),
+  } as unknown as MailService;
+}
+
+function createService(
+  prisma: PrismaService,
+  mail: MailService = createMailMock(),
+): AuthService {
+  return new AuthService(prisma, createJwtServiceMock(), mail);
+}
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 describe('AuthService', () => {
@@ -39,7 +61,7 @@ describe('AuthService', () => {
         refreshToken: { create: jest.fn().mockResolvedValue({}) },
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, createJwtServiceMock());
+      const service = createService(prisma);
       const result = await service.register({
         email: 'a@x.com',
         password: 'password123',
@@ -77,7 +99,7 @@ describe('AuthService', () => {
         $transaction: jest.fn().mockRejectedValue(prismaError),
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, createJwtServiceMock());
+      const service = createService(prisma);
       await expect(
         service.register({
           email: 'dupe@x.com',
@@ -105,7 +127,7 @@ describe('AuthService', () => {
         },
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, createJwtServiceMock());
+      const service = createService(prisma);
       await expect(
         service.login({ email: 'a@x.com', password: 'wrong-password' }),
       ).rejects.toThrow(InvalidCredentialsException);
@@ -116,7 +138,7 @@ describe('AuthService', () => {
         user: { findUnique: jest.fn().mockResolvedValue(null) },
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, createJwtServiceMock());
+      const service = createService(prisma);
       await expect(
         service.login({ email: 'missing@x.com', password: 'whatever123' }),
       ).rejects.toThrow(InvalidCredentialsException);
@@ -138,7 +160,7 @@ describe('AuthService', () => {
         refreshToken: { create: jest.fn().mockResolvedValue({}) },
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, createJwtServiceMock());
+      const service = createService(prisma);
       const result = await service.login({
         email: 'a@x.com',
         password: 'correct-password',
@@ -150,6 +172,167 @@ describe('AuthService', () => {
         roles: ['student'],
         studentId: 'ANA-0001',
       });
+    });
+  });
+
+  describe('forgotPassword: never reveals whether an email exists', () => {
+    it('returns without error and without enqueueing when the email is unknown', async () => {
+      const mail = createMailMock();
+      const prisma = {
+        user: { findFirst: jest.fn().mockResolvedValue(null) },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma, mail);
+      await expect(
+        service.forgotPassword({ email: 'nobody@example.com' }),
+      ).resolves.toBeUndefined();
+      expect(mail.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('stores a hashed token and enqueues email when the user exists', async () => {
+      const mail = createMailMock();
+      const prisma = {
+        user: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'user1',
+            email: 'a@x.com',
+            status: 'active',
+          }),
+        },
+        passwordResetToken: { create: jest.fn().mockResolvedValue({}) },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma, mail);
+      await service.forgotPassword({ email: 'a@x.com' });
+
+      expect(prisma.passwordResetToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'user1',
+            tokenHash: expect.any(String) as string,
+            expiresAt: expect.any(Date) as Date,
+          }),
+        }),
+      );
+      expect(mail.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'a@x.com',
+          subject: expect.stringContaining('password') as string,
+        }),
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('rejects an expired token with RESET_TOKEN_EXPIRED', async () => {
+      const raw = 'expired-token-value';
+      const prisma = {
+        passwordResetToken: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'prt1',
+            userId: 'user1',
+            tokenHash: hashToken(raw),
+            expiresAt: new Date(Date.now() - 60_000),
+            usedAt: null,
+          }),
+        },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma);
+      await expect(
+        service.resetPassword({ token: raw, newPassword: 'newpassword1' }),
+      ).rejects.toThrow(ResetTokenExpiredException);
+    });
+
+    it('rejects an already-used token with INVALID_RESET_TOKEN', async () => {
+      const raw = 'used-token-value';
+      const prisma = {
+        passwordResetToken: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'prt1',
+            userId: 'user1',
+            tokenHash: hashToken(raw),
+            expiresAt: new Date(Date.now() + 60_000),
+            usedAt: new Date(),
+          }),
+        },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma);
+      await expect(
+        service.resetPassword({ token: raw, newPassword: 'newpassword1' }),
+      ).rejects.toThrow(InvalidResetTokenException);
+    });
+
+    it('rejects an unknown token with INVALID_RESET_TOKEN', async () => {
+      const prisma = {
+        passwordResetToken: {
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma);
+      await expect(
+        service.resetPassword({
+          token: 'missing',
+          newPassword: 'newpassword1',
+        }),
+      ).rejects.toThrow(InvalidResetTokenException);
+    });
+
+    it('updates the password, marks the token used, and revokes all refresh tokens', async () => {
+      const raw = 'valid-reset-token';
+      const tx = {
+        passwordResetToken: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+        user: { update: jest.fn().mockResolvedValue({}) },
+        refreshToken: {
+          updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+        },
+      };
+      const prisma = {
+        passwordResetToken: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'prt1',
+            userId: 'user1',
+            tokenHash: hashToken(raw),
+            expiresAt: new Date(Date.now() + 60_000),
+            usedAt: null,
+          }),
+        },
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(tx)),
+      } as unknown as PrismaService;
+
+      const service = createService(prisma);
+      await service.resetPassword({
+        token: raw,
+        newPassword: 'brand-new-password',
+      });
+
+      expect(tx.passwordResetToken.updateMany).toHaveBeenCalledWith({
+        where: { id: 'prt1', usedAt: null },
+        data: { usedAt: expect.any(Date) as Date },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: 'user1' },
+        data: { passwordHash: expect.any(String) as string },
+      });
+      expect(tx.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) as Date },
+      });
+
+      const updatedHash = (
+        tx.user.update.mock.calls[0] as [
+          { data: { passwordHash: string } },
+        ]
+      )[0].data.passwordHash;
+      expect(await argon2.verify(updatedHash, 'brand-new-password')).toBe(
+        true,
+      );
     });
   });
 });

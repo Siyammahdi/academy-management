@@ -15,13 +15,13 @@ import {
   createCourse,
   listCourses,
   updateCourse,
-} from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
 import type {
   BillingType,
   Course,
   CoursePart,
   CreateCourseInput,
-} from '../../../../lib/admin-api';
+} from '../../../../lib/api-client';
 
 const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   monthly: 'Monthly',

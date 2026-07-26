@@ -1,34 +1,32 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import { Fraunces, Inter, IBM_Plex_Mono } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+import { Inter, Geist_Mono } from 'next/font/google'
 
-// doc 09 §3 — the three roles: Display (Fraunces), Body/UI (Inter),
-// Numeric (IBM Plex Mono). Variable names match the doc's own
-// --font-display / --font-body / --font-numeric exactly.
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-});
+import { ThemeProvider } from '@/components/providers/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
+
+import './globals.css'
 
 const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600'], // doc 09 §3 — never 700+
-  variable: '--font-body',
+  variable: '--font-sans',
   display: 'swap',
-});
+})
 
-const ibmPlexMono = IBM_Plex_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-numeric',
+  variable: '--font-mono',
   display: 'swap',
-});
+})
 
 export const metadata: Metadata = {
-  title: 'An Nahda Academy',
-};
+  title: {
+    default: 'An Nahda Academy',
+    template: '%s · An Nahda Academy',
+  },
+  description:
+    'Enrollment and subscription billing for An Nahda Academy.',
+}
 
 export default function RootLayout({
   children,
@@ -36,9 +34,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body className="min-h-svh font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </ThemeProvider>
+      </body>
     </html>
-  );
+  )
 }

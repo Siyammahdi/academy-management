@@ -10,7 +10,7 @@ async function bootstrap() {
   // the request body/headers, not cookies the API sets), so no origin list
   // is required for correctness, but we still scope it to the known dev
   // origin rather than leaving it wide open.
-  app.enableCors({ origin: process.env.WEB_URL ?? 'http://localhost:3001' });
+  app.enableCors({ origin: [process.env.WEB_URL ?? 'http://localhost:3001', 'https://annahdanet.vercel.app'] });
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();

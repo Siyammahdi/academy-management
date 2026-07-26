@@ -38,9 +38,11 @@ pnpm dlx shadcn@latest add button input select dialog table sonner card badge fo
 
 An Nahda Academy is a place of study, and the product's job is **clarity about money and enrollment**. The visual language is **calm, polished, and consistent** — Luma's soft, rounded surfaces, themed in a restrained purple, with nothing decorative fighting the data.
 
-**The brief in one line:** a polished, modern SaaS surface that stays quiet where money is shown.
+**The brief in one line:** a polished, modern academy portal — playful where students learn and join class, quiet and precise where money appears.
 
-**What this rules out:** ornamental Islamic motifs (gold, arabesque, mosque silhouettes) and loud gradient-heavy dashboards alike. Luma's clean shapes carry the polish; purple carries the identity; the data stays readable.
+**What this rules out:** ornamental Islamic motifs, generic grey SaaS dashboards, heavy drop shadows, and border-boxed chrome everywhere. Purple carries identity; color fills and spacing create hierarchy; money stays calm and tabular.
+
+**Student surfaces may be more expressive** than admin/manager: brand washes, course cover art, and highlighted classroom / homework / recording modules. Still use only design tokens — never one-off hex values.
 
 ---
 
@@ -77,8 +79,8 @@ Rendered via shadcn `Badge` variants (see §5). Green = paid, amber = pending/pa
 
 ### Rules of use
 
-- **Purple on actions and active states**, not as a section-wide wash or a gradient.
-- **Status colors on badges and amounts only**, never as full-row backgrounds — a table of colored rows is unreadable.
+- **Purple on actions, active states, and student highlight modules** (classroom spotlight, metric tiles, course covers). Do not flood admin money tables with purple washes.
+- **Status colors on badges, amounts, and small urgency cues** — not full-table row fills. Soft status *surface* tokens (`--status-*-bg`) may tint student metric tiles.
 - **Contrast:** `#A372DA` clears contrast for white-on-purple buttons, borders, and large text, but **not** for body-size purple text — use `--primary-strong` (`#4C2A72`) for small purple text and links.
 - **Dark mode:** Luma generates a dark palette. If dark mode ships, verify the status tokens have dark variants that still read as green/amber/red.
 
@@ -105,16 +107,43 @@ Everything else — the monospaced money typeface and the ledger-line motif from
 
 ## 4. Layout and spacing
 
-Use Luma's generated spacing and radius scale. **Do not invent spacing values** — Tailwind's scale plus Luma's tokens cover everything.
+Use Luma's spacing scale and the product radius below. **Do not invent spacing values** — Tailwind's scale plus tokens cover everything.
 
-**Radius:** Luma is the rounded preset — accept its `--radius`. Buttons, inputs, cards, and dialogs are softly rounded by default. This is the "more polished, more rounded" direction you asked for; it comes from the preset, not from per-component overrides.
+**Radius — restrained, professional (overrides Luma's soft default):**
+
+```css
+--radius: 0.5rem; /* ~8px base */
+```
+
+| Surface | Token / class | Feel |
+|---|---|---|
+| Buttons, inputs | `rounded-lg` | Crisp control |
+| Cards, panels, sheets | `rounded-xl` | Soft enough, not pillowy |
+| Badges, chips | `rounded-md` | Compact |
+| Avatars / icon wells | `rounded-lg` | Squircle-lite, not circles for chrome |
+
+**Do not** use `rounded-3xl` / `rounded-4xl` / `rounded-full` for cards, buttons, or primary chrome — those read as consumer-toy, not academy SaaS. Reserve `rounded-full` for true circular affordances (avatar photo, status dot).
 
 **Containers:**
 - Marketing/public: `max-w-6xl` (~1120px)
 - Application: `max-w-7xl` (~1280px)
 - Reading content (about, policies): `max-w-prose`
 
-**Elevation:** Luma's cards may use its default subtle shadow — the flat-cards rule from the prior system is dropped. Use shadcn `Card` as shipped.
+**Elevation — flat, color-led (no shadow stack):**
+
+- **Do not** use drop shadows on cards, panels, or buttons.
+- **Do not** wrap every block in a 1px border. Prefer filled surfaces (`bg-card`, `bg-muted`, `bg-primary-wash`, status surface tokens) and whitespace.
+- Borders are allowed sparingly for true dividers (sidebar edge, input underlines/fields) or when a control needs a clear hit edge (`outline` buttons).
+- Depth comes from **contrast between fills**, not from `shadow-*` or nested rings.
+
+**Student dashboard UX:**
+
+- Highlight **classroom join**, **homework**, and **recorded classes** as first-class modules — not buried lists.
+- Classroom actions: **Join class** + **Copy link** side by side.
+- Recordings organized **by class day** (Asia/Dhaka calendar date), newest day first.
+- Courses show a **cover** (branded generative art when no image field exists in the API).
+- Mobile / tablet should feel app-like: horizontal snap rows, large tap targets (≥44px), stacked spotlight → homework → recordings → courses.
+- Counts are fine; **never sum money across enrollments** (BIL-07).
 
 ---
 
@@ -139,7 +168,9 @@ Compose from shadcn. The product-specific components are thin wrappers, not new 
 
 ### Buttons
 
-Use shadcn variants: `default` (purple primary), `secondary`, `outline`, `ghost`, `destructive` (reject/remove/refund only). **Sentence case, never uppercase.** Luma's radius applies automatically. Keep shadcn's built-in focus-visible ring — never remove it.
+Use shadcn variants: `default` (purple primary), `secondary`, `outline`, `ghost`, `destructive` (reject/remove/refund only). **Sentence case, never uppercase.** Buttons use `rounded-lg`. Keep shadcn's built-in focus-visible ring — never remove it.
+
+When a Button renders as a `Link` or `<a>` via the `render` prop, Base UI requires `nativeButton={false}` — the shared `Button` component sets this automatically when `render` is passed.
 
 ---
 

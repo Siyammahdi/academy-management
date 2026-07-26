@@ -46,7 +46,7 @@ export function AuthShell({
             href="/"
             className="inline-flex items-center gap-2.5 text-lg font-semibold tracking-tight text-white"
           >
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-white/15 text-sm font-bold backdrop-blur-sm">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-white/15 text-sm font-bold backdrop-blur-sm">
               AN
             </span>
             An Nahda Academy

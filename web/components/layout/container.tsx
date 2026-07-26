@@ -1,19 +1,18 @@
-import type { HTMLAttributes } from 'react';
-import { cx } from '../../lib/cx';
+import type { HTMLAttributes } from 'react'
 
-export type ContainerWidth = 'marketing' | 'app' | 'reading';
+import { cn } from '@/lib/utils'
+
+export type ContainerWidth = 'marketing' | 'app' | 'reading'
 
 export interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
-  width?: ContainerWidth;
+  width?: ContainerWidth
 }
 
-// doc 09 §4 — three container widths: marketing/public 1120px, application
-// screens 1280px, reading content (about, policies) 68ch.
 const WIDTH_CLASSES: Record<ContainerWidth, string> = {
-  marketing: 'max-w-marketing',
-  app: 'max-w-app',
-  reading: 'max-w-reading',
-};
+  marketing: 'max-w-6xl',
+  app: 'max-w-7xl',
+  reading: 'max-w-prose',
+}
 
 export function Container({
   width = 'marketing',
@@ -22,12 +21,12 @@ export function Container({
 }: ContainerProps) {
   return (
     <div
-      className={cx(
+      className={cn(
         'mx-auto w-full px-4 sm:px-6',
         WIDTH_CLASSES[width],
         className,
       )}
       {...props}
     />
-  );
+  )
 }

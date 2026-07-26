@@ -161,14 +161,14 @@ function ResetFallback() {
       <div className="space-y-5">
         <div className="space-y-2">
           <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-9 w-full rounded-3xl" />
+          <Skeleton className="h-9 w-full rounded-lg" />
         </div>
         <div className="space-y-2">
           <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-9 w-full rounded-3xl" />
+          <Skeleton className="h-9 w-full rounded-lg" />
         </div>
       </div>
-      <Skeleton className="h-10 w-full rounded-4xl" />
+      <Skeleton className="h-10 w-full rounded-lg" />
     </div>
   )
 }

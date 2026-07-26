@@ -1,43 +1,44 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { Sidebar } from './sidebar';
-import type { NavItem } from './sidebar';
-import { Container } from './container';
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { MenuIcon, XIcon } from 'lucide-react'
+
+import { Sidebar } from './sidebar'
+import type { NavItem } from './sidebar'
+import { Container } from './container'
+import { Button } from '@/components/ui/button'
 
 export interface AppShellProps {
-  children: ReactNode;
-  title?: string;
-  items?: NavItem[];
+  children: ReactNode
+  title?: string
+  items?: NavItem[]
 }
 
-// doc 09 §10 — the sidebar collapses to a drawer below 1024px. Shared by
-// every role-scoped section (admin, manager, …) — pass `title`/`items` to
-// customize the nav instead of duplicating this shell.
 export function AppShell({ children, title, items }: AppShellProps) {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper-app">
-      <header className="flex items-center justify-between border-b border-rule px-4 py-3 lg:hidden">
-        <span className="font-display text-h3 font-semibold text-ink">
-          {title ?? 'An Nahda Admin'}
+    <div className="flex min-h-svh flex-col bg-background">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden">
+        <span className="font-heading text-base font-semibold tracking-tight text-foreground">
+          {title ?? 'An Nahda'}
         </span>
-        <button
+        <Button
           type="button"
-          onClick={() => setIsDrawerOpen(true)}
-          aria-label="Open menu"
-          className="flex h-11 w-11 items-center justify-center rounded-sm border border-rule-strong text-ink"
+          variant="secondary"
+          size="icon"
+          aria-label={isDrawerOpen ? 'Close menu' : 'Open menu'}
+          onClick={() => setIsDrawerOpen((open) => !open)}
         >
-          Menu
-        </button>
+          {isDrawerOpen ? <XIcon /> : <MenuIcon />}
+        </Button>
       </header>
 
       <div className="flex flex-1">
-        <aside className="hidden w-64 shrink-0 border-r border-rule bg-paper-raised lg:block">
+        <aside className="hidden w-64 shrink-0 bg-primary-wash/40 lg:block">
           <Sidebar
-            className="sticky top-0 h-screen"
+            className="sticky top-0 h-svh"
             title={title}
             items={items}
           />
@@ -45,11 +46,13 @@ export function AppShell({ children, title, items }: AppShellProps) {
 
         {isDrawerOpen ? (
           <div className="fixed inset-0 z-40 flex lg:hidden">
-            <div
-              className="absolute inset-0 bg-ink/40"
+            <button
+              type="button"
+              className="absolute inset-0 bg-foreground/30"
+              aria-label="Close menu"
               onClick={() => setIsDrawerOpen(false)}
             />
-            <div className="relative z-10 h-full w-64 bg-paper-raised shadow-overlay">
+            <div className="relative z-10 h-full w-80 bg-background">
               <Sidebar
                 title={title}
                 items={items}
@@ -59,12 +62,12 @@ export function AppShell({ children, title, items }: AppShellProps) {
           </div>
         ) : null}
 
-        <main className="flex-1 py-8">
-          <Container width="app" className="flex flex-col gap-8">
+        <main className="flex-1 pb-10 pt-5 sm:py-7 lg:py-8">
+          <Container width="app" className="flex flex-col gap-6 sm:gap-8">
             {children}
           </Container>
         </main>
       </div>
     </div>
-  );
+  )
 }

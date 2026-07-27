@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation'
 import {
   BookOpenIcon,
   ClipboardCheckIcon,
+  CompassIcon,
   CreditCardIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
   LayersIcon,
   RadioIcon,
+  UserIcon,
   WalletIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,6 +26,9 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   '/dashboard/batches': BookOpenIcon,
   '/dashboard/classroom': RadioIcon,
   '/dashboard/courses': BookOpenIcon,
+  '/dashboard/enroll': CompassIcon,
+  '/dashboard/applications': ClipboardCheckIcon,
+  '/dashboard/profile': UserIcon,
   '/manager': LayoutDashboardIcon,
   '/manager/batches': LayersIcon,
   '/manager/payments': ClipboardCheckIcon,

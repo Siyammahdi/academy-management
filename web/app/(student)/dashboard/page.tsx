@@ -17,7 +17,9 @@ import { DashboardMetrics } from '@/components/student/dashboard-metrics'
 import { DashboardSkeleton } from '@/components/student/dashboard-skeleton'
 import { DuesStrip } from '@/components/student/dues-strip'
 import { HomeworkBoard } from '@/components/student/homework-board'
+import { OnboardingDashboard } from '@/components/student/onboarding-dashboard'
 import { RecordingsTimeline } from '@/components/student/recordings-timeline'
+import { useStudentEnrollment } from '@/components/student/student-enrollment-provider'
 import { WorkspaceHero } from '@/components/layout/workspace-hero'
 import { PaymentModal } from '@/components/payments/payment-modal'
 import { Button } from '@/components/ui/button'
@@ -32,35 +34,30 @@ import {
 } from '@/lib/student-dashboard'
 import {
   listMyBillingPeriods,
-  listMyEnrollments,
   listMyHomework,
   listMyRecordings,
   type BillingPeriodWithContext,
-  type EnrollmentWithBatch,
   type HomeworkWithContext,
   type RecordingWithContext,
 } from '@/lib/api-client'
+import { hasActiveEnrollment } from '@/lib/enrollment-access'
 
 interface DashboardData {
   user: AuthUser
-  enrollments: EnrollmentWithBatch[]
   periods: BillingPeriodWithContext[]
   homework: HomeworkWithContext[]
   recordings: RecordingWithContext[]
 }
 
-async function fetchDashboardData(): Promise<DashboardData> {
-  const [user, enrollmentResult, periodResult, homework, recordings] =
-    await Promise.all([
-      getMe(),
-      listMyEnrollments(1, 100),
-      listMyBillingPeriods(undefined, 1, 100),
-      listMyHomework(),
-      listMyRecordings(),
-    ])
+async function fetchEnrolledDashboard(): Promise<DashboardData> {
+  const [user, periodResult, homework, recordings] = await Promise.all([
+    getMe(),
+    listMyBillingPeriods(undefined, 1, 100),
+    listMyHomework(),
+    listMyRecordings(),
+  ])
   return {
     user,
-    enrollments: enrollmentResult.data,
     periods: periodResult.data,
     homework,
     recordings,
@@ -68,15 +65,33 @@ async function fetchDashboardData(): Promise<DashboardData> {
 }
 
 export default function StudentDashboardPage() {
+  const {
+    enrollments,
+    applications,
+    loading: enrollmentLoading,
+    reload: reloadEnrollment,
+  } = useStudentEnrollment()
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [payingPeriod, setPayingPeriod] =
     useState<BillingPeriodWithContext | null>(null)
   const [clock, setClock] = useState(() => formatDhakaClock())
+  const [onboardingUser, setOnboardingUser] = useState<AuthUser | null>(null)
+
+  const isEnrolled = !enrollmentLoading && hasActiveEnrollment(enrollments)
+  const enrollmentKey = enrollments
+    .map((e) => `${e.id}:${e.status}`)
+    .join(',')
 
   async function reload(): Promise<void> {
     try {
-      setData(await fetchDashboardData())
+      if (!hasActiveEnrollment(enrollments)) {
+        setOnboardingUser(await getMe())
+        await reloadEnrollment()
+        setError(null)
+        return
+      }
+      setData(await fetchEnrolledDashboard())
       setError(null)
     } catch {
       setError('Your dashboard could not be loaded. Try again.')
@@ -84,11 +99,33 @@ export default function StudentDashboardPage() {
   }
 
   useEffect(() => {
+    if (enrollmentLoading) return
     let cancelled = false
-    fetchDashboardData()
+
+    if (!hasActiveEnrollment(enrollments)) {
+      getMe()
+        .then((user) => {
+          if (!cancelled) {
+            setOnboardingUser(user)
+            setData(null)
+            setError(null)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError('Your dashboard could not be loaded. Try again.')
+          }
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    fetchEnrolledDashboard()
       .then((next) => {
         if (!cancelled) {
           setData(next)
+          setOnboardingUser(null)
           setError(null)
         }
       })
@@ -100,7 +137,9 @@ export default function StudentDashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+    // enrollmentKey captures id+status changes without depending on array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enrollments read via key
+  }, [enrollmentLoading, enrollmentKey])
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -117,7 +156,7 @@ export default function StudentDashboardPage() {
       .sort((a, b) => b.periodMonth.localeCompare(a.periodMonth))[0]
   }
 
-  if (error && !data) {
+  if (error && !data && !onboardingUser) {
     return (
       <div className="flex flex-col items-start gap-4 py-8">
         <div
@@ -140,11 +179,31 @@ export default function StudentDashboardPage() {
     )
   }
 
+  if (
+    enrollmentLoading ||
+    (!isEnrolled && !onboardingUser) ||
+    (isEnrolled && !data)
+  ) {
+    return <DashboardSkeleton />
+  }
+
+  if (!isEnrolled && onboardingUser) {
+    return (
+      <OnboardingDashboard
+        user={onboardingUser}
+        applications={applications}
+        onRefresh={() => {
+          void reload()
+        }}
+      />
+    )
+  }
+
   if (!data) {
     return <DashboardSkeleton />
   }
 
-  const { user, enrollments, periods, homework, recordings } = data
+  const { user, periods, homework, recordings } = data
   const openDues = openDuePeriods(periods)
   const homeworkDueToday = homework.filter((h) => isDueToday(h.dueDate))
   const pastDueHomeworkCount = homework.filter((h) =>
@@ -152,6 +211,7 @@ export default function StudentDashboardPage() {
   ).length
   const classrooms = activeClassrooms(enrollments)
   const firstOpenDue = openDues[0] ?? null
+  const activeCount = enrollments.filter((e) => e.status === 'active').length
 
   const sortedEnrollments = [...enrollments].sort((a, b) => {
     const rank = (s: string) =>
@@ -244,9 +304,8 @@ export default function StudentDashboardPage() {
           {
             key: 'courses',
             label: 'Courses',
-            value: enrollments.length,
-            hint:
-              enrollments.length === 1 ? 'Active shelf' : 'On your shelf',
+            value: activeCount,
+            hint: activeCount === 1 ? 'Active shelf' : 'On your shelf',
             tone: 'brand',
             href: '/dashboard/courses',
           },

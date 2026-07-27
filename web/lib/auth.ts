@@ -4,6 +4,12 @@ import {
   getRefreshToken,
   storeSession,
 } from './session'
+import {
+  getStoredActiveRole,
+  homePathForRole,
+  resolveActiveRole,
+  setStoredActiveRole,
+} from './active-role'
 
 export type RoleName = 'admin' | 'manager' | 'student'
 
@@ -34,16 +40,20 @@ export interface RegisterInput {
   phone: string
 }
 
-/** Prefer operational consoles when a user holds multiple roles (RBAC-01). */
+/**
+ * Home for the restored workspace (preferred role) when still permitted.
+ * Falls back to admin → manager → student. RBAC-01 — one login, many roles.
+ */
 export function homePathForRoles(roles: readonly string[]): string {
-  if (roles.includes('admin')) return '/admin'
-  if (roles.includes('manager')) return '/manager'
-  if (roles.includes('student')) return '/dashboard'
+  const role = resolveActiveRole(roles, getStoredActiveRole())
+  if (role) return homePathForRole(role)
   return '/'
 }
 
 function persistAuth(result: AuthResponse): AuthResponse {
   storeSession(result.accessToken, result.refreshToken, result.user.roles)
+  const active = resolveActiveRole(result.user.roles)
+  if (active) setStoredActiveRole(active)
   return result
 }
 

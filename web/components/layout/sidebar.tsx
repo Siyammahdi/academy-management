@@ -26,6 +26,11 @@ import {
 import { UserMenu } from '@/components/layout/user-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AuthUser } from '@/lib/auth'
+import {
+  roleFromPathname,
+  resolveActiveRole,
+  workspaceLabel,
+} from '@/lib/active-role'
 import { cn } from '@/lib/utils'
 
 export interface NavItem {
@@ -56,6 +61,7 @@ const ICONS: Record<string, LucideIcon> = {
   '/dashboard/homework': NotebookPenIcon,
   '/dashboard/recordings': VideoIcon,
   '/dashboard/enroll': CompassIcon,
+  '/dashboard/applications': ClipboardCheckIcon,
   '/dashboard/profile': UserIcon,
   '/admin': LayoutDashboardIcon,
   '/admin/courses': BookOpenIcon,
@@ -104,6 +110,10 @@ export function Sidebar({
   const pathname = usePathname()
   const navSections = sections ?? sectionsFromItems(items)
   const rootHref = navSections[0]?.items[0]?.href
+  const fromPath = roleFromPathname(pathname)
+  const activeRole =
+    (fromPath && user?.roles.includes(fromPath) ? fromPath : null) ??
+    (user ? resolveActiveRole(user.roles) : null)
 
   return (
     <nav className={cn('flex h-full flex-col', className)}>
@@ -115,7 +125,9 @@ export function Sidebar({
           <p className="truncate font-heading text-sm font-semibold tracking-tight text-foreground">
             {title}
           </p>
-          <p className="text-xs text-muted-foreground">Your workspace</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {workspaceLabel(activeRole)}
+          </p>
         </div>
       </div>
 

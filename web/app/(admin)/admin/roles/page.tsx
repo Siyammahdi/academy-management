@@ -35,8 +35,8 @@ import { cn } from '@/lib/utils'
 const ALL_ROLES: RoleName[] = ['admin', 'manager', 'student']
 
 const ROLE_LABELS: Record<RoleName, string> = {
-  admin: 'Admin',
-  manager: 'Manager',
+  admin: 'Super Admin',
+  manager: 'Course Manager',
   student: 'Student',
 }
 

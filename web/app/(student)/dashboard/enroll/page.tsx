@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { CourseCover } from '@/components/student/course-cover'
 import { StatusBadge } from '@/components/money/status-badge'
 import { StudentPageHeader } from '@/components/student/student-page-header'
+import { useStudentEnrollment } from '@/components/student/student-enrollment-provider'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
@@ -40,6 +41,7 @@ function enrollErrorMessage(err: unknown): string {
  * Open batches (status=enrolling) + POST /batches/:id/enroll.
  */
 export default function StudentEnrollPage() {
+  const { hasActive, reload: reloadEnrollment } = useStudentEnrollment()
   const [batches, setBatches] = useState<BatchWithSeats[] | null>(null)
   const [courseTitleById, setCourseTitleById] = useState<Map<string, string>>(
     () => new Map(),
@@ -82,7 +84,10 @@ export default function StudentEnrollPage() {
     try {
       await enrollInBatch(batch.id)
       setEnrolledIds((prev) => new Set(prev).add(batch.id))
-      toast.success('Enrolled — check My Courses and Payment Status')
+      await reloadEnrollment()
+      toast.success(
+        'Application submitted — complete payment so your enrollment can activate.',
+      )
     } catch (err) {
       setRowErrors((prev) => ({
         ...prev,
@@ -97,7 +102,7 @@ export default function StudentEnrollPage() {
     <div className="flex min-w-0 flex-col gap-6">
       <StudentPageHeader
         eyebrow="Discover"
-        title="Browse & Enroll"
+        title="Browse Courses"
         description="Batches currently open for enrollment. Fees shown are snapshots for that batch — not a combined total."
         actions={
           <Button
@@ -141,9 +146,11 @@ export default function StudentEnrollPage() {
           <Button
             className="mt-4 min-h-11"
             variant="secondary"
-            render={<Link href="/dashboard/courses" />}
+            render={
+              <Link href={hasActive ? '/dashboard/courses' : '/dashboard'} />
+            }
           >
-            Go to My Courses
+            {hasActive ? 'Go to Your Courses' : 'Back to dashboard'}
           </Button>
         </div>
       ) : null}
@@ -198,9 +205,17 @@ export default function StudentEnrollPage() {
                       <Button
                         variant="outline"
                         className="min-h-11"
-                        render={<Link href="/dashboard/courses" />}
+                        render={
+                          <Link
+                            href={
+                              hasActive
+                                ? '/dashboard/courses'
+                                : '/dashboard/applications'
+                            }
+                          />
+                        }
                       >
-                        Your courses
+                        {hasActive ? 'Your courses' : 'My applications'}
                       </Button>
                     </div>
                   ) : (

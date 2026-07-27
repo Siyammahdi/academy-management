@@ -1,16 +1,18 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 
 import { UserAvatar } from '@/components/layout/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AuthUser } from '@/lib/auth'
 import {
-  personalizedGreeting,
-  primaryRole,
-  roleLabel,
-} from '@/lib/user-display'
+  resolveActiveRole,
+  roleFromPathname,
+  workspaceLabel,
+} from '@/lib/active-role'
+import { personalizedGreeting } from '@/lib/user-display'
 import { cn } from '@/lib/utils'
 
 interface WorkspaceHeroProps {
@@ -24,7 +26,7 @@ interface WorkspaceHeroProps {
   className?: string
 }
 
-/** Personalized portal hero — name first, role as secondary signal. */
+/** Personalized portal hero — name first, active workspace as secondary signal. */
 export function WorkspaceHero({
   user,
   description,
@@ -32,6 +34,8 @@ export function WorkspaceHero({
   actions,
   className,
 }: WorkspaceHeroProps) {
+  const pathname = usePathname()
+
   if (!user) {
     return (
       <header
@@ -48,7 +52,10 @@ export function WorkspaceHero({
   }
 
   const greeting = personalizedGreeting(user)
-  const role = primaryRole(user.roles)
+  const fromPath = roleFromPathname(pathname)
+  const role =
+    (fromPath && user.roles.includes(fromPath) ? fromPath : null) ??
+    resolveActiveRole(user.roles)
 
   return (
     <header
@@ -75,9 +82,9 @@ export function WorkspaceHero({
                   {greeting.eyebrow}
                 </p>
                 <Badge className="bg-primary text-primary-foreground">
-                  {roleLabel(role)}
+                  {workspaceLabel(role)}
                 </Badge>
-                {user.studentId ? (
+                {user.studentId && role === 'student' ? (
                   <Badge
                     variant="secondary"
                     className="bg-background/80 text-foreground"

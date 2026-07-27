@@ -1,5 +1,10 @@
 import type { AuthUser, RoleName } from '@/lib/auth'
 import { greetingForDhaka } from '@/lib/student-dashboard'
+import {
+  defaultRoleForRoles,
+  profilePathForRole,
+  workspaceRoleLabel,
+} from '@/lib/active-role'
 
 /** Prefer linked student name; otherwise a cleaned email local-part. */
 export function displayName(user: Pick<AuthUser, 'email' | 'fullName'>): string {
@@ -25,31 +30,18 @@ export function initials(user: Pick<AuthUser, 'email' | 'fullName'>): string {
   return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
 }
 
-/** Primary portal role for chrome labels. */
+/** Primary portal role for chrome labels (default priority). */
 export function primaryRole(roles: readonly RoleName[]): RoleName | null {
-  if (roles.includes('admin')) return 'admin'
-  if (roles.includes('manager')) return 'manager'
-  if (roles.includes('student')) return 'student'
-  return null
+  return defaultRoleForRoles(roles)
 }
 
 export function roleLabel(role: RoleName | null): string {
-  switch (role) {
-    case 'admin':
-      return 'Admin'
-    case 'manager':
-      return 'Manager'
-    case 'student':
-      return 'Student'
-    default:
-      return 'Member'
-  }
+  return workspaceRoleLabel(role)
 }
 
 export function profilePathForRoles(roles: readonly RoleName[]): string {
-  if (roles.includes('admin')) return '/admin/profile'
-  if (roles.includes('manager')) return '/manager/profile'
-  return '/dashboard/profile'
+  const role = primaryRole(roles)
+  return role ? profilePathForRole(role) : '/dashboard/profile'
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 
 import { AdminHomeSkeleton } from '@/components/admin/admin-home-skeleton'
 import { PendingVerifyStrip } from '@/components/manager/pending-verify-strip'
+import { WorkspaceHero } from '@/components/layout/workspace-hero'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,6 @@ import { formatDate, formatMoney } from '@/lib/format'
 import {
   formatDhakaClock,
   formatDhakaToday,
-  greetingForDhaka,
 } from '@/lib/student-dashboard'
 import {
   getBatch,
@@ -191,7 +191,6 @@ export default function AdminOverviewPage() {
     return <AdminHomeSkeleton />
   }
 
-  const displayName = data.user.email.split('@')[0] ?? data.user.email
   const attentionCount =
     data.pendingTotal + data.tightBatches.length + data.unassignedBatches.length
 
@@ -259,46 +258,24 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
-      <header className="relative overflow-hidden rounded-xl bg-primary-wash">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -top-12 size-32 rounded-full bg-primary/20 sm:size-48"
-        />
-        <div className="relative space-y-4 p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-medium text-primary-strong">
-                  {greetingForDhaka()}
-                </p>
-                <Badge className="bg-primary text-primary-foreground">
-                  Owner
-                </Badge>
-                {attentionCount > 0 ? (
-                  <Badge className="bg-status-pending-bg text-status-pending">
-                    {attentionCount} need attention
-                  </Badge>
-                ) : null}
-              </div>
-              <h1 className="truncate font-heading text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                {displayName}, here is the academy today
-              </h1>
-              <p className="hidden max-w-xl text-sm text-muted-foreground sm:block">
-                Seat pressure, money waiting on confirmation, and managers who
-                still need a batch — not classroom homework. That stays with
-                course managers.
-              </p>
-            </div>
-            <div className="shrink-0 rounded-xl bg-background/80 px-2.5 py-1.5 text-right sm:px-3 sm:py-2">
-              <p className="font-heading text-sm font-semibold tabular-nums text-foreground sm:text-lg">
-                {clock}
-              </p>
-              <p className="hidden text-xs text-muted-foreground sm:block">
-                {formatDhakaToday()}
-              </p>
-            </div>
+      <WorkspaceHero
+        user={data.user}
+        description={
+          attentionCount > 0
+            ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention — seat pressure, money waiting, and batches still without a manager.`
+            : 'Seat pressure, money waiting on confirmation, and managers who still need a batch — not classroom homework. That stays with course managers.'
+        }
+        aside={
+          <div className="shrink-0 rounded-xl bg-background/80 px-2.5 py-1.5 text-right sm:px-3 sm:py-2">
+            <p className="font-heading text-sm font-semibold tabular-nums text-foreground sm:text-lg">
+              {clock}
+            </p>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              {formatDhakaToday()}
+            </p>
           </div>
-
+        }
+        actions={
           <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button
               className="min-h-11 min-w-0"
@@ -326,8 +303,8 @@ export default function AdminOverviewPage() {
               Refresh
             </Button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {error ? (
         <div
@@ -541,7 +518,7 @@ export default function AdminOverviewPage() {
                   className="block rounded-lg bg-background/50 px-3 py-2 transition-colors hover:bg-background"
                 >
                   <p className="truncate text-sm font-medium text-foreground">
-                    {item.courseTitle} · {item.batchName}
+                    {item.courseTitle} — {item.batchName}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatDate(item.periodMonth, 'month')}
@@ -586,10 +563,10 @@ export default function AdminOverviewPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">
-                      {entry.courseTitle} · {entry.batchName}
+                      {entry.courseTitle} — {entry.batchName}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatDate(entry.periodMonth, 'month')} ·{' '}
+                      {formatDate(entry.periodMonth, 'month')} —{' '}
                       {entry.kind === 'refund' ? 'Refund' : entry.status}
                     </p>
                     {entry.kind === 'refund' && entry.refundReason ? (
@@ -638,7 +615,7 @@ export default function AdminOverviewPage() {
                     {log.action}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatDate(log.createdAt, 'short')} · Target {log.targetType}
+                    {formatDate(log.createdAt, 'short')} — Target {log.targetType}
                   </p>
                 </div>
               ))

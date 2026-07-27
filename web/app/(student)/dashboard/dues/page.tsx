@@ -1,139 +1,216 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { PageHeader } from '../../../../components/layout/page-header';
-import { Select } from '../../../../components/ui/select';
-import { Button } from '../../../../components/ui/button';
-import { LedgerLine } from '../../../../components/ledger/ledger-line';
-import { PaymentModal } from '../../../../components/payments/payment-modal';
-import { formatDate } from '../../../../lib/format';
-import { PERIOD_STATUS_PILL } from '../../../../lib/period-status';
-import { listMyBillingPeriods } from '../../../../lib/api-client';
-import type {
-  BillingPeriodWithContext,
-  PeriodStatus,
-} from '../../../../lib/api-client';
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { RefreshCwIcon } from 'lucide-react'
 
-const STATUS_OPTIONS: PeriodStatus[] = [
+import { AmountCell } from '@/components/money/amount-cell'
+import { StatusBadge } from '@/components/money/status-badge'
+import { StudentPageHeader } from '@/components/student/student-page-header'
+import { useCurrentUser } from '@/components/auth/current-user-provider'
+import { PaymentModal } from '@/components/payments/payment-modal'
+import { Button } from '@/components/ui/button'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  listMyBillingPeriods,
+  type BillingPeriodWithContext,
+  type PeriodStatus,
+} from '@/lib/api-client'
+import { formatDate } from '@/lib/format'
+import { PERIOD_STATUS_BADGE, periodAttention } from '@/lib/period-status'
+import { displayName } from '@/lib/user-display'
+
+const STATUS_OPTIONS: Array<PeriodStatus | 'all'> = [
+  'all',
   'unpaid',
   'pending',
   'partially_paid',
   'paid',
-];
+]
 
+/**
+ * Student — Payment Status
+ * Per-period dues from GET /me/billing-periods. Never sum across enrollments.
+ */
 export default function StudentDuesPage() {
-  const [statusFilter, setStatusFilter] = useState<PeriodStatus | ''>('');
+  const { user } = useCurrentUser()
+  const [statusFilter, setStatusFilter] = useState<PeriodStatus | 'all'>('all')
   const [periods, setPeriods] = useState<BillingPeriodWithContext[] | null>(
     null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  )
+  const [error, setError] = useState<string | null>(null)
   const [payingPeriod, setPayingPeriod] =
-    useState<BillingPeriodWithContext | null>(null);
+    useState<BillingPeriodWithContext | null>(null)
 
   async function reload(): Promise<void> {
     try {
       const result = await listMyBillingPeriods(
-        statusFilter || undefined,
+        statusFilter === 'all' ? undefined : statusFilter,
         1,
         100,
-      );
-      setPeriods(result.data);
+      )
+      setPeriods(result.data)
+      setError(null)
     } catch {
-      setError('Your dues could not be loaded. Try again.');
+      setError('Your dues could not be loaded. Try again.')
     }
   }
 
   useEffect(() => {
-    let cancelled = false;
-    listMyBillingPeriods(statusFilter || undefined, 1, 100)
+    let cancelled = false
+    listMyBillingPeriods(
+      statusFilter === 'all' ? undefined : statusFilter,
+      1,
+      100,
+    )
       .then((result) => {
         if (!cancelled) {
-          setPeriods(result.data);
+          setPeriods(result.data)
+          setError(null)
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setError('Your dues could not be loaded. Try again.');
+          setError('Your dues could not be loaded. Try again.')
         }
-      });
+      })
     return () => {
-      cancelled = true;
-    };
-  }, [statusFilter]);
+      cancelled = true
+    }
+  }, [statusFilter])
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        eyebrow="Dashboard"
-        title="Dues"
+    <div className="flex min-w-0 flex-col gap-6">
+      <StudentPageHeader
+        eyebrow="Payments"
+        title={
+          user
+            ? `Payment status for ${displayName(user)}`
+            : 'Your payment status'
+        }
         description="Every billing period across every enrollment, shown separately — never combined into one total."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                void reload()
+              }}
+            >
+              <RefreshCwIcon />
+              Refresh
+            </Button>
+            <Button
+              variant="secondary"
+              className="min-h-11"
+              render={<Link href="/dashboard/payments" />}
+            >
+              Payment history
+            </Button>
+          </>
+        }
       />
 
-      <Select
+      <FilterDropdown
+        className="w-full sm:max-w-xs"
         label="Status"
         value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value as PeriodStatus | '')}
-        className="max-w-xs"
-      >
-        <option value="">All</option>
-        {STATUS_OPTIONS.map((s) => (
-          <option key={s} value={s}>
-            {PERIOD_STATUS_PILL[s].label}
-          </option>
-        ))}
-      </Select>
+        onChange={(v) => setStatusFilter(v as PeriodStatus | 'all')}
+        options={STATUS_OPTIONS.map((s) =>
+          s === 'all'
+            ? { value: 'all', label: 'All statuses' }
+            : {
+                value: s,
+                label: PERIOD_STATUS_BADGE[s].label,
+              },
+        )}
+      />
 
       {error ? (
-        <p className="font-body text-sm text-overdue" role="alert">
+        <div
+          role="alert"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
+        >
           {error}
-        </p>
+        </div>
       ) : null}
 
-      {!error && !periods ? (
-        <p className="font-body text-body text-ink-muted">Loading…</p>
+      {!periods && !error ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          ))}
+        </div>
       ) : null}
 
       {periods && periods.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <p className="font-body text-body text-ink-muted">
-            No billing periods match this filter.
+        <div className="rounded-xl bg-muted/50 px-6 py-14 text-center">
+          <p className="font-heading text-base font-semibold text-foreground">
+            No billing periods match this filter
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Paid periods and open dues appear here once you enroll.
           </p>
         </div>
       ) : null}
 
       {periods && periods.length > 0 ? (
-        <div className="flex flex-col">
+        <ul className="flex flex-col gap-2">
           {periods.map((period) => {
-            const pill = PERIOD_STATUS_PILL[period.status];
+            const attention = periodAttention(period.status, period.dueDate)
             const canPay =
-              period.status === 'unpaid' || period.status === 'partially_paid';
+              period.status === 'unpaid' || period.status === 'partially_paid'
             return (
-              <div key={period.id} className="flex flex-col gap-2 py-1">
-                <LedgerLine
-                  periodLabel={formatDate(period.periodMonth, 'month')}
-                  detailLabel={`${period.enrollment.batch.course.title} · ${period.enrollment.batch.name}`}
-                  dueLabel={`Due ${formatDate(period.dueDate)}`}
-                  status={pill.status}
-                  statusLabel={pill.label}
-                  amount={period.amountOwed}
-                  outstanding={
-                    period.status !== 'paid' ? period.outstanding : undefined
-                  }
-                />
-                {canPay ? (
-                  <div className="flex justify-end pb-3">
+              <li
+                key={period.id}
+                className="flex flex-col gap-3 rounded-xl bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-heading text-base font-semibold text-foreground">
+                      {formatDate(period.periodMonth, 'month')}
+                    </h2>
+                    <StatusBadge
+                      tone={attention.tone}
+                      label={attention.label}
+                    />
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {period.enrollment.batch.course.title} ·{' '}
+                    {period.enrollment.batch.name}
+                  </p>
+                  <p className="text-xs tabular-nums text-muted-foreground">
+                    Due {formatDate(period.dueDate)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                  <AmountCell
+                    amount={period.amountOwed}
+                    className="text-base font-semibold"
+                  />
+                  {period.status !== 'paid' ? (
+                    <AmountCell
+                      amount={period.outstanding}
+                      outstanding
+                      labeled
+                      className="text-xs"
+                    />
+                  ) : null}
+                  {canPay ? (
                     <Button
-                      size="compact"
+                      className="min-h-11"
                       onClick={() => setPayingPeriod(period)}
                     >
                       Pay this due
                     </Button>
-                  </div>
-                ) : null}
-              </div>
-            );
+                  ) : null}
+                </div>
+              </li>
+            )
           })}
-        </div>
+        </ul>
       ) : null}
 
       {payingPeriod ? (
@@ -144,11 +221,11 @@ export default function StudentDuesPage() {
           periodLabel={`${payingPeriod.enrollment.batch.course.title} · ${payingPeriod.enrollment.batch.name} · ${formatDate(payingPeriod.periodMonth, 'month')}`}
           outstanding={payingPeriod.outstanding}
           onSubmitted={() => {
-            setPayingPeriod(null);
-            void reload();
+            setPayingPeriod(null)
+            void reload()
           }}
         />
       ) : null}
     </div>
-  );
+  )
 }

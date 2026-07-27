@@ -62,7 +62,7 @@ export function CourseShelf({
             link will appear on this shelf.
           </p>
         </div>
-        <Button size="lg" render={<Link href="/dashboard/batches" />}>
+        <Button size="lg" render={<Link href="/dashboard/enroll" />}>
           Browse open batches
         </Button>
       </div>

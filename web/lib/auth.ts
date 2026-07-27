@@ -12,6 +12,8 @@ export interface AuthUser {
   email: string
   roles: RoleName[]
   studentId: string | null
+  /** Linked Student.fullName when the account has a student profile. */
+  fullName: string | null
 }
 
 export interface AuthResponse {

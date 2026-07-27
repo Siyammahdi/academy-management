@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CompassIcon, RefreshCwIcon } from 'lucide-react'
+import {
+  ClipboardListIcon,
+  CompassIcon,
+  LinkIcon,
+  RefreshCwIcon,
+  VideoIcon,
+  WalletIcon,
+} from 'lucide-react'
 
 import { ClassroomSpotlight } from '@/components/student/classroom-spotlight'
 import { CourseShelf } from '@/components/student/course-shelf'
@@ -11,17 +18,16 @@ import { DashboardSkeleton } from '@/components/student/dashboard-skeleton'
 import { DuesStrip } from '@/components/student/dues-strip'
 import { HomeworkBoard } from '@/components/student/homework-board'
 import { RecordingsTimeline } from '@/components/student/recordings-timeline'
+import { WorkspaceHero } from '@/components/layout/workspace-hero'
 import { PaymentModal } from '@/components/payments/payment-modal'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
-import { isPastDue } from '@/lib/homework-status'
+import { isDueToday, isPastDue } from '@/lib/homework-status'
 import { getMe, type AuthUser } from '@/lib/auth'
 import {
   activeClassrooms,
   formatDhakaClock,
   formatDhakaToday,
-  greetingForDhaka,
   openDuePeriods,
 } from '@/lib/student-dashboard'
 import {
@@ -70,8 +76,7 @@ export default function StudentDashboardPage() {
 
   async function reload(): Promise<void> {
     try {
-      const next = await fetchDashboardData()
-      setData(next)
+      setData(await fetchDashboardData())
       setError(null)
     } catch {
       setError('Your dashboard could not be loaded. Try again.')
@@ -141,11 +146,12 @@ export default function StudentDashboardPage() {
 
   const { user, enrollments, periods, homework, recordings } = data
   const openDues = openDuePeriods(periods)
+  const homeworkDueToday = homework.filter((h) => isDueToday(h.dueDate))
   const pastDueHomeworkCount = homework.filter((h) =>
     isPastDue(h.dueDate),
   ).length
   const classrooms = activeClassrooms(enrollments)
-  const displayName = user.email.split('@')[0] ?? user.email
+  const firstOpenDue = openDues[0] ?? null
 
   const sortedEnrollments = [...enrollments].sort((a, b) => {
     const rank = (s: string) =>
@@ -155,58 +161,64 @@ export default function StudentDashboardPage() {
     return a.batch.course.title.localeCompare(b.batch.course.title)
   })
 
+  const quickActions = [
+    {
+      href: '/dashboard/classroom',
+      label: 'Join your class',
+      icon: LinkIcon,
+    },
+    {
+      href: '/dashboard/homework',
+      label: 'Your homework',
+      icon: ClipboardListIcon,
+    },
+    {
+      href: '/dashboard/recordings',
+      label: 'Your recordings',
+      icon: VideoIcon,
+    },
+    {
+      href: firstOpenDue ? '/dashboard/dues' : '/dashboard/courses',
+      label: firstOpenDue ? 'Your payment status' : 'Your courses',
+      icon: firstOpenDue ? WalletIcon : CompassIcon,
+    },
+  ]
+
   return (
     <div className="flex flex-col gap-5 sm:gap-7">
-      {/* Compact mobile hero */}
-      <header className="relative overflow-hidden rounded-xl bg-primary-wash">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -top-12 size-36 rounded-full bg-primary/20 sm:size-48"
-        />
-
-        <div className="relative space-y-4 p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-medium text-primary-strong sm:text-sm">
-                  {greetingForDhaka()}
-                </p>
-                {user.studentId ? (
-                  <Badge className="bg-primary text-primary-foreground">
-                    {user.studentId}
-                  </Badge>
-                ) : null}
-              </div>
-              <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Hello, {displayName}
-              </h1>
-              <p className="hidden max-w-lg text-sm leading-relaxed text-muted-foreground sm:block">
-                Join class, clear homework, catch recordings — dues stay per
-                course, never mixed into one total.
-              </p>
-            </div>
-
-            <div className="shrink-0 rounded-xl bg-background/80 px-3 py-2 text-right">
-              <p className="font-heading text-base font-semibold tabular-nums text-foreground sm:text-lg">
-                {clock}
-              </p>
-              <p className="max-w-28 text-xs leading-tight text-muted-foreground">
-                {formatDhakaToday()}
-              </p>
-            </div>
+      <WorkspaceHero
+        user={user}
+        description="Your classroom, homework, and dues — each course stays separate, never mixed into one total."
+        aside={
+          <div className="shrink-0 rounded-xl bg-background/80 px-3 py-2 text-right">
+            <p className="font-heading text-base font-semibold tabular-nums text-foreground sm:text-lg">
+              {clock}
+            </p>
+            <p className="max-w-28 text-xs leading-tight text-muted-foreground">
+              {formatDhakaToday()}
+            </p>
           </div>
-
+        }
+        actions={
           <div className="flex gap-2">
             <Button
               className="min-h-11 flex-1 sm:flex-none"
-              render={<Link href="/dashboard/batches" />}
+              render={<Link href="/dashboard/classroom" />}
             >
-              <CompassIcon />
-              Browse
+              <LinkIcon />
+              Join class
             </Button>
             <Button
               variant="secondary"
               className="min-h-11 flex-1 sm:flex-none"
+              render={<Link href="/dashboard/enroll" />}
+            >
+              <CompassIcon />
+              Enroll
+            </Button>
+            <Button
+              variant="ghost"
+              className="hidden min-h-11 sm:inline-flex"
               onClick={() => {
                 void reload()
               }}
@@ -215,8 +227,8 @@ export default function StudentDashboardPage() {
               Refresh
             </Button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {error ? (
         <div
@@ -236,6 +248,7 @@ export default function StudentDashboardPage() {
             hint:
               enrollments.length === 1 ? 'Active shelf' : 'On your shelf',
             tone: 'brand',
+            href: '/dashboard/courses',
           },
           {
             key: 'dues',
@@ -247,13 +260,17 @@ export default function StudentDashboardPage() {
           },
           {
             key: 'homework',
-            label: 'Homework',
-            value: homework.length,
+            label: 'Due today',
+            value: homeworkDueToday.length,
             hint:
               pastDueHomeworkCount > 0
                 ? `${pastDueHomeworkCount} past due`
-                : 'To-do list',
-            tone: pastDueHomeworkCount > 0 ? 'warm' : 'wash',
+                : 'Homework',
+            tone:
+              homeworkDueToday.length > 0 || pastDueHomeworkCount > 0
+                ? 'warm'
+                : 'wash',
+            href: '/dashboard/homework',
           },
           {
             key: 'recordings',
@@ -261,27 +278,70 @@ export default function StudentDashboardPage() {
             value: recordings.length,
             hint: 'By class day',
             tone: 'deep',
+            href: '/dashboard/recordings',
           },
         ]}
       />
 
       <ClassroomSpotlight classrooms={classrooms} />
 
+      <section className="min-w-0 space-y-3">
+        <div className="space-y-1">
+          <h2 className="font-heading text-lg font-semibold tracking-tight text-foreground">
+            Quick actions
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            The actions you reach for most often
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon
+            return (
+              <Button
+                key={action.label}
+                variant="secondary"
+                className="min-h-11 justify-start"
+                render={<Link href={action.href} />}
+              >
+                <Icon />
+                {action.label}
+              </Button>
+            )
+          })}
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-        <HomeworkBoard items={homework} />
+        <HomeworkBoard
+          items={homework}
+          limit={5}
+          viewAllHref="/dashboard/homework"
+        />
         <DuesStrip periods={periods} onPay={setPayingPeriod} />
       </div>
 
-      <RecordingsTimeline items={recordings} />
-
+      <RecordingsTimeline
+        items={recordings}
+        viewAllHref="/dashboard/recordings"
+      />
       <section className="space-y-3 sm:space-y-4">
-        <div className="space-y-1">
-          <h2 className="font-heading text-lg font-semibold tracking-tight text-foreground">
-            Your courses
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Swipe the shelf · join, copy, or pay per course
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div className="space-y-1">
+            <h2 className="font-heading text-lg font-semibold tracking-tight text-foreground">
+              Your courses
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Swipe the shelf · join, copy, or pay per course
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            render={<Link href="/dashboard/courses" />}
+          >
+            View all
+          </Button>
         </div>
         <CourseShelf
           enrollments={sortedEnrollments}

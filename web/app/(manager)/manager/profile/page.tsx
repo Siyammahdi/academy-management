@@ -4,10 +4,17 @@ import { useEffect, useState } from 'react'
 import { RefreshCwIcon } from 'lucide-react'
 
 import { ManagerPageHeader } from '@/components/manager/manager-page-header'
+import { UserAvatar } from '@/components/layout/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getMe, type AuthUser } from '@/lib/auth'
+import {
+  displayName,
+  possessiveProfileTitle,
+  primaryRole,
+  roleLabel,
+} from '@/lib/user-display'
 
 /**
  * Manager — Profile
@@ -49,8 +56,8 @@ export default function ManagerProfilePage() {
     <div className="flex min-w-0 flex-col gap-6">
       <ManagerPageHeader
         eyebrow="Account"
-        title="Profile"
-        description="Your account on An Nahda — email, roles, and linked student id if any. Password changes use the public reset flow."
+        title={user ? possessiveProfileTitle(user) : 'Your profile'}
+        description="Your account on An Nahda — name, email, roles, and linked student id if any. Password changes use the public reset flow."
         actions={
           <Button
             variant="outline"
@@ -80,21 +87,25 @@ export default function ManagerProfilePage() {
 
       {user ? (
         <div className="rounded-xl bg-muted/50 p-5 sm:p-6">
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0 space-y-1">
-              <dt className="text-xs font-medium text-muted-foreground">
-                Email
-              </dt>
-              <dd className="truncate text-sm font-medium text-foreground">
+          <div className="mb-5 flex items-center gap-3">
+            <UserAvatar user={user} size="lg" />
+            <div className="min-w-0">
+              <p className="font-heading text-lg font-semibold text-foreground">
+                {displayName(user)}
+              </p>
+              <p className="truncate text-sm text-muted-foreground">
                 {user.email}
-              </dd>
+              </p>
             </div>
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <dt className="text-xs font-medium text-muted-foreground">
-                User id
+                Linked student id
               </dt>
-              <dd className="truncate font-mono text-xs text-foreground">
-                {user.id}
+              <dd className="text-sm text-foreground">
+                {user.studentId ??
+                  'None — you can still manage batches without a student profile'}
               </dd>
             </div>
             <div className="space-y-2 sm:col-span-2">
@@ -106,23 +117,14 @@ export default function ManagerProfilePage() {
                   <Badge
                     key={role}
                     className={
-                      role === 'manager'
+                      role === primaryRole(user.roles)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-primary-wash text-primary-strong'
                     }
                   >
-                    {role}
+                    {roleLabel(role)}
                   </Badge>
                 ))}
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="text-xs font-medium text-muted-foreground">
-                Linked student id
-              </dt>
-              <dd className="text-sm text-foreground">
-                {user.studentId ??
-                  'None — you can still manage batches without a student profile'}
               </dd>
             </div>
           </dl>

@@ -83,7 +83,7 @@ export default function ManagerBatchesPage() {
     <div className="flex min-w-0 flex-col gap-6">
       <ManagerPageHeader
         eyebrow="Teaching"
-        title="My Batches"
+        title="Your Batches"
         description="Batches you are assigned to. Open a workspace for roster and classroom tools. You cannot create or delete batches — that stays with admin."
         actions={
           <Button

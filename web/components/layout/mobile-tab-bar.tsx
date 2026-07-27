@@ -9,6 +9,7 @@ import {
   GraduationCapIcon,
   LayoutDashboardIcon,
   LayersIcon,
+  RadioIcon,
   WalletIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -21,6 +22,8 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   '/dashboard/dues': WalletIcon,
   '/dashboard/payments': CreditCardIcon,
   '/dashboard/batches': BookOpenIcon,
+  '/dashboard/classroom': RadioIcon,
+  '/dashboard/courses': BookOpenIcon,
   '/manager': LayoutDashboardIcon,
   '/manager/batches': LayersIcon,
   '/manager/payments': ClipboardCheckIcon,

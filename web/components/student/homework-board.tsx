@@ -6,22 +6,31 @@ import { ClipboardListIcon } from 'lucide-react'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
-import { isPastDue } from '@/lib/homework-status'
+import { isDueToday, isPastDue } from '@/lib/homework-status'
 import type { HomeworkWithContext } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 interface HomeworkBoardProps {
   items: HomeworkWithContext[]
+  /** Cap list length on the home dashboard. */
+  limit?: number
+  viewAllHref?: string
 }
 
-export function HomeworkBoard({ items }: HomeworkBoardProps) {
+export function HomeworkBoard({
+  items,
+  limit,
+  viewAllHref,
+}: HomeworkBoardProps) {
   const sorted = [...items].sort((a, b) => {
     const aPast = isPastDue(a.dueDate)
     const bPast = isPastDue(b.dueDate)
     if (aPast !== bPast) return aPast ? -1 : 1
     return a.dueDate.localeCompare(b.dueDate)
   })
+  const visible = limit != null ? sorted.slice(0, limit) : sorted
   const pastDueCount = sorted.filter((h) => isPastDue(h.dueDate)).length
+  const dueTodayCount = sorted.filter((h) => isDueToday(h.dueDate)).length
 
   return (
     <section className="flex h-full flex-col overflow-hidden rounded-xl bg-muted/40">
@@ -40,15 +49,27 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
                   ? 'Nothing assigned yet'
                   : pastDueCount > 0
                     ? `${pastDueCount} past due · finish offline`
-                    : `${items.length} open · finish offline`}
+                    : dueTodayCount > 0
+                      ? `${dueTodayCount} due today`
+                      : `${items.length} open · finish offline`}
               </p>
             </div>
           </div>
+          {viewAllHref && items.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-11 shrink-0"
+              render={<Link href={viewAllHref} />}
+            >
+              View all
+            </Button>
+          ) : null}
         </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {sorted.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-10 text-center">
             <p className="text-sm text-muted-foreground">
               Assignments for your batches show up here.
@@ -57,15 +78,16 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
               variant="link"
               size="sm"
               className="h-auto text-primary-strong"
-              render={<Link href="/dashboard/batches" />}
+              render={<Link href="/dashboard/enroll" />}
             >
               Browse batches
             </Button>
           </div>
         ) : (
           <ul className="flex flex-col gap-1">
-            {sorted.map((hw) => {
+            {visible.map((hw) => {
               const pastDue = isPastDue(hw.dueDate)
+              const today = isDueToday(hw.dueDate)
               return (
                 <li
                   key={hw.id}
@@ -80,7 +102,9 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
                         'mt-1 size-4 shrink-0 rounded-full border-2',
                         pastDue
                           ? 'border-status-overdue bg-status-overdue/20'
-                          : 'border-primary/40',
+                          : today
+                            ? 'border-status-pending bg-status-pending/20'
+                            : 'border-primary/40',
                       )}
                       aria-hidden
                     />
@@ -88,8 +112,16 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium text-foreground">{hw.title}</p>
                         <StatusBadge
-                          tone={pastDue ? 'overdue' : 'neutral'}
-                          label={pastDue ? 'Past due' : 'To do'}
+                          tone={
+                            pastDue ? 'overdue' : today ? 'pending' : 'neutral'
+                          }
+                          label={
+                            pastDue
+                              ? 'Past due'
+                              : today
+                                ? 'Due today'
+                                : 'To do'
+                          }
                         />
                       </div>
                       <p className="truncate text-xs text-muted-foreground">

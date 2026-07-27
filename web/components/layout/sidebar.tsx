@@ -1,18 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   BarChart3Icon,
   BookOpenIcon,
   ClipboardCheckIcon,
+  CompassIcon,
   CreditCardIcon,
   GraduationCapIcon,
   LayoutDashboardIcon,
   LayersIcon,
   LinkIcon,
-  LogOutIcon,
   NotebookPenIcon,
+  RadioIcon,
   SettingsIcon,
   ShieldIcon,
   UserCogIcon,
@@ -22,10 +23,10 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { UserMenu } from '@/components/layout/user-menu'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { AuthUser } from '@/lib/auth'
 import { cn } from '@/lib/utils'
-import { apiFetch } from '@/lib/api'
-import { clearSession, getRefreshToken } from '@/lib/session'
 
 export interface NavItem {
   href: string
@@ -50,6 +51,12 @@ const ICONS: Record<string, LucideIcon> = {
   '/dashboard/dues': WalletIcon,
   '/dashboard/payments': CreditCardIcon,
   '/dashboard/batches': BookOpenIcon,
+  '/dashboard/courses': BookOpenIcon,
+  '/dashboard/classroom': RadioIcon,
+  '/dashboard/homework': NotebookPenIcon,
+  '/dashboard/recordings': VideoIcon,
+  '/dashboard/enroll': CompassIcon,
+  '/dashboard/profile': UserIcon,
   '/admin': LayoutDashboardIcon,
   '/admin/courses': BookOpenIcon,
   '/admin/batches': LayersIcon,
@@ -81,6 +88,8 @@ export interface SidebarProps {
   sections?: NavSection[]
   className?: string
   onNavigate?: () => void
+  user?: AuthUser | null
+  userLoading?: boolean
 }
 
 export function Sidebar({
@@ -89,27 +98,12 @@ export function Sidebar({
   sections,
   className,
   onNavigate,
+  user = null,
+  userLoading = false,
 }: SidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const navSections = sections ?? sectionsFromItems(items)
   const rootHref = navSections[0]?.items[0]?.href
-
-  async function handleLogout(): Promise<void> {
-    const refreshToken = getRefreshToken()
-    if (refreshToken) {
-      try {
-        await apiFetch('/auth/logout', {
-          method: 'POST',
-          body: JSON.stringify({ refreshToken }),
-        })
-      } catch {
-        // Local clear still happens — server revoke is best-effort.
-      }
-    }
-    clearSession()
-    router.push('/login')
-  }
 
   return (
     <nav className={cn('flex h-full flex-col', className)}>
@@ -121,13 +115,16 @@ export function Sidebar({
           <p className="truncate font-heading text-sm font-semibold tracking-tight text-foreground">
             {title}
           </p>
-          <p className="text-xs text-muted-foreground">Academy portal</p>
+          <p className="text-xs text-muted-foreground">Your workspace</p>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-3">
         {navSections.map((section, sectionIndex) => (
-          <div key={section.label ?? `section-${sectionIndex}`} className="space-y-1">
+          <div
+            key={section.label ?? `section-${sectionIndex}`}
+            className="space-y-1"
+          >
             {section.label ? (
               <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 {section.label}
@@ -163,18 +160,18 @@ export function Sidebar({
         ))}
       </div>
 
-      <div className="p-3">
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-start gap-2.5 text-muted-foreground"
-          onClick={() => {
-            void handleLogout()
-          }}
-        >
-          <LogOutIcon className="size-4" />
-          Log out
-        </Button>
+      <div className="border-t border-border/40 p-2">
+        {userLoading ? (
+          <div className="flex items-center gap-2.5 px-2 py-2">
+            <Skeleton className="size-8 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2.5 w-14" />
+            </div>
+          </div>
+        ) : user ? (
+          <UserMenu user={user} align="start" />
+        ) : null}
       </div>
     </nav>
   )

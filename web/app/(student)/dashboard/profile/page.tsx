@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { RefreshCwIcon } from 'lucide-react'
 
-import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { UserAvatar } from '@/components/layout/user-avatar'
+import { StudentPageHeader } from '@/components/student/student-page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,7 +16,11 @@ import {
   roleLabel,
 } from '@/lib/user-display'
 
-export default function AdminProfilePage() {
+/**
+ * Student — Profile
+ * Identity from GET /auth/me (now includes fullName when linked).
+ */
+export default function StudentProfilePage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,10 +54,10 @@ export default function AdminProfilePage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <AdminPageHeader
+      <StudentPageHeader
         eyebrow="Account"
         title={user ? possessiveProfileTitle(user) : 'Your profile'}
-        description="Who you are in An Nahda — name, email, roles, and linked student id if any. Password changes use the public reset flow."
+        description="Your An Nahda account — name, email, roles, and student id. Password changes use the public reset flow."
         actions={
           <Button
             variant="outline"
@@ -97,11 +101,10 @@ export default function AdminProfilePage() {
           <dl className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <dt className="text-xs font-medium text-muted-foreground">
-                Linked student id
+                Student id
               </dt>
-              <dd className="text-sm text-foreground">
-                {user.studentId ??
-                  'None — owner accounts usually have no student profile'}
+              <dd className="text-sm font-medium text-foreground">
+                {user.studentId ?? 'Not linked'}
               </dd>
             </div>
             <div className="space-y-2 sm:col-span-2">
@@ -128,8 +131,8 @@ export default function AdminProfilePage() {
       ) : null}
 
       <aside className="rounded-xl bg-muted/50 px-4 py-4 text-sm text-muted-foreground">
-        Profile edit, avatar, and notification preferences are not in the API.
-        Auth is via <code className="text-foreground">GET /auth/me</code>.
+        You can join class, view homework and recordings, and pay your own
+        dues. Course management and payment verification stay with staff.
       </aside>
     </div>
   )

@@ -1,24 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import type { ReactNode } from 'react'
-import { LogOutIcon, MenuIcon, XIcon } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useState, type ReactNode } from 'react'
+import { MenuIcon, XIcon } from 'lucide-react'
 
+import { CurrentUserProvider, useCurrentUser } from '@/components/auth/current-user-provider'
 import { MobileTabBar } from './mobile-tab-bar'
 import { Sidebar } from './sidebar'
 import type { NavItem, NavSection } from './sidebar'
+import { UserMenu } from './user-menu'
 import { Container } from './container'
 import { Button } from '@/components/ui/button'
-import { apiFetch } from '@/lib/api'
-import { clearSession, getRefreshToken } from '@/lib/session'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 export interface AppShellProps {
   children: ReactNode
   title?: string
   items?: NavItem[]
-  /** Grouped sidebar sections (admin). When set, overrides flat `items` in the sidebar. */
+  /** Grouped sidebar sections. When set, overrides flat `items` in the sidebar. */
   sections?: NavSection[]
   /**
    * `tabs` — fixed bottom nav (student / manager).
@@ -27,7 +26,7 @@ export interface AppShellProps {
   mobileNav?: 'drawer' | 'tabs'
 }
 
-export function AppShell({
+function AppShellChrome({
   children,
   title,
   items = [],
@@ -35,24 +34,8 @@ export function AppShell({
   mobileNav = 'drawer',
 }: AppShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const router = useRouter()
+  const { user, loading } = useCurrentUser()
   const useTabs = mobileNav === 'tabs' && items.length > 0
-
-  async function handleLogout(): Promise<void> {
-    const refreshToken = getRefreshToken()
-    if (refreshToken) {
-      try {
-        await apiFetch('/auth/logout', {
-          method: 'POST',
-          body: JSON.stringify({ refreshToken }),
-        })
-      } catch {
-        // Local clear still happens.
-      }
-    }
-    clearSession()
-    router.push('/login')
-  }
 
   return (
     <div className="flex min-h-svh flex-col overflow-x-clip bg-background">
@@ -72,18 +55,11 @@ export function AppShell({
         </div>
 
         {useTabs ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11 shrink-0 text-muted-foreground"
-            aria-label="Log out"
-            onClick={() => {
-              void handleLogout()
-            }}
-          >
-            <LogOutIcon className="size-5" />
-          </Button>
+          loading || !user ? (
+            <Skeleton className="size-11 rounded-lg" />
+          ) : (
+            <UserMenu user={user} compact align="end" />
+          )
         ) : (
           <Button
             type="button"
@@ -105,6 +81,8 @@ export function AppShell({
             title={title}
             items={items}
             sections={sections}
+            user={user}
+            userLoading={loading}
           />
         </aside>
 
@@ -121,6 +99,8 @@ export function AppShell({
                 title={title}
                 items={items}
                 sections={sections}
+                user={user}
+                userLoading={loading}
                 onNavigate={() => setIsDrawerOpen(false)}
               />
             </div>
@@ -149,5 +129,13 @@ export function AppShell({
 
       {useTabs ? <MobileTabBar items={items} /> : null}
     </div>
+  )
+}
+
+export function AppShell(props: AppShellProps) {
+  return (
+    <CurrentUserProvider>
+      <AppShellChrome {...props} />
+    </CurrentUserProvider>
   )
 }

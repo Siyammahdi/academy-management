@@ -4,7 +4,10 @@ export class UserResponseDto {
   id: string;
   email: string;
   roles: RoleName[];
-  studentId: string | null; // human-readable Student.studentId (e.g. "ANA-0042"), not the internal cuid
+  /** Human-readable Student.studentId (e.g. "ANA-0042"), not the internal cuid. */
+  studentId: string | null;
+  /** From linked Student profile when present; null for staff-only accounts. */
+  fullName: string | null;
 }
 
 export class AuthResponseDto {

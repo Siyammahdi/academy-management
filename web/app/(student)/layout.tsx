@@ -1,20 +1,26 @@
 import type { ReactNode } from 'react'
-import { AppShell } from '../../components/layout/app-shell'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home' },
-  { href: '/dashboard/dues', label: 'Dues' },
-  { href: '/dashboard/payments', label: 'Pay' },
-  { href: '/dashboard/batches', label: 'Enroll' },
-]
+import { AppShell } from '@/components/layout/app-shell'
+import {
+  STUDENT_MOBILE_TABS,
+  STUDENT_NAV_SECTIONS,
+} from '@/lib/student-nav'
 
-// Real access control is middleware.ts (cookie-based UX gate) plus the
-// API's own scoping from the token on every request (the actual
-// authority — doc 04 §6, never a client-supplied student id). This layout
-// only supplies the application chrome — bottom tabs on phone, sidebar on desktop.
+const MOBILE_ITEMS = STUDENT_MOBILE_TABS.map(({ href, label, shortLabel }) => ({
+  href,
+  label: shortLabel ?? label,
+}))
+
+// Real access control is middleware + API scoping. This layout only
+// supplies chrome — sidebar sections on desktop, tabs on phone.
 export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
-    <AppShell title="An Nahda" items={NAV_ITEMS} mobileNav="tabs">
+    <AppShell
+      title="An Nahda"
+      sections={STUDENT_NAV_SECTIONS}
+      items={MOBILE_ITEMS}
+      mobileNav="tabs"
+    >
       {children}
     </AppShell>
   )

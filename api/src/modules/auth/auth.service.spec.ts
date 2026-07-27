@@ -154,7 +154,7 @@ describe('AuthService', () => {
             status: 'active',
             passwordHash,
             roles: [{ role: 'student' }],
-            student: { studentId: 'ANA-0001' },
+            student: { studentId: 'ANA-0001', fullName: 'Ana Rahman' },
           }),
         },
         refreshToken: { create: jest.fn().mockResolvedValue({}) },

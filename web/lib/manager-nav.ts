@@ -36,7 +36,7 @@ export const MANAGER_NAV_SECTIONS: ManagerNavSection[] = [
   {
     label: 'Teaching',
     items: [
-      { href: '/manager/batches', label: 'My Batches' },
+      { href: '/manager/batches', label: 'Your Batches' },
       { href: '/manager/class-links', label: 'Class Links' },
       { href: '/manager/homework', label: 'Homework' },
       { href: '/manager/recordings', label: 'Recordings' },
@@ -44,18 +44,19 @@ export const MANAGER_NAV_SECTIONS: ManagerNavSection[] = [
   },
   {
     label: 'Students',
-    items: [{ href: '/manager/students', label: 'Students' }],
+    items: [{ href: '/manager/students', label: 'Your Students' }],
   },
   {
     label: 'Payments',
-    items: [{ href: '/manager/payments', label: 'Pending Verification' }],
+    items: [
+      { href: '/manager/payments', label: 'Pending Verifications' },
+    ],
   },
   {
     label: 'Account',
     items: [{ href: '/manager/profile', label: 'Profile' }],
   },
 ]
-
 /** Flat list for shells / lookups. */
 export const MANAGER_NAV_FLAT: ManagerNavItem[] =
   MANAGER_NAV_SECTIONS.flatMap((section) => section.items)

@@ -2,10 +2,10 @@ import Link from 'next/link'
 import {
   BookOpenIcon,
   ExternalLinkIcon,
-  LinkIcon,
   UsersIcon,
 } from 'lucide-react'
 
+import { CourseCover } from '@/components/student/course-cover'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
@@ -87,42 +87,36 @@ function BatchCard({
         'md:w-auto md:max-w-none',
       )}
     >
-      <div
-        className={cn(
-          'flex min-h-32 flex-col justify-between p-4 md:aspect-video md:min-h-0',
-          hasLink
-            ? 'bg-primary-strong text-primary-foreground'
-            : 'bg-primary-wash text-primary-strong',
-        )}
-      >
-        <div className="flex items-start justify-between gap-2">
+      <div className="relative">
+        <CourseCover
+          courseId={batch.courseId}
+          title={title}
+          className="aspect-video w-full"
+        />
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+          <StatusBadge
+            tone={STATUS_TONE[batch.status]}
+            label={STATUS_LABEL[batch.status]}
+          />
           {hasLink ? (
-            <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-medium">
-              {STATUS_LABEL[batch.status]}
+            <span className="rounded-md bg-background/90 px-2 py-0.5 text-xs font-medium text-primary-strong">
+              Link set
             </span>
           ) : (
-            <StatusBadge
-              tone={STATUS_TONE[batch.status]}
-              label={STATUS_LABEL[batch.status]}
-            />
-          )}
-          {hasLink ? (
-            <LinkIcon className="size-4 shrink-0 opacity-80" />
-          ) : (
-            <span className="shrink-0 text-xs font-medium opacity-80">
+            <span className="rounded-md bg-status-pending-bg px-2 py-0.5 text-xs font-medium text-status-pending">
               No link
             </span>
           )}
         </div>
-        <div className="min-w-0 pt-3">
-          <p className="font-heading text-lg font-semibold leading-snug break-words">
-            {batch.name}
-          </p>
-          <p className="mt-0.5 truncate text-sm opacity-80">{title}</p>
-        </div>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <div className="min-w-0 space-y-0.5">
+          <p className="font-heading text-base font-semibold text-foreground">
+            {batch.name}
+          </p>
+          <p className="truncate text-sm text-muted-foreground">{title}</p>
+        </div>
         <p className="text-xs tabular-nums text-muted-foreground">
           Starts {formatDate(batch.courseStartDate)} · {batch.seatsRemaining}/
           {batch.capacity} seats left

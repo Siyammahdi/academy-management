@@ -58,7 +58,7 @@ export class AuthService {
 
     let created: {
       user: { id: string; email: string };
-      student: { studentId: string };
+      student: { studentId: string; fullName: string };
     };
 
     try {
@@ -368,13 +368,14 @@ export class AuthService {
   private toUserResponse(
     user: { id: string; email: string },
     roles: RoleName[],
-    student: { studentId: string } | null,
+    student: { studentId: string; fullName: string } | null,
   ): UserResponseDto {
     return {
       id: user.id,
       email: user.email,
       roles,
       studentId: student?.studentId ?? null,
+      fullName: student?.fullName ?? null,
     };
   }
 }

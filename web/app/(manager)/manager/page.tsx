@@ -19,13 +19,12 @@ import {
 import { ManagedBatchShelf } from '@/components/manager/managed-batch-shelf'
 import { ManagerHomeSkeleton } from '@/components/manager/manager-home-skeleton'
 import { PendingVerifyStrip } from '@/components/manager/pending-verify-strip'
-import { Badge } from '@/components/ui/badge'
+import { WorkspaceHero } from '@/components/layout/workspace-hero'
 import { Button } from '@/components/ui/button'
 import { getMe, type AuthUser } from '@/lib/auth'
 import {
   formatDhakaClock,
   formatDhakaToday,
-  greetingForDhaka,
 } from '@/lib/student-dashboard'
 import {
   getAtRiskCount,
@@ -210,7 +209,6 @@ export default function ManagerOverviewPage() {
     recentEnrollments,
   } = data
 
-  const displayName = user.email.split('@')[0] ?? user.email
   const runningCount = batches.filter((b) => b.status === 'running').length
   const missingLink = batches.filter(
     (b) => b.status !== 'completed' && !b.classLink,
@@ -225,7 +223,7 @@ export default function ManagerOverviewPage() {
   const metrics = [
     {
       key: 'students',
-      label: 'Students',
+      label: 'Your students',
       value: recentEnrollments,
       hint: 'Across batches',
       tone: 'brand' as const,
@@ -234,7 +232,7 @@ export default function ManagerOverviewPage() {
     },
     {
       key: 'pending',
-      label: 'Verify',
+      label: 'Your queue',
       value: pendingTotal,
       hint: pendingTotal === 0 ? 'Clear' : 'Waiting',
       tone: pendingTotal > 0 ? ('warm' as const) : ('calm' as const),
@@ -305,57 +303,36 @@ export default function ManagerOverviewPage() {
     },
     {
       href: '/manager/payments',
-      label: 'Verify payments',
+      label: 'Your pending verifications',
       icon: ClipboardCheckIcon,
     },
     {
       href: '/manager/students',
-      label: 'Open student list',
+      label: 'Your students',
       icon: UsersIcon,
     },
   ]
 
   return (
     <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
-      <header className="relative overflow-hidden rounded-xl bg-primary-wash">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -top-12 size-32 rounded-full bg-primary/20 sm:size-48"
-        />
-
-        <div className="relative space-y-3 p-4 sm:space-y-4 sm:p-6">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-medium text-primary-strong">
-                  {greetingForDhaka()}
-                </p>
-                <Badge className="bg-primary text-primary-foreground">
-                  Manager
-                </Badge>
-              </div>
-              <h1 className="truncate font-heading text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Hello, {displayName}
-              </h1>
-              <p className="hidden text-sm text-muted-foreground sm:block">
-                {runningCount > 0
-                  ? `${runningCount} running batch${runningCount === 1 ? '' : 'es'} · `
-                  : ''}
-                Confirm payments and run the classroom — money movement stays
-                with admin.
-              </p>
-            </div>
-
-            <div className="shrink-0 rounded-xl bg-background/80 px-2.5 py-1.5 text-right sm:px-3 sm:py-2">
-              <p className="font-heading text-sm font-semibold tabular-nums text-foreground sm:text-lg">
-                {clock}
-              </p>
-              <p className="hidden text-xs text-muted-foreground sm:block">
-                {formatDhakaToday()}
-              </p>
-            </div>
+      <WorkspaceHero
+        user={user}
+        description={
+          runningCount > 0
+            ? `${runningCount} running batch${runningCount === 1 ? '' : 'es'} on your desk · confirm payments and run the classroom — money movement stays with admin.`
+            : 'Confirm payments and run the classroom for your assigned batches — money movement stays with admin.'
+        }
+        aside={
+          <div className="shrink-0 rounded-xl bg-background/80 px-2.5 py-1.5 text-right sm:px-3 sm:py-2">
+            <p className="font-heading text-sm font-semibold tabular-nums text-foreground sm:text-lg">
+              {clock}
+            </p>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              {formatDhakaToday()}
+            </p>
           </div>
-
+        }
+        actions={
           <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button
               className="min-h-11 min-w-0"
@@ -370,7 +347,7 @@ export default function ManagerOverviewPage() {
               render={<Link href="/manager/batches" />}
             >
               <UsersIcon />
-              Batches
+              Your batches
             </Button>
             <Button
               variant="ghost"
@@ -383,8 +360,8 @@ export default function ManagerOverviewPage() {
               Refresh
             </Button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {error ? (
         <div

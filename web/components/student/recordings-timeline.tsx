@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { PlayIcon, VideoIcon } from 'lucide-react'
 
 import { YoutubeEmbed } from '@/components/media/youtube-embed'
@@ -13,9 +14,13 @@ import { cn } from '@/lib/utils'
 
 interface RecordingsTimelineProps {
   items: RecordingWithContext[]
+  viewAllHref?: string
 }
 
-export function RecordingsTimeline({ items }: RecordingsTimelineProps) {
+export function RecordingsTimeline({
+  items,
+  viewAllHref,
+}: RecordingsTimelineProps) {
   const groups = useMemo(() => groupRecordingsByDhakaDay(items), [items])
   const [activeDay, setActiveDay] = useState(groups[0]?.key ?? '')
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -56,6 +61,15 @@ export function RecordingsTimeline({ items }: RecordingsTimelineProps) {
             Organised by class day · newest first
           </p>
         </div>
+        {viewAllHref ? (
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            render={<Link href={viewAllHref} />}
+          >
+            View all
+          </Button>
+        ) : null}
       </div>
 
       {/* Day picker — horizontal snap for mobile app feel */}

@@ -36,10 +36,13 @@ export interface BatchListQuery extends PaginationQuery {
 }
 
 export interface RosterEntry {
+  /** Enrollment row id — required for admin withdraw. */
+  enrollmentId: string;
   studentId: string;
   fullName: string;
   phone: string;
   enrollmentStatus: string;
+  inPenalty: boolean;
   enrolledAt: Date;
 }
 
@@ -377,10 +380,12 @@ export class BatchesService {
     });
 
     return enrollments.map((enrollment) => ({
+      enrollmentId: enrollment.id,
       studentId: enrollment.student.studentId,
       fullName: enrollment.student.fullName,
       phone: enrollment.student.phone,
       enrollmentStatus: enrollment.status,
+      inPenalty: enrollment.inPenalty,
       enrolledAt: enrollment.enrolledAt,
     }));
   }

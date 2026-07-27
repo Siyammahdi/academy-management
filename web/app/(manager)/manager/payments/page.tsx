@@ -1,12 +1,17 @@
-'use client';
+'use client'
 
-import { PendingPaymentsQueue } from '../../../../components/payments/pending-payments-queue';
+import { PendingPaymentsQueue } from '@/components/payments/pending-payments-queue'
 
+/**
+ * Manager — Pending Verification
+ * Manual payment queue scoped to assigned batches. Self-approval blocked
+ * by the API (RBAC-03). Gateway payments never appear here.
+ */
 export default function ManagerPaymentsPage() {
   return (
     <PendingPaymentsQueue
-      eyebrow="Manager"
-      description="Manual payments awaiting verification in your assigned batches. Gateway payments settle automatically from the SSLCommerz webhook and never appear here."
+      eyebrow="Payments"
+      description="Manual payments in your assigned batches. Verify or reject — never your own enrollment. Gateway payments settle from the webhook and stay out of this queue."
     />
-  );
+  )
 }

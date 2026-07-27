@@ -87,8 +87,9 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Create your account"
-      description="Register to enroll in a batch and track your dues."
+      eyebrow="Get started"
+      title="Create your student account"
+      description="Register once, then enroll in batches and track each course’s dues on their own."
       footer={
         <>
           Already registered?{' '}
@@ -101,53 +102,61 @@ export default function RegisterPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <FieldGroup className="gap-5">
-          <Field data-invalid={Boolean(fieldErrors.fullName) || undefined}>
-            <FieldLabel htmlFor="fullName">Full name</FieldLabel>
-            <Input
-              id="fullName"
-              name="fullName"
-              autoComplete="name"
-              placeholder="Abdullah Rahman"
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value)
-                clearField('fullName')
-              }}
-              aria-invalid={Boolean(fieldErrors.fullName) || undefined}
-              disabled={isPending}
-            />
-            {fieldErrors.fullName ? (
-              <FieldError>{fieldErrors.fullName}</FieldError>
-            ) : null}
-          </Field>
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5 sm:space-y-6"
+        noValidate
+      >
+        <FieldGroup className="gap-4 sm:gap-5">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+            <Field data-invalid={Boolean(fieldErrors.fullName) || undefined}>
+              <FieldLabel htmlFor="fullName">Full name</FieldLabel>
+              <Input
+                id="fullName"
+                name="fullName"
+                autoComplete="name"
+                placeholder="Abdullah Rahman"
+                className="h-11"
+                value={fullName}
+                onChange={(e) => {
+                  setFullName(e.target.value)
+                  clearField('fullName')
+                }}
+                aria-invalid={Boolean(fieldErrors.fullName) || undefined}
+                disabled={isPending}
+              />
+              {fieldErrors.fullName ? (
+                <FieldError>{fieldErrors.fullName}</FieldError>
+              ) : null}
+            </Field>
 
-          <Field data-invalid={Boolean(fieldErrors.phone) || undefined}>
-            <FieldLabel htmlFor="phone">Phone</FieldLabel>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              placeholder="01XXXXXXXXX"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value)
-                clearField('phone')
-              }}
-              aria-invalid={Boolean(fieldErrors.phone) || undefined}
-              disabled={isPending}
-            />
-            {fieldErrors.phone ? (
-              <FieldError>{fieldErrors.phone}</FieldError>
-            ) : (
-              <FieldDescription>
-                Used for guest payment lookup and account recovery.
-              </FieldDescription>
-            )}
-          </Field>
+            <Field data-invalid={Boolean(fieldErrors.phone) || undefined}>
+              <FieldLabel htmlFor="phone">Phone</FieldLabel>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                placeholder="01XXXXXXXXX"
+                className="h-11"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value)
+                  clearField('phone')
+                }}
+                aria-invalid={Boolean(fieldErrors.phone) || undefined}
+                disabled={isPending}
+              />
+              {fieldErrors.phone ? (
+                <FieldError>{fieldErrors.phone}</FieldError>
+              ) : (
+                <FieldDescription>
+                  For guest pay lookup and recovery.
+                </FieldDescription>
+              )}
+            </Field>
+          </div>
 
           <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
             <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -158,6 +167,7 @@ export default function RegisterPage() {
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
+              className="h-11"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value)
@@ -178,6 +188,7 @@ export default function RegisterPage() {
               name="password"
               autoComplete="new-password"
               placeholder="At least 8 characters"
+              className="h-11"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value)
@@ -197,7 +208,7 @@ export default function RegisterPage() {
         {error ? (
           <div
             role="alert"
-            className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+            className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
           >
             {error}
           </div>
@@ -206,7 +217,7 @@ export default function RegisterPage() {
         <Button
           type="submit"
           size="lg"
-          className="w-full"
+          className="h-12 w-full text-base"
           disabled={isPending}
         >
           {isPending ? (

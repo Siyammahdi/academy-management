@@ -3,7 +3,10 @@
 // GET /users, the widened GET /batches/:id and GET /payments/pending
 // includes) — see the api/ changes made alongside this frontend.
 
-import { apiFetch } from './api';
+import { apiFetch, ApiError, type ApiErrorBody } from './api';
+import { getAccessToken } from './session';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api/v1';
 
 export interface PaginationMeta {
   page: number;
@@ -97,10 +100,12 @@ export interface CreateBatchInput {
 export type UpdateBatchInput = Partial<Omit<CreateBatchInput, 'courseId'>>;
 
 export interface RosterEntry {
+  enrollmentId: string;
   studentId: string;
   fullName: string;
   phone: string;
   enrollmentStatus: string;
+  inPenalty: boolean;
   enrolledAt: string;
 }
 
@@ -109,6 +114,17 @@ export interface Student {
   studentId: string;
   fullName: string;
   phone: string;
+}
+
+export interface StudentListItem {
+  id: string;
+  studentId: string;
+  fullName: string;
+  phone: string;
+  status: 'active' | 'inactive';
+  email: string | null;
+  activeEnrollments: number;
+  createdAt: string;
 }
 
 export interface Enrollment {
@@ -174,7 +190,11 @@ export interface UserSummary {
   id: string;
   email: string;
   roles: string[];
+  createdAt?: string;
+  hasStudentProfile?: boolean;
 }
+
+export type RoleName = 'admin' | 'manager' | 'student';
 
 function toQueryString(
   params: Record<string, string | number | undefined>,
@@ -288,6 +308,24 @@ export function getRoster(batchId: string): Promise<RosterEntry[]> {
   return apiFetch(`/batches/${batchId}/roster`);
 }
 
+/** Admin-only — ENR-08. `studentId` is the Student row id (cuid), not ANA-####. */
+export function addLateJoiner(
+  batchId: string,
+  studentId: string,
+): Promise<{ enrollment: { id: string; status: string } }> {
+  return apiFetch(`/batches/${batchId}/late-joiner`, {
+    method: 'POST',
+    body: JSON.stringify({ studentId }),
+  });
+}
+
+/** Admin-only — withdraw an enrollment. */
+export function withdrawEnrollment(enrollmentId: string): Promise<Enrollment> {
+  return apiFetch(`/enrollments/${enrollmentId}/withdraw`, {
+    method: 'POST',
+  });
+}
+
 // Self-scoped for a manager (or an admin who also manages batches) — not in
 // doc 06's own endpoint table; added because there was no way at all for a
 // manager to discover which batches they're assigned to.
@@ -315,13 +353,87 @@ export function rejectPayment(id: string): Promise<Payment> {
   return apiFetch(`/payments/${id}/reject`, { method: 'POST' });
 }
 
+export function refundPayment(
+  id: string,
+  input: { amount: string; reason: string },
+): Promise<unknown> {
+  return apiFetch(`/payments/${id}/refund`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// Admin-only job triggers (api/src/jobs) — same queue path as cron.
+export function triggerPenaltySweep(): Promise<{ jobId: string }> {
+  return apiFetch('/jobs/penalty-sweep/trigger', { method: 'POST' });
+}
+
+export function triggerBillingGeneration(): Promise<{ jobId: string }> {
+  return apiFetch('/jobs/billing-generation/trigger', { method: 'POST' });
+}
+
+export function triggerGatewayExpiry(): Promise<{ jobId: string }> {
+  return apiFetch('/jobs/gateway-expiry/trigger', { method: 'POST' });
+}
+
 // Small additive endpoints backing the overview page and the manager picker.
 export function getStudentCount(): Promise<{ count: number }> {
   return apiFetch('/students/count');
 }
 
-export function listUsers(role?: string): Promise<UserSummary[]> {
-  return apiFetch(`/users${toQueryString({ role })}`);
+export function listStudents(params?: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  status?: 'active' | 'inactive';
+}): Promise<Paginated<StudentListItem>> {
+  return apiFetch(
+    `/students${toQueryString({
+      page: params?.page,
+      limit: params?.limit,
+      q: params?.q,
+      status: params?.status,
+    })}`,
+  );
+}
+
+export function createUser(input: {
+  email: string
+  password: string
+  roles: RoleName[]
+  fullName?: string
+  phone?: string
+}): Promise<UserSummary> {
+  return apiFetch('/users', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function listUsers(
+  role?: string,
+  q?: string,
+): Promise<UserSummary[]> {
+  return apiFetch(`/users${toQueryString({ role, q })}`);
+}
+
+export function assignUserRole(
+  userId: string,
+  role: RoleName,
+): Promise<UserSummary> {
+  return apiFetch(`/users/${userId}/roles`, {
+    method: 'POST',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export function removeUserRole(
+  userId: string,
+  role: RoleName,
+): Promise<UserSummary> {
+  return apiFetch(`/users/${userId}/roles/${role}`, {
+    method: 'DELETE',
+  });
 }
 
 // Student self-service (doc 06 §5/§6/§7) — every one of these is scoped by
@@ -490,4 +602,178 @@ export function deleteRecording(id: string): Promise<void> {
 
 export function listMyRecordings(): Promise<RecordingWithContext[]> {
   return apiFetch('/me/recordings');
+}
+
+// Reporting (doc 06 §11) — revenue, outstanding, enrollment capacity, ledger, audit logs.
+// These are admin/manager read-only endpoints.
+
+export interface RevenueByMonth {
+  periodMonth: string
+  revenue: string
+}
+
+export interface RevenueReport {
+  totalRevenue: string
+  byMonth: RevenueByMonth[]
+}
+
+export interface OutstandingItem {
+  billingPeriodId: string
+  periodMonth: string
+  courseTitle: string
+  batchName: string
+  amountOutstanding: string
+}
+
+export interface OutstandingReport {
+  totalOutstanding: string
+  dueCount: number
+  items: OutstandingItem[]
+  meta: PaginationMeta
+}
+
+export interface EnrollmentBatchReport {
+  batchId: string
+  batchName: string
+  courseTitle: string
+  capacity: number
+  filled: number
+  pendingCount: number
+  seatRemaining: number
+  status: string
+}
+
+export interface EnrollmentReport {
+  batches: EnrollmentBatchReport[]
+  totals: { filled: number; pending: number; fullBatches: number }
+}
+
+export type LedgerEntryKind = 'payment' | 'refund'
+
+export interface LedgerEntry {
+  kind: LedgerEntryKind
+  id: string
+  createdAt: string
+  periodMonth: string
+  courseTitle: string
+  batchName: string
+  amount: string
+  status?: string
+  method?: PaymentMethod
+  transactionReference?: string | null
+  refundReason?: string
+}
+
+export interface LedgerReport {
+  entries: LedgerEntry[]
+  meta: PaginationMeta
+}
+
+export interface AuditLogEntry {
+  id: string
+  actorUserId: string | null
+  action: string
+  targetType: string
+  targetId: string
+  createdAt: string
+  details: unknown | null
+}
+
+export function listReportsRevenue(query: {
+  from?: string
+  to?: string
+  batchId?: string
+}): Promise<RevenueReport> {
+  return apiFetch(
+    `/reports/revenue${toQueryString({ from: query.from, to: query.to, batchId: query.batchId })}`,
+  )
+}
+
+export function listReportsOutstanding(query: {
+  from?: string
+  to?: string
+  batchId?: string
+  page?: number
+  limit?: number
+}): Promise<OutstandingReport> {
+  return apiFetch(
+    `/reports/outstanding${toQueryString({ from: query.from, to: query.to, batchId: query.batchId, page: query.page, limit: query.limit })}`,
+  )
+}
+
+export function listReportsEnrollments(query: { batchId?: string }): Promise<EnrollmentReport> {
+  return apiFetch(`/reports/enrollments${toQueryString({ batchId: query.batchId })}`)
+}
+
+export function listReportsLedger(query: {
+  from?: string
+  to?: string
+  batchId?: string
+  page?: number
+  limit?: number
+}): Promise<LedgerReport> {
+  return apiFetch(
+    `/reports/ledger${toQueryString({ from: query.from, to: query.to, batchId: query.batchId, page: query.page, limit: query.limit })}`,
+  )
+}
+
+export function listAuditLogs(query: {
+  actorUserId?: string
+  action?: string
+  targetType?: string
+  targetId?: string
+  page?: number
+  limit?: number
+}): Promise<Paginated<AuditLogEntry>> {
+  return apiFetch(
+    `/audit-logs${toQueryString({
+      actorUserId: query.actorUserId,
+      action: query.action,
+      targetType: query.targetType,
+      targetId: query.targetId,
+      page: query.page,
+      limit: query.limit,
+    })}`,
+  )
+}
+
+/** Admin-only CSV download of the ledger for the selected month range. */
+export async function downloadReportsExport(query: {
+  from?: string
+  to?: string
+  batchId?: string
+}): Promise<void> {
+  const token = getAccessToken()
+  const path = `/reports/export${toQueryString({
+    from: query.from,
+    to: query.to,
+    batchId: query.batchId,
+  })}`
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    let body: unknown
+    try {
+      body = text.length > 0 ? JSON.parse(text) : undefined
+    } catch {
+      body = undefined
+    }
+    if (body && typeof body === 'object' && body !== null && 'error' in body) {
+      throw new ApiError(body as ApiErrorBody)
+    }
+    throw new Error('Export failed')
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ledger_${query.from ?? 'from'}_${query.to ?? 'to'}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }

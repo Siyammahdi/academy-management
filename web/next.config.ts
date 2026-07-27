@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next'
 
+
+
 /**
  * Same-origin API proxy. The browser calls `/api/v1/...` on the Next host;
  * Next forwards to Nest. That removes CORS for phone-on-LAN and Vercel→API
@@ -9,6 +11,9 @@ import type { NextConfig } from 'next'
  * `http://127.0.0.1:4000` locally or `https://your-api.example.com` on Vercel.
  */
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET?.replace(/\/$/, '')
+
+console.log('NEXT CONFIG LOADED');
+console.log('API_PROXY_TARGET =', API_PROXY_TARGET);
 
 const nextConfig: NextConfig = {
   images: {

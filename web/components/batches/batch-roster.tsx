@@ -40,6 +40,14 @@ export interface BatchRosterProps {
   /** Shown in the error state when the batch can't be loaded (e.g. a
    * manager isn't assigned to it, vs. it simply not existing). */
   loadErrorMessage?: string;
+  /**
+   * Which blocks to render.
+   * - `full` — admin / legacy single page (default)
+   * - `overview` — header + batch meta only
+   * - `roster` — header + student table
+   * - `classroom` — header + class link, homework, recordings
+   */
+  mode?: 'full' | 'overview' | 'roster' | 'classroom';
 }
 
 // Used by both /admin/batches/:id (any batch, admin's own management
@@ -49,6 +57,7 @@ export interface BatchRosterProps {
 export function BatchRoster({
   batchId,
   loadErrorMessage = 'This batch could not be loaded.',
+  mode = 'full',
 }: BatchRosterProps) {
   const [batch, setBatch] = useState<BatchWithSeats | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
@@ -58,38 +67,47 @@ export function BatchRoster({
   const [savingClassLink, setSavingClassLink] = useState(false);
   const [classLinkError, setClassLinkError] = useState<string | null>(null);
 
+  const showMeta = mode === 'full' || mode === 'overview'
+  const showClassroom = mode === 'full' || mode === 'classroom'
+  const showRoster = mode === 'full' || mode === 'roster'
+  // Overview still needs roster for a seat count cue; classroom needs batch only.
+  const needsRoster = showRoster || mode === 'overview'
+
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
 
     async function load(): Promise<void> {
       try {
-        const loadedBatch = await getBatch(batchId);
+        const loadedBatch = await getBatch(batchId)
         if (cancelled) {
-          return;
+          return
         }
-        setBatch(loadedBatch);
-        setClassLinkInput(loadedBatch.classLink ?? '');
-        const [loadedCourse, loadedRoster] = await Promise.all([
-          getCourse(loadedBatch.courseId),
-          getRoster(batchId),
-        ]);
+        setBatch(loadedBatch)
+        setClassLinkInput(loadedBatch.classLink ?? '')
+        const loadedCourse = await getCourse(loadedBatch.courseId)
         if (cancelled) {
-          return;
+          return
         }
-        setCourse(loadedCourse);
-        setRoster(loadedRoster);
+        setCourse(loadedCourse)
+        if (needsRoster) {
+          const loadedRoster = await getRoster(batchId)
+          if (cancelled) {
+            return
+          }
+          setRoster(loadedRoster)
+        }
       } catch {
         if (!cancelled) {
-          setError(loadErrorMessage);
+          setError(loadErrorMessage)
         }
       }
     }
 
-    void load();
+    void load()
     return () => {
-      cancelled = true;
-    };
-  }, [batchId, loadErrorMessage]);
+      cancelled = true
+    }
+  }, [batchId, loadErrorMessage, needsRoster])
 
   async function handleSaveClassLink(): Promise<void> {
     setClassLinkError(null);
@@ -131,6 +149,7 @@ export function BatchRoster({
         description={`${batch.seatsRemaining} of ${batch.capacity} seats remaining · Course starts ${formatDate(batch.courseStartDate)}`}
       />
 
+      {showMeta ? (
       <Card className="grid grid-cols-2 gap-6 sm:grid-cols-4">
         <div className="flex flex-col gap-1">
           <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
@@ -167,7 +186,10 @@ export function BatchRoster({
           </span>
         </div>
       </Card>
+      ) : null}
 
+      {showClassroom ? (
+      <>
       <Card className="flex flex-col gap-3">
         <h2 className="font-display text-h3 font-semibold text-ink">
           Class link
@@ -200,7 +222,10 @@ export function BatchRoster({
       <HomeworkPanel batchId={batchId} />
 
       <RecordingsPanel batchId={batchId} />
+      </>
+      ) : null}
 
+      {showRoster ? (
       <div className="flex flex-col gap-3">
         <h2 className="font-display text-h3 font-semibold text-ink">
           Roster
@@ -248,7 +273,7 @@ export function BatchRoster({
                   const pill = ENROLLMENT_STATUS_PILL[entry.enrollmentStatus];
                   return (
                     <tr
-                      key={entry.studentId}
+                      key={entry.enrollmentId}
                       className="border-t border-rule hover:bg-paper-sunken"
                     >
                       <td className="px-3 py-3 font-body text-body text-ink">
@@ -281,6 +306,7 @@ export function BatchRoster({
           <p className="font-body text-body text-ink-muted">Loading…</p>
         ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

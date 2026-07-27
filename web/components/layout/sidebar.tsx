@@ -3,11 +3,23 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
+  BarChart3Icon,
   BookOpenIcon,
+  ClipboardCheckIcon,
   CreditCardIcon,
+  GraduationCapIcon,
   LayoutDashboardIcon,
+  LayersIcon,
+  LinkIcon,
   LogOutIcon,
+  NotebookPenIcon,
+  SettingsIcon,
+  ShieldIcon,
+  UserCogIcon,
+  UserIcon,
+  VideoIcon,
   WalletIcon,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -20,31 +32,53 @@ export interface NavItem {
   label: string
 }
 
+export interface NavSection {
+  label?: string
+  items: NavItem[]
+}
+
 const DEFAULT_TITLE = 'An Nahda'
 const DEFAULT_ITEMS: NavItem[] = [
-  { href: '/admin', label: 'Overview' },
+  { href: '/admin', label: 'Dashboard' },
   { href: '/admin/courses', label: 'Courses' },
   { href: '/admin/batches', label: 'Batches' },
   { href: '/admin/payments', label: 'Payments' },
 ]
 
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const ICONS: Record<string, LucideIcon> = {
   '/dashboard': LayoutDashboardIcon,
   '/dashboard/dues': WalletIcon,
   '/dashboard/payments': CreditCardIcon,
   '/dashboard/batches': BookOpenIcon,
   '/admin': LayoutDashboardIcon,
   '/admin/courses': BookOpenIcon,
-  '/admin/batches': BookOpenIcon,
-  '/admin/payments': CreditCardIcon,
+  '/admin/batches': LayersIcon,
+  '/admin/managers': UserCogIcon,
+  '/admin/students': GraduationCapIcon,
+  '/admin/payments': ClipboardCheckIcon,
+  '/admin/reports': BarChart3Icon,
+  '/admin/roles': ShieldIcon,
+  '/admin/settings': SettingsIcon,
+  '/admin/profile': UserIcon,
   '/manager': LayoutDashboardIcon,
-  '/manager/batches': BookOpenIcon,
-  '/manager/payments': CreditCardIcon,
+  '/manager/batches': LayersIcon,
+  '/manager/class-links': LinkIcon,
+  '/manager/homework': NotebookPenIcon,
+  '/manager/recordings': VideoIcon,
+  '/manager/students': GraduationCapIcon,
+  '/manager/payments': ClipboardCheckIcon,
+  '/manager/profile': UserIcon,
+}
+
+function sectionsFromItems(items: NavItem[]): NavSection[] {
+  return [{ items }]
 }
 
 export interface SidebarProps {
   title?: string
   items?: NavItem[]
+  /** Grouped nav — preferred for admin. Wins over `items` when set. */
+  sections?: NavSection[]
   className?: string
   onNavigate?: () => void
 }
@@ -52,11 +86,14 @@ export interface SidebarProps {
 export function Sidebar({
   title = DEFAULT_TITLE,
   items = DEFAULT_ITEMS,
+  sections,
   className,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const navSections = sections ?? sectionsFromItems(items)
+  const rootHref = navSections[0]?.items[0]?.href
 
   async function handleLogout(): Promise<void> {
     const refreshToken = getRefreshToken()
@@ -88,31 +125,42 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        {items.map((item) => {
-          const isRoot = item.href === items[0]?.href
-          const isActive = isRoot
-            ? pathname === item.href
-            : pathname.startsWith(item.href)
-          const Icon = ICONS[item.href]
+      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-3">
+        {navSections.map((section, sectionIndex) => (
+          <div key={section.label ?? `section-${sectionIndex}`} className="space-y-1">
+            {section.label ? (
+              <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {section.label}
+              </p>
+            ) : null}
+            {section.items.map((item) => {
+              const isRoot = item.href === rootHref
+              const isActive = isRoot
+                ? pathname === item.href
+                : pathname.startsWith(item.href)
+              const Icon = ICONS[item.href]
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary-wash text-primary-strong'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-            >
-              {Icon ? <Icon className="size-4 shrink-0 opacity-80" /> : null}
-              {item.label}
-            </Link>
-          )
-        })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary-wash text-primary-strong'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  {Icon ? (
+                    <Icon className="size-4 shrink-0 opacity-80" />
+                  ) : null}
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </div>
 
       <div className="p-3">
@@ -120,7 +168,9 @@ export function Sidebar({
           type="button"
           variant="ghost"
           className="w-full justify-start gap-2.5 text-muted-foreground"
-          onClick={handleLogout}
+          onClick={() => {
+            void handleLogout()
+          }}
         >
           <LogOutIcon className="size-4" />
           Log out

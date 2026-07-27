@@ -71,11 +71,11 @@ function ResetPasswordForm() {
       <div className="space-y-6">
         <div
           role="alert"
-          className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
         >
           This password reset link is invalid. Request a new one.
         </div>
-        <Button size="lg" className="w-full" render={<Link href="/forgot-password" />}>
+        <Button size="lg" className="h-12 w-full text-base" render={<Link href="/forgot-password" />}>
           Request a new link
         </Button>
       </div>
@@ -92,6 +92,7 @@ function ResetPasswordForm() {
             name="password"
             autoComplete="new-password"
             placeholder="At least 8 characters"
+            className="h-11"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
@@ -116,6 +117,7 @@ function ResetPasswordForm() {
             name="confirm"
             autoComplete="new-password"
             placeholder="Repeat the new password"
+            className="h-11"
             value={confirm}
             onChange={(e) => {
               setConfirm(e.target.value)
@@ -135,13 +137,13 @@ function ResetPasswordForm() {
       {error ? (
         <div
           role="alert"
-          className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
         >
           {error}
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+      <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isPending}>
         {isPending ? (
           <>
             <Loader2Icon className="animate-spin" />
@@ -176,6 +178,7 @@ function ResetFallback() {
 export default function ResetPasswordPage() {
   return (
     <AuthShell
+      eyebrow="Almost done"
       title="Choose a new password"
       description="Pick a password you have not used here before. This link works once and expires in 30 minutes."
       footer={

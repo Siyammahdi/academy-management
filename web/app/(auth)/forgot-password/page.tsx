@@ -55,6 +55,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
+      eyebrow="Account recovery"
       title="Reset your password"
       description="Enter the email on your account. If it is registered, we will send a reset link."
       footer={
@@ -72,13 +73,13 @@ export default function ForgotPasswordPage() {
       {submitted ? (
         <div
           role="status"
-          className="rounded-2xl border border-border bg-muted/40 px-4 py-4 text-sm leading-relaxed text-foreground"
+          className="rounded-xl bg-primary-wash px-4 py-4 text-sm leading-relaxed text-primary-strong"
         >
           If that email is registered, a reset link has been sent.
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-          <FieldGroup className="gap-5">
+        <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6" noValidate>
+          <FieldGroup className="gap-4 sm:gap-5">
             <Field data-invalid={Boolean(fieldError) || undefined}>
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
@@ -88,6 +89,7 @@ export default function ForgotPasswordPage() {
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
+                className="h-11"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value)
@@ -109,7 +111,7 @@ export default function ForgotPasswordPage() {
           {error ? (
             <div
               role="alert"
-              className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+              className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
             >
               {error}
             </div>
@@ -118,7 +120,7 @@ export default function ForgotPasswordPage() {
           <Button
             type="submit"
             size="lg"
-            className="w-full"
+            className="h-12 w-full text-base"
             disabled={isPending}
           >
             {isPending ? (

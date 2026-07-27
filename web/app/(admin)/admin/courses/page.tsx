@@ -1,40 +1,52 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { PageHeader } from '../../../../components/layout/page-header';
-import { Button } from '../../../../components/ui/button';
-import { Input } from '../../../../components/ui/input';
-import { Select } from '../../../../components/ui/select';
-import { Modal } from '../../../../components/ui/modal';
-import { ApiError } from '../../../../lib/api';
-import { apiErrorMessage } from '../../../../lib/error-message';
-import { formatMoney } from '../../../../lib/format';
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import Link from 'next/link'
+import {
+  ArchiveIcon,
+  LayersIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AmountCell } from '@/components/money/amount-cell'
+import { StatusBadge } from '@/components/money/status-badge'
+import { CourseCover } from '@/components/student/course-cover'
+import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ApiError } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/error-message'
 import {
   archiveCourse,
   createCourse,
   listCourses,
   updateCourse,
-} from '../../../../lib/api-client';
-import type {
-  BillingType,
-  Course,
-  CoursePart,
-  CreateCourseInput,
-} from '../../../../lib/api-client';
+  type BillingType,
+  type Course,
+  type CoursePart,
+  type CreateCourseInput,
+} from '@/lib/api-client'
 
 const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   monthly: 'Monthly',
   one_time: 'One-time',
-};
+}
 
 interface CourseFormState {
-  title: string;
-  description: string;
-  billingType: BillingType;
-  enrollmentFee: string;
-  monthlyFee: string;
-  parts: CoursePart[];
+  title: string
+  description: string
+  billingType: BillingType
+  enrollmentFee: string
+  monthlyFee: string
+  parts: CoursePart[]
 }
 
 function emptyForm(): CourseFormState {
@@ -45,7 +57,7 @@ function emptyForm(): CourseFormState {
     enrollmentFee: '',
     monthlyFee: '',
     parts: [],
-  };
+  }
 }
 
 function courseToForm(course: Course): CourseFormState {
@@ -56,10 +68,10 @@ function courseToForm(course: Course): CourseFormState {
     enrollmentFee: course.enrollmentFee,
     monthlyFee: course.monthlyFee,
     parts: course.parts ?? [],
-  };
+  }
 }
 
-const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/;
+const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/
 
 function CourseForm({
   mode,
@@ -68,15 +80,15 @@ function CourseForm({
   onCancel,
   onSaved,
 }: {
-  mode: 'create' | 'edit';
-  courseId?: string;
-  initial: CourseFormState;
-  onCancel: () => void;
-  onSaved: (course: Course, mode: 'create' | 'edit') => void;
+  mode: 'create' | 'edit'
+  courseId?: string
+  initial: CourseFormState
+  onCancel: () => void
+  onSaved: (course: Course, mode: 'create' | 'edit') => void
 }) {
-  const [form, setForm] = useState(initial);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState(initial)
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function updatePart(index: number, patch: Partial<CoursePart>): void {
     setForm((prev) => ({
@@ -84,64 +96,68 @@ function CourseForm({
       parts: prev.parts.map((part, i) =>
         i === index ? { ...part, ...patch } : part,
       ),
-    }));
+    }))
   }
 
   function removePart(index: number): void {
     setForm((prev) => ({
       ...prev,
       parts: prev.parts.filter((_, i) => i !== index),
-    }));
+    }))
   }
 
   function addPart(): void {
     setForm((prev) => ({
       ...prev,
       parts: [...prev.parts, { name: '', durationMonths: 1 }],
-    }));
+    }))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setError(null);
+    event.preventDefault()
+    setError(null)
 
+    if (!form.title.trim()) {
+      setError('Enter a course title.')
+      return
+    }
     if (!DECIMAL_PATTERN.test(form.enrollmentFee)) {
-      setError('Enter the enrollment fee as an amount like 1000.00.');
-      return;
+      setError('Enter the enrollment fee as an amount like 1000.00.')
+      return
     }
     if (!DECIMAL_PATTERN.test(form.monthlyFee)) {
-      setError('Enter the monthly fee as an amount like 500.00.');
-      return;
+      setError('Enter the monthly fee as an amount like 500.00.')
+      return
     }
 
     const input: CreateCourseInput = {
-      title: form.title,
-      description: form.description || undefined,
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
       billingType: form.billingType,
       enrollmentFee: form.enrollmentFee,
       monthlyFee: form.monthlyFee,
       parts: form.parts.length > 0 ? form.parts : undefined,
-    };
+    }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       onSaved(
         mode === 'create'
           ? await createCourse(input)
           : await updateCourse(courseId ?? '', input),
         mode,
-      );
+      )
     } catch (err) {
       setError(
         err instanceof ApiError
           ? apiErrorMessage(
               err.body,
-              'This course could not be saved. Try again or contact an admin.',
+              'This course could not be saved. Try again.',
             )
-          : 'This course could not be saved. Try again or contact an admin.',
-      );
+          : 'This course could not be saved. Try again.',
+      )
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
@@ -153,8 +169,8 @@ function CourseForm({
         value={form.title}
         onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
       />
-      <div className="flex flex-col gap-1">
-        <label className="font-body text-sm font-medium text-ink-muted">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-muted-foreground">
           Description
         </label>
         <textarea
@@ -163,24 +179,24 @@ function CourseForm({
           onChange={(e) =>
             setForm((p) => ({ ...p, description: e.target.value }))
           }
-          className="w-full rounded-sm border border-rule bg-paper-sunken px-3 py-2 font-body text-body text-ink focus-visible:border-purple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-wash"
+          className="w-full rounded-lg border border-transparent bg-input/50 px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
         />
       </div>
-      <Select
+      <FilterDropdown
         label="Billing type"
-        required
         value={form.billingType}
-        onChange={(e) =>
+        options={[
+          { value: 'monthly', label: 'Monthly' },
+          { value: 'one_time', label: 'One-time' },
+        ]}
+        onChange={(value) =>
           setForm((p) => ({
             ...p,
-            billingType: e.target.value as BillingType,
+            billingType: value as BillingType,
           }))
         }
-      >
-        <option value="monthly">Monthly</option>
-        <option value="one_time">One-time</option>
-      </Select>
-      <div className="grid grid-cols-2 gap-4">
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           label="Enrollment fee (৳)"
           required
@@ -203,18 +219,16 @@ function CourseForm({
         />
       </div>
       {mode === 'edit' ? (
-        <p className="font-body text-sm text-ink-muted">
-          Changing fees here does not change existing batches — they keep
-          the fees they were created with.
+        <p className="text-sm text-muted-foreground">
+          Changing fees here does not change existing batches — they keep the
+          fees they were created with.
         </p>
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <span className="font-body text-sm font-medium text-ink-muted">
-          Parts
-        </span>
+        <span className="text-sm font-medium text-muted-foreground">Parts</span>
         {form.parts.map((part, index) => (
-          <div key={index} className="flex items-end gap-2">
+          <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <Input
               label="Name"
               value={part.name}
@@ -222,7 +236,7 @@ function CourseForm({
               className="flex-1"
             />
             <Input
-              label="Duration (months)"
+              label="Months"
               type="number"
               min={1}
               value={part.durationMonths}
@@ -231,11 +245,12 @@ function CourseForm({
                   durationMonths: Number.parseInt(e.target.value, 10) || 1,
                 })
               }
-              className="w-40"
+              className="sm:w-28"
             />
             <Button
               type="button"
               variant="ghost"
+              className="min-h-11"
               onClick={() => removePart(index)}
             >
               Remove
@@ -245,25 +260,29 @@ function CourseForm({
         <Button
           type="button"
           variant="secondary"
-          size="compact"
+          className="min-h-11 self-start"
           onClick={addPart}
-          className="self-start"
         >
           Add part
         </Button>
       </div>
 
       {error ? (
-        <p className="font-body text-sm text-overdue" role="alert">
+        <p className="text-sm text-status-overdue" role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="secondary" onClick={onCancel}>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-11"
+          onClick={onCancel}
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" className="min-h-11" disabled={isSubmitting}>
           {isSubmitting
             ? 'Saving…'
             : mode === 'create'
@@ -272,50 +291,82 @@ function CourseForm({
         </Button>
       </div>
     </form>
-  );
+  )
 }
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = useState<Course[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
-  const [archiveError, setArchiveError] = useState<string | null>(null);
-  const [isArchiving, setIsArchiving] = useState(false);
+  const [courses, setCourses] = useState<Course[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [archivingCourse, setArchivingCourse] = useState<Course | null>(null)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [isArchiving, setIsArchiving] = useState(false)
+
+  async function reload(): Promise<void> {
+    try {
+      const result = await listCourses(1, 100)
+      setCourses(result.data)
+      setError(null)
+    } catch {
+      setError('Courses could not be loaded. Try again.')
+    }
+  }
 
   useEffect(() => {
+    let cancelled = false
     listCourses(1, 100)
-      .then((result) => setCourses(result.data))
-      .catch(() => setError('Courses could not be loaded. Try again.'));
-  }, []);
+      .then((result) => {
+        if (!cancelled) {
+          setCourses(result.data)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError('Courses could not be loaded. Try again.')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const filtered = useMemo(() => {
+    if (!courses) return []
+    const q = query.trim().toLowerCase()
+    if (!q) return courses
+    return courses.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.description ?? '').toLowerCase().includes(q) ||
+        BILLING_TYPE_LABELS[c.billingType].toLowerCase().includes(q),
+    )
+  }, [courses, query])
 
   function handleSaved(course: Course, mode: 'create' | 'edit'): void {
     setCourses((prev) => {
-      if (!prev) {
-        return [course];
-      }
-      if (mode === 'create') {
-        return [course, ...prev];
-      }
-      return prev.map((c) => (c.id === course.id ? course : c));
-    });
-    setIsCreateOpen(false);
-    setEditingCourse(null);
+      if (!prev) return [course]
+      if (mode === 'create') return [course, ...prev]
+      return prev.map((c) => (c.id === course.id ? course : c))
+    })
+    setIsCreateOpen(false)
+    setEditingCourse(null)
+    toast.success(mode === 'create' ? 'Course created' : 'Course saved')
   }
 
   async function handleConfirmArchive(): Promise<void> {
-    if (!archivingCourse) {
-      return;
-    }
-    setArchiveError(null);
-    setIsArchiving(true);
+    if (!archivingCourse) return
+    setArchiveError(null)
+    setIsArchiving(true)
     try {
-      await archiveCourse(archivingCourse.id);
+      await archiveCourse(archivingCourse.id)
       setCourses(
         (prev) => prev?.filter((c) => c.id !== archivingCourse.id) ?? null,
-      );
-      setArchivingCourse(null);
+      )
+      setArchivingCourse(null)
+      toast.success('Course archived')
     } catch (err) {
       setArchiveError(
         err instanceof ApiError
@@ -324,114 +375,160 @@ export default function AdminCoursesPage() {
               'This course could not be archived. Try again.',
             )
           : 'This course could not be archived. Try again.',
-      );
+      )
     } finally {
-      setIsArchiving(false);
+      setIsArchiving(false)
     }
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        eyebrow="Admin"
+    <div className="flex min-w-0 flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Academy"
         title="Courses"
-        description="Active courses only — archiving a course removes it from this list, but its existing batches keep running unchanged."
+        description="Define what you teach and what it costs. Editing fees never rewrites existing batches — they keep the fee snapshot from when they were opened."
         actions={
-          <Button onClick={() => setIsCreateOpen(true)}>New course</Button>
+          <>
+            <Button
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                void reload()
+              }}
+            >
+              <RefreshCwIcon />
+              Refresh
+            </Button>
+            <Button className="min-h-11" onClick={() => setIsCreateOpen(true)}>
+              <PlusIcon />
+              New course
+            </Button>
+          </>
         }
       />
 
+      <div className="relative min-w-0">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by title or billing type"
+          className="min-h-11 pl-9"
+          aria-label="Search courses"
+        />
+      </div>
+
       {error ? (
-        <p className="font-body text-sm text-overdue" role="alert">
+        <div
+          role="alert"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
+        >
           {error}
-        </p>
-      ) : null}
-
-      {!error && !courses ? (
-        <p className="font-body text-body text-ink-muted">Loading…</p>
-      ) : null}
-
-      {courses && courses.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <p className="font-body text-body text-ink-muted">
-            No courses yet.
-          </p>
-          <Button onClick={() => setIsCreateOpen(true)}>New course</Button>
         </div>
       ) : null}
 
-      {courses && courses.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-paper-sunken">
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
-                >
-                  Title
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-left font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
-                >
-                  Billing
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-right font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
-                >
-                  Enrollment fee
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-2 text-right font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint"
-                >
-                  Monthly fee
-                </th>
-                <th scope="col" className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((course) => (
-                <tr
-                  key={course.id}
-                  className="border-t border-rule hover:bg-paper-sunken"
-                >
-                  <td className="px-3 py-3 font-body text-body text-ink">
-                    {course.title}
-                  </td>
-                  <td className="px-3 py-3 font-body text-body text-ink-muted">
-                    {BILLING_TYPE_LABELS[course.billingType]}
-                  </td>
-                  <td className="px-3 py-3 text-right font-numeric text-body text-ink">
-                    {formatMoney(course.enrollmentFee)}
-                  </td>
-                  <td className="px-3 py-3 text-right font-numeric text-body text-ink">
-                    {formatMoney(course.monthlyFee)}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex justify-end gap-3">
-                      <Button
-                        variant="ghost"
-                        size="compact"
-                        onClick={() => setEditingCourse(course)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="compact"
-                        onClick={() => setArchivingCourse(course)}
-                      >
-                        Archive
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!courses && !error ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 rounded-xl" />
+          ))}
+        </div>
+      ) : null}
+
+      {courses && filtered.length === 0 ? (
+        <div className="rounded-xl bg-primary-wash px-5 py-14 text-center">
+          <p className="font-heading text-base font-semibold text-foreground">
+            {courses.length === 0 ? 'No courses yet' : 'No matches'}
+          </p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            {courses.length === 0
+              ? 'Create a course with enrollment and monthly fees, then open batches under it.'
+              : 'Try a different search.'}
+          </p>
+          {courses.length === 0 ? (
+            <Button
+              className="mt-4 min-h-11"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <PlusIcon />
+              New course
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {filtered.length > 0 ? (
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((course) => (
+            <article
+              key={course.id}
+              className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-muted/60"
+            >
+              <CourseCover
+                courseId={course.id}
+                title={course.title}
+                className="aspect-video w-full"
+              />
+              <div className="flex flex-1 flex-col gap-3 p-4">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-heading text-base font-semibold text-foreground">
+                      {course.title}
+                    </h2>
+                    <StatusBadge
+                      tone="paid"
+                      label={BILLING_TYPE_LABELS[course.billingType]}
+                    />
+                  </div>
+                  {course.description ? (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {course.description}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <p className="flex items-baseline justify-between gap-2 text-muted-foreground">
+                    <span>Enrollment</span>
+                    <AmountCell amount={course.enrollmentFee} />
+                  </p>
+                  <p className="flex items-baseline justify-between gap-2 text-muted-foreground">
+                    <span>Monthly</span>
+                    <AmountCell amount={course.monthlyFee} />
+                  </p>
+                </div>
+
+                <div className="mt-auto grid grid-cols-2 gap-2">
+                  <Button
+                    variant="secondary"
+                    className="min-h-11"
+                    onClick={() => setEditingCourse(course)}
+                  >
+                    <PencilIcon />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="min-h-11"
+                    render={
+                      <Link href={`/admin/batches?courseId=${course.id}`} />
+                    }
+                  >
+                    <LayersIcon />
+                    Batches
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="col-span-2 min-h-11"
+                    onClick={() => setArchivingCourse(course)}
+                  >
+                    <ArchiveIcon />
+                    Archive
+                  </Button>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       ) : null}
 
@@ -472,13 +569,17 @@ export default function AdminCoursesPage() {
           <>
             <Button
               variant="secondary"
+              className="min-h-11"
               onClick={() => setArchivingCourse(null)}
             >
               Cancel
             </Button>
             <Button
-              variant="danger"
-              onClick={handleConfirmArchive}
+              variant="destructive"
+              className="min-h-11"
+              onClick={() => {
+                void handleConfirmArchive()
+              }}
               disabled={isArchiving}
             >
               {isArchiving ? 'Archiving…' : 'Archive course'}
@@ -486,16 +587,16 @@ export default function AdminCoursesPage() {
           </>
         }
       >
-        <p className="font-body text-body text-ink-muted">
+        <p className="text-sm text-muted-foreground">
           It stops appearing here and in new batch creation. Batches that
-          already exist for {archivingCourse?.title} are unaffected.
+          already exist for {archivingCourse?.title} keep running unchanged.
         </p>
         {archiveError ? (
-          <p className="font-body text-sm text-overdue" role="alert">
+          <p className="mt-3 text-sm text-status-overdue" role="alert">
             {archiveError}
           </p>
         ) : null}
       </Modal>
     </div>
-  );
+  )
 }

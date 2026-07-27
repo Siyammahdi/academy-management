@@ -70,7 +70,7 @@ export function CourseShelf({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {enrollments.map((enrollment) => {
         const period = periodFor(enrollment.id)
         const attention = period
@@ -85,7 +85,7 @@ export function CourseShelf({
         return (
           <article
             key={enrollment.id}
-            className="flex flex-col overflow-hidden rounded-xl bg-card"
+            className="flex w-72 max-w-full shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-muted/50 sm:w-auto"
           >
             <CourseCover
               courseId={enrollment.batch.course.id}
@@ -164,7 +164,7 @@ export function CourseShelf({
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      className="min-h-10 flex-1"
+                      className="min-h-11 flex-1"
                       render={
                         <a
                           href={classLink}
@@ -179,7 +179,7 @@ export function CourseShelf({
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="min-h-10 flex-1"
+                      className="min-h-11 flex-1"
                       onClick={() => {
                         void copyLink(classLink).then((ok) => {
                           if (!ok) return
@@ -203,7 +203,7 @@ export function CourseShelf({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="min-h-10 flex-1"
+                      className="min-h-11 flex-1"
                       onClick={() => onPay(period)}
                     >
                       Pay this due
@@ -212,7 +212,7 @@ export function CourseShelf({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="min-h-10 flex-1 text-muted-foreground"
+                      className="min-h-11 flex-1 text-muted-foreground"
                       render={<Link href="/dashboard/dues" />}
                     >
                       View dues

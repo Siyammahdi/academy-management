@@ -19,6 +19,7 @@ import { HomeworkModule } from './modules/homework/homework.module';
 import { RecordingsModule } from './modules/recordings/recordings.module';
 import { MailModule } from './modules/mail/mail.module';
 import { JobsModule } from './jobs/jobs.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { MoneySerializationInterceptor } from './common/interceptors/money-serialization.interceptor';
@@ -43,6 +44,7 @@ import { MoneySerializationInterceptor } from './common/interceptors/money-seria
     HomeworkModule,
     RecordingsModule,
     JobsModule,
+    ReportingModule,
   ],
   controllers: [AppController],
   providers: [

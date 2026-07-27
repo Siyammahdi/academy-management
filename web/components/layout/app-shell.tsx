@@ -2,49 +2,113 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { MenuIcon, XIcon } from 'lucide-react'
+import { LogOutIcon, MenuIcon, XIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
+import { MobileTabBar } from './mobile-tab-bar'
 import { Sidebar } from './sidebar'
-import type { NavItem } from './sidebar'
+import type { NavItem, NavSection } from './sidebar'
 import { Container } from './container'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '@/lib/api'
+import { clearSession, getRefreshToken } from '@/lib/session'
+import { cn } from '@/lib/utils'
 
 export interface AppShellProps {
   children: ReactNode
   title?: string
   items?: NavItem[]
+  /** Grouped sidebar sections (admin). When set, overrides flat `items` in the sidebar. */
+  sections?: NavSection[]
+  /**
+   * `tabs` — fixed bottom nav (student / manager).
+   * `drawer` — hamburger + slide-over (admin owner console).
+   */
+  mobileNav?: 'drawer' | 'tabs'
 }
 
-export function AppShell({ children, title, items }: AppShellProps) {
+export function AppShell({
+  children,
+  title,
+  items = [],
+  sections,
+  mobileNav = 'drawer',
+}: AppShellProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const router = useRouter()
+  const useTabs = mobileNav === 'tabs' && items.length > 0
+
+  async function handleLogout(): Promise<void> {
+    const refreshToken = getRefreshToken()
+    if (refreshToken) {
+      try {
+        await apiFetch('/auth/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        })
+      } catch {
+        // Local clear still happens.
+      }
+    }
+    clearSession()
+    router.push('/login')
+  }
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
-      <header className="sticky top-0 z-30 flex items-center justify-between bg-background/95 px-4 py-3 backdrop-blur-md lg:hidden">
-        <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-          {title ?? 'An Nahda'}
-        </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          aria-label={isDrawerOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setIsDrawerOpen((open) => !open)}
-        >
-          {isDrawerOpen ? <XIcon /> : <MenuIcon />}
-        </Button>
+    <div className="flex min-h-svh flex-col overflow-x-clip bg-background">
+      <header
+        className={cn(
+          'sticky top-0 z-30 flex items-center justify-between bg-background/95 px-4 backdrop-blur-md lg:hidden',
+          'pt-[max(0.75rem,env(safe-area-inset-top))] pb-3',
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-wash text-[10px] font-bold text-primary-strong">
+            AN
+          </span>
+          <span className="truncate font-heading text-base font-semibold tracking-tight text-foreground">
+            {title ?? 'An Nahda'}
+          </span>
+        </div>
+
+        {useTabs ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0 text-muted-foreground"
+            aria-label="Log out"
+            onClick={() => {
+              void handleLogout()
+            }}
+          >
+            <LogOutIcon className="size-5" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label={isDrawerOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setIsDrawerOpen((open) => !open)}
+          >
+            {isDrawerOpen ? <XIcon /> : <MenuIcon />}
+          </Button>
+        )}
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1">
         <aside className="hidden w-64 shrink-0 bg-primary-wash/40 lg:block">
           <Sidebar
             className="sticky top-0 h-svh"
             title={title}
             items={items}
+            sections={sections}
           />
         </aside>
 
-        {isDrawerOpen ? (
+        {!useTabs && isDrawerOpen ? (
           <div className="fixed inset-0 z-40 flex lg:hidden">
             <button
               type="button"
@@ -52,22 +116,38 @@ export function AppShell({ children, title, items }: AppShellProps) {
               aria-label="Close menu"
               onClick={() => setIsDrawerOpen(false)}
             />
-            <div className="relative z-10 h-full w-80 bg-background">
+            <div className="relative z-10 h-full w-80 max-w-[85vw] overflow-y-auto bg-background">
               <Sidebar
                 title={title}
                 items={items}
+                sections={sections}
                 onNavigate={() => setIsDrawerOpen(false)}
               />
             </div>
           </div>
         ) : null}
 
-        <main className="flex-1 pb-10 pt-5 sm:py-7 lg:py-8">
-          <Container width="app" className="flex flex-col gap-6 sm:gap-8">
+        <main
+          className={cn(
+            'min-w-0 flex-1 overflow-x-clip pt-4 sm:pt-6 lg:pt-8',
+            useTabs
+              ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-10'
+              : 'pb-10',
+          )}
+        >
+          <Container
+            width="app"
+            className={cn(
+              'flex min-w-0 flex-col gap-5 sm:gap-7 lg:gap-8',
+              useTabs && 'px-3 sm:px-6',
+            )}
+          >
             {children}
           </Container>
         </main>
       </div>
+
+      {useTabs ? <MobileTabBar items={items} /> : null}
     </div>
   )
 }

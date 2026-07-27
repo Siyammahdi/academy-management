@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { Inter, Geist_Mono } from 'next/font/google'
 
@@ -26,6 +26,21 @@ export const metadata: Metadata = {
   },
   description:
     'Enrollment and subscription billing for An Nahda Academy.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'An Nahda',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#F1EBF8',
 }
 
 export default function RootLayout({

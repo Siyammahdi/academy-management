@@ -78,18 +78,16 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
           </div>
         </div>
 
-        <div className="flex flex-col justify-between gap-5 p-5 sm:p-6">
-          <div className="space-y-2">
-            <p className="text-sm leading-relaxed text-primary-foreground/80">
-              Jump into class when it is live, or copy the link to share with a
-              parent / open in another app.
-            </p>
-          </div>
+        <div className="flex flex-col justify-between gap-4 p-4 sm:gap-5 sm:p-6">
+          <p className="hidden text-sm leading-relaxed text-primary-foreground/80 sm:block">
+            Jump into class when it is live, or copy the link to share with a
+            parent / open in another app.
+          </p>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2.5 sm:flex-row">
             <Button
               size="lg"
-              className="h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-12 w-full flex-1 bg-primary text-primary-foreground hover:bg-primary/90 sm:h-11 py-3"
               render={
                 <a href={link} target="_blank" rel="noopener noreferrer" />
               }
@@ -100,7 +98,7 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
             <Button
               size="lg"
               variant="secondary"
-              className="h-11 flex-1 bg-white/15 text-primary-foreground hover:bg-white/25"
+              className="h-12 w-full flex-1 bg-white/15 text-primary-foreground hover:bg-white/25 sm:h-11 py-3"
               onClick={() => {
                 void copyLink(link).then(() => {
                   setCopiedId(current!.id)

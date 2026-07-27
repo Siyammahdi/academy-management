@@ -1,23 +1,22 @@
-'use client';
+'use client'
 
-import { useEffect, useId, useRef } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
-import { cx } from '../../lib/cx';
+import { useEffect, useId, useRef } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
+
+import { cn } from '@/lib/utils'
 
 export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
-  footer?: ReactNode;
-  className?: string;
+  isOpen: boolean
+  onClose: () => void
+  title: string
+  children: ReactNode
+  footer?: ReactNode
+  className?: string
 }
 
 const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-// doc 09 §11 — modals trap focus and close on Escape. doc 09 §4 — one of
-// the two permitted shadows (--shadow-overlay) exists precisely for this.
 export function Modal({
   isOpen,
   onClose,
@@ -26,63 +25,51 @@ export function Modal({
   footer,
   className,
 }: ModalProps) {
-  const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const dialog = dialogRef.current;
-    const firstFocusable = dialog?.querySelector<HTMLElement>(
-      FOCUSABLE_SELECTOR,
-    );
-    (firstFocusable ?? dialog)?.focus();
+    if (!isOpen) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const dialog = dialogRef.current
+    const firstFocusable = dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+    ;(firstFocusable ?? dialog)?.focus()
 
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden'
     return () => {
-      document.body.style.overflow = '';
-      previouslyFocused?.focus();
-    };
-  }, [isOpen]);
+      document.body.style.overflow = ''
+      previouslyFocused?.focus()
+    }
+  }, [isOpen])
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') {
-      onClose();
-      return;
+      onClose()
+      return
     }
-    if (event.key !== 'Tab') {
-      return;
-    }
-    const dialog = dialogRef.current;
-    if (!dialog) {
-      return;
-    }
+    if (event.key !== 'Tab') return
+    const dialog = dialogRef.current
+    if (!dialog) return
     const focusable = Array.from(
       dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-    );
-    if (focusable.length === 0) {
-      return;
-    }
-    const first = focusable[0]!;
-    const last = focusable[focusable.length - 1]!;
+    )
+    if (focusable.length === 0) return
+    const first = focusable[0]!
+    const last = focusable[focusable.length - 1]!
     if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
+      event.preventDefault()
+      last.focus()
     } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
+      event.preventDefault()
+      first.focus()
     }
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -93,24 +80,24 @@ export function Modal({
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         onClick={(event) => event.stopPropagation()}
-        className={cx(
-          'flex max-h-screen w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-md bg-paper-raised p-6 shadow-overlay',
+        className={cn(
+          'flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-5 sm:rounded-xl sm:p-6',
           className,
         )}
       >
         <h2
           id={titleId}
-          className="font-display text-h3 font-semibold text-ink"
+          className="font-heading text-lg font-semibold tracking-tight text-foreground"
         >
           {title}
         </h2>
         {children}
         {footer ? (
-          <div className="flex justify-end gap-3 border-t border-rule pt-4">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border/60 pt-4">
             {footer}
           </div>
         ) : null}
       </div>
     </div>
-  );
+  )
 }

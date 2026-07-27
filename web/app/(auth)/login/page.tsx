@@ -73,8 +73,8 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-      <FieldGroup className="gap-5">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6" noValidate>
+      <FieldGroup className="gap-4 sm:gap-5">
         <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input
@@ -84,6 +84,7 @@ function LoginForm() {
             autoComplete="email"
             inputMode="email"
             placeholder="you@example.com"
+            className="h-11"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value)
@@ -104,7 +105,7 @@ function LoginForm() {
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-primary-strong underline-offset-4 hover:underline"
+              className="min-h-11 inline-flex items-center text-xs font-medium text-primary-strong underline-offset-4 hover:underline"
             >
               Forgot password?
             </Link>
@@ -114,6 +115,7 @@ function LoginForm() {
             name="password"
             autoComplete="current-password"
             placeholder="Your password"
+            className="h-11"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
@@ -137,7 +139,7 @@ function LoginForm() {
       {searchParams.get('reset') === '1' && !error ? (
         <div
           role="status"
-          className="rounded-2xl border border-status-paid/20 bg-status-paid-bg px-3.5 py-3 text-sm text-status-paid"
+          className="rounded-xl bg-status-paid-bg px-4 py-3 text-sm text-status-paid"
         >
           Password updated. Sign in with your new password.
         </div>
@@ -146,13 +148,18 @@ function LoginForm() {
       {error ? (
         <div
           role="alert"
-          className="rounded-2xl border border-status-overdue/20 bg-status-overdue-bg px-3.5 py-3 text-sm text-status-overdue"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
         >
           {error}
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        size="lg"
+        className="h-12 w-full text-base"
+        disabled={isPending}
+      >
         {isPending ? (
           <>
             <Loader2Icon className="animate-spin" />
@@ -172,14 +179,14 @@ function LoginFallback() {
       <div className="space-y-5">
         <div className="space-y-2">
           <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-9 w-full rounded-lg" />
+          <Skeleton className="h-11 w-full rounded-lg" />
         </div>
         <div className="space-y-2">
           <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-9 w-full rounded-lg" />
+          <Skeleton className="h-11 w-full rounded-lg" />
         </div>
       </div>
-      <Skeleton className="h-10 w-full rounded-lg" />
+      <Skeleton className="h-12 w-full rounded-lg" />
     </div>
   )
 }
@@ -187,8 +194,9 @@ function LoginFallback() {
 export default function LoginPage() {
   return (
     <AuthShell
-      title="Welcome back"
-      description="Sign in to manage enrollments, dues, and payments."
+      eyebrow="Welcome back"
+      title="Sign in to your portal"
+      description="Pick up dues, class links, and homework — the same calm view on phone or desktop."
       footer={
         <>
           New here?{' '}

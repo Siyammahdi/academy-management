@@ -1,34 +1,35 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Card } from '../ui/card';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Modal } from '../ui/modal';
-import { formatDate } from '../../lib/format';
-import { ApiError } from '../../lib/api';
-import { apiErrorMessage } from '../../lib/error-message';
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
+import { ApiError } from '@/lib/api'
 import {
   createRecording,
   deleteRecording,
   listBatchRecordings,
   updateRecording,
-} from '../../lib/api-client';
-import type { Recording } from '../../lib/api-client';
+  type Recording,
+} from '@/lib/api-client'
+import { apiErrorMessage } from '@/lib/error-message'
+import { formatDate } from '@/lib/format'
 
 function isoToDateInput(iso: string): string {
-  return iso.slice(0, 10);
+  return iso.slice(0, 10)
 }
 
 interface RecordingFormState {
-  title: string;
-  youtubeVideoId: string;
-  recordedFor: string;
+  title: string
+  youtubeVideoId: string
+  recordedFor: string
 }
 
 function emptyForm(): RecordingFormState {
-  return { title: '', youtubeVideoId: '', recordedFor: '' };
+  return { title: '', youtubeVideoId: '', recordedFor: '' }
 }
 
 function recordingToForm(rec: Recording): RecordingFormState {
@@ -36,110 +37,116 @@ function recordingToForm(rec: Recording): RecordingFormState {
     title: rec.title,
     youtubeVideoId: rec.youtubeVideoId,
     recordedFor: isoToDateInput(rec.recordedFor),
-  };
+  }
 }
 
-// Manager (own batch, via BatchScopeGuard on every route this hits) or
-// admin — reaching this panel at all already implies edit rights, same
-// reasoning as the class-link field and the homework panel above it.
 export function RecordingsPanel({ batchId }: { batchId: string }) {
-  const [items, setItems] = useState<Recording[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Recording | 'new' | null>(null);
+  const [items, setItems] = useState<Recording[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Recording | 'new' | null>(null)
 
   async function reload(): Promise<void> {
     try {
-      setItems(await listBatchRecordings(batchId));
+      setItems(await listBatchRecordings(batchId))
+      setError(null)
     } catch {
-      setError('Recordings could not be loaded.');
+      setError('Recordings could not be loaded.')
     }
   }
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     listBatchRecordings(batchId)
       .then((data) => {
-        if (!cancelled) {
-          setItems(data);
-        }
+        if (!cancelled) setItems(data)
       })
       .catch(() => {
-        if (!cancelled) {
-          setError('Recordings could not be loaded.');
-        }
-      });
+        if (!cancelled) setError('Recordings could not be loaded.')
+      })
     return () => {
-      cancelled = true;
-    };
-  }, [batchId]);
+      cancelled = true
+    }
+  }, [batchId])
 
   async function handleDelete(id: string): Promise<void> {
     if (!window.confirm('Delete this recording? This cannot be undone.')) {
-      return;
+      return
     }
     try {
-      await deleteRecording(id);
-      await reload();
+      await deleteRecording(id)
+      toast.success('Recording deleted')
+      await reload()
     } catch {
-      setError('This recording could not be deleted. Try again.');
+      setError('This recording could not be deleted. Try again.')
     }
   }
 
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-h3 font-semibold text-ink">
-          Recorded classes
-        </h2>
-        <Button type="button" size="compact" onClick={() => setEditing('new')}>
+    <section className="rounded-xl bg-muted/50 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="font-heading text-base font-semibold text-foreground">
+            Recorded classes
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            YouTube recordings students can replay from their dashboard.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="min-h-11"
+          onClick={() => setEditing('new')}
+        >
           Add recording
         </Button>
       </div>
 
       {error ? (
-        <p className="font-body text-sm text-overdue" role="alert">
+        <p className="mt-3 text-sm text-status-overdue" role="alert">
           {error}
         </p>
       ) : null}
 
       {items && items.length === 0 ? (
-        <p className="font-body text-body text-ink-muted">
+        <p className="mt-4 text-sm text-muted-foreground">
           No recordings added yet.
         </p>
       ) : null}
 
       {items && items.length > 0 ? (
-        <ul className="flex flex-col gap-4">
+        <ul className="mt-4 flex flex-col gap-2">
           {items.map((rec) => (
             <li
               key={rec.id}
-              className="flex flex-col gap-2 border-t border-rule pt-4 first:border-t-0 first:pt-0"
+              className="rounded-lg bg-background/80 px-4 py-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-body text-body font-medium text-ink">
-                  {rec.title}
-                </span>
-                <span className="font-numeric text-sm text-ink-faint">
+                <span className="font-medium text-foreground">{rec.title}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
                   Recorded {formatDate(rec.recordedFor)}
                 </span>
               </div>
-              <span className="font-numeric text-sm text-ink-faint">
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
                 youtu.be/{rec.youtubeVideoId}
-              </span>
-              <div className="flex gap-2">
+              </p>
+              <div className="mt-3 flex gap-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  size="compact"
+                  size="sm"
+                  className="min-h-11"
                   onClick={() => setEditing(rec)}
                 >
                   Edit
                 </Button>
                 <Button
                   type="button"
-                  variant="danger"
-                  size="compact"
-                  onClick={() => void handleDelete(rec.id)}
+                  variant="destructive"
+                  size="sm"
+                  className="min-h-11"
+                  onClick={() => {
+                    void handleDelete(rec.id)
+                  }}
                 >
                   Delete
                 </Button>
@@ -150,7 +157,7 @@ export function RecordingsPanel({ batchId }: { batchId: string }) {
       ) : null}
 
       {!items ? (
-        <p className="font-body text-body text-ink-muted">Loading…</p>
+        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
       ) : null}
 
       {editing ? (
@@ -159,13 +166,13 @@ export function RecordingsPanel({ batchId }: { batchId: string }) {
           recording={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
-            setEditing(null);
-            void reload();
+            setEditing(null)
+            void reload()
           }}
         />
       ) : null}
-    </Card>
-  );
+    </section>
+  )
 }
 
 function RecordingFormModal({
@@ -174,48 +181,49 @@ function RecordingFormModal({
   onClose,
   onSaved,
 }: {
-  batchId: string;
-  recording: Recording | null;
-  onClose: () => void;
-  onSaved: () => void;
+  batchId: string
+  recording: Recording | null
+  onClose: () => void
+  onSaved: () => void
 }) {
   const [form, setForm] = useState<RecordingFormState>(
     recording ? recordingToForm(recording) : emptyForm(),
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
-    event.preventDefault();
-    setError(null);
+    event.preventDefault()
+    setError(null)
 
     if (
       !form.title.trim() ||
       !form.youtubeVideoId.trim() ||
       !form.recordedFor
     ) {
-      setError('Fill in a title, a YouTube link or id, and the class date.');
-      return;
+      setError('Fill in a title, a YouTube link or id, and the class date.')
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       if (recording) {
-        await updateRecording(recording.id, form);
+        await updateRecording(recording.id, form)
       } else {
-        await createRecording(batchId, form);
+        await createRecording(batchId, form)
       }
-      onSaved();
+      toast.success(recording ? 'Recording saved' : 'Recording added')
+      onSaved()
     } catch (err) {
       setError(
         err instanceof ApiError
           ? apiErrorMessage(err.body, 'This recording could not be saved.')
           : 'This recording could not be saved.',
-      );
+      )
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
@@ -252,16 +260,21 @@ function RecordingFormModal({
         />
 
         {error ? (
-          <p className="font-body text-sm text-overdue" role="alert">
+          <p className="text-sm text-status-overdue" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-11"
+            onClick={onClose}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" className="min-h-11" disabled={isSubmitting}>
             {isSubmitting
               ? 'Saving…'
               : recording
@@ -271,5 +284,5 @@ function RecordingFormModal({
         </div>
       </form>
     </Modal>
-  );
+  )
 }

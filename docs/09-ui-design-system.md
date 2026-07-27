@@ -42,7 +42,7 @@ An Nahda Academy is a place of study, and the product's job is **clarity about m
 
 **What this rules out:** ornamental Islamic motifs, generic grey SaaS dashboards, heavy drop shadows, and border-boxed chrome everywhere. Purple carries identity; color fills and spacing create hierarchy; money stays calm and tabular.
 
-**Student surfaces may be more expressive** than admin/manager: brand washes, course cover art, and highlighted classroom / homework / recording modules. Still use only design tokens — never one-off hex values.
+**Auth screens (login / register):** Same expressive student language — brand wash atmosphere, highlight tiles (Enroll · Dues · Class), and a solid form sheet. Mobile-first with safe-area padding and 44px+ controls; tablet/desktop use a two-column brand + form layout without heavy borders or shadows.
 
 ---
 
@@ -222,9 +222,18 @@ The landing, about, contact, and course pages may be **more expressive** than th
 
 Breakpoints per Tailwind defaults. **Mobile is the primary case for students and guests** — a parent paying from a phone is a core flow.
 
-- Tables collapse to stacked `Card`s below `md`; never horizontally scrolling tables.
-- The admin/manager sidebar uses shadcn `Sheet` as a drawer below `lg`.
-- Touch targets minimum 44px.
+**Student portal — app-like on small screens:**
+- Fixed **bottom tab bar** (`Home` · `Dues` · `Pay` · `Enroll`) below `lg`, with `env(safe-area-inset-bottom)`.
+- Compact sticky top bar (logo + logout); desktop keeps the sidebar.
+- Main content pads above the tab bar so nothing sits under the home indicator.
+- Metric tiles use a **2×2 grid** on phones (not a sideways scroller).
+- Course shelf is a **horizontal snap carousel** on phones; grid from `sm` up.
+- Primary actions use **min-height 44px** (`min-h-11`) and full-width stacks where helpful.
+- Prefer filled surfaces and spacing over borders/shadows (see §4).
+
+**Shared:**
+- Tables collapse to stacked cards below `md`; never horizontally scrolling tables.
+- Admin/manager use the hamburger drawer below `lg` (not bottom tabs).
 - The guest payment flow must be completable one-handed on a phone.
 
 ---
@@ -251,7 +260,7 @@ shadcn components live in `web/components/ui/` (CLI-managed — do not hand-edit
 components/
 ├── ui/          shadcn components (CLI-managed)
 ├── money/       AmountCell, StatusBadge, PaymentRow
-├── layout/      AppShell, Sidebar (Sheet-based), PageHeader
+├── layout/      AppShell, Sidebar, MobileTabBar, Container, PageHeader
 ├── batches/     BatchRoster, HomeworkPanel, RecordingsPanel
 ├── payments/    PaymentModal, PendingPaymentsQueue
 └── media/       YoutubeEmbed

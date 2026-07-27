@@ -68,7 +68,7 @@ const ICONS = {
 
 export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
   return (
-    <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
       {metrics.map((metric) => {
         const tone = TONE[metric.tone]
         const Icon =
@@ -78,30 +78,37 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
             <div className="flex items-center justify-between gap-2">
               <span
                 className={cn(
-                  'flex size-9 items-center justify-center rounded-lg',
+                  'flex size-8 items-center justify-center rounded-lg sm:size-9',
                   tone.icon,
                 )}
               >
                 <Icon className="size-4" />
               </span>
-              <span className={cn('text-xs font-medium', tone.muted)}>
+              <span
+                className={cn(
+                  'truncate text-xs font-medium',
+                  tone.muted,
+                )}
+              >
                 {metric.label}
               </span>
             </div>
             <p
               className={cn(
-                'mt-4 font-heading text-3xl font-semibold tabular-nums tracking-tight',
+                'mt-3 font-heading text-2xl font-semibold tabular-nums tracking-tight sm:mt-4 sm:text-3xl',
                 tone.value,
               )}
             >
               {metric.value}
             </p>
-            <p className={cn('mt-1 text-xs', tone.muted)}>{metric.hint}</p>
+            <p className={cn('mt-0.5 truncate text-xs sm:mt-1', tone.muted)}>
+              {metric.hint}
+            </p>
           </>
         )
 
         const className = cn(
-          'min-w-40 shrink-0 snap-start rounded-xl p-4 sm:min-w-0',
+          'min-h-24 rounded-xl p-3.5 transition-transform active:scale-[0.98] sm:min-h-0 sm:p-4',
           tone.tile,
         )
 

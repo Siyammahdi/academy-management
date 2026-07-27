@@ -24,8 +24,8 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
   const pastDueCount = sorted.filter((h) => isPastDue(h.dueDate)).length
 
   return (
-    <section className="flex h-full flex-col overflow-hidden rounded-xl bg-card">
-      <div className="bg-status-pending-bg px-5 py-4">
+    <section className="flex h-full flex-col overflow-hidden rounded-xl bg-muted/40">
+      <div className="bg-status-pending-bg px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex size-10 items-center justify-center rounded-lg bg-status-pending/15 text-status-pending">
@@ -70,8 +70,8 @@ export function HomeworkBoard({ items }: HomeworkBoardProps) {
                 <li
                   key={hw.id}
                   className={cn(
-                    'rounded-lg px-3 py-3 transition-colors',
-                    pastDue ? 'bg-status-overdue-bg/70' : 'hover:bg-muted/80',
+                    'rounded-lg px-3 py-3.5 transition-colors',
+                    pastDue ? 'bg-status-overdue-bg/70' : 'active:bg-muted/80',
                   )}
                 >
                   <div className="flex items-start gap-3">

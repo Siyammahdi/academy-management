@@ -114,14 +114,15 @@ export default function StudentDashboardPage() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-start gap-4 py-12">
+      <div className="flex flex-col items-start gap-4 py-8">
         <div
           role="alert"
-          className="rounded-lg bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
+          className="w-full rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
         >
           {error}
         </div>
         <Button
+          className="min-h-11 w-full sm:w-auto"
           variant="outline"
           onClick={() => {
             void reload()
@@ -155,64 +156,64 @@ export default function StudentDashboardPage() {
   })
 
   return (
-    <div className="flex flex-col gap-7 sm:gap-8">
-      {/* Hero greeting — app-like, brand wash */}
+    <div className="flex flex-col gap-5 sm:gap-7">
+      {/* Compact mobile hero */}
       <header className="relative overflow-hidden rounded-xl bg-primary-wash">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-16 size-48 rounded-full bg-primary/20"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-20 right-16 size-40 rounded-full bg-primary-strong/10"
+          className="pointer-events-none absolute -right-8 -top-12 size-36 rounded-full bg-primary/20 sm:size-48"
         />
 
-        <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-primary-strong">
-                {greetingForDhaka()}
-              </p>
-              {user.studentId ? (
-                <Badge className="bg-primary text-primary-foreground">
-                  {user.studentId}
-                </Badge>
-              ) : null}
-            </div>
-            <div className="space-y-1">
-              <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <div className="relative space-y-4 p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-medium text-primary-strong sm:text-sm">
+                  {greetingForDhaka()}
+                </p>
+                {user.studentId ? (
+                  <Badge className="bg-primary text-primary-foreground">
+                    {user.studentId}
+                  </Badge>
+                ) : null}
+              </div>
+              <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 Hello, {displayName}
               </h1>
-              <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
+              <p className="hidden max-w-lg text-sm leading-relaxed text-muted-foreground sm:block">
                 Join class, clear homework, catch recordings — dues stay per
                 course, never mixed into one total.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button render={<Link href="/dashboard/batches" />}>
-                <CompassIcon />
-                Browse batches
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  void reload()
-                }}
-              >
-                <RefreshCwIcon />
-                Refresh
-              </Button>
+
+            <div className="shrink-0 rounded-xl bg-background/80 px-3 py-2 text-right">
+              <p className="font-heading text-base font-semibold tabular-nums text-foreground sm:text-lg">
+                {clock}
+              </p>
+              <p className="max-w-28 text-xs leading-tight text-muted-foreground">
+                {formatDhakaToday()}
+              </p>
             </div>
           </div>
 
-          <div className="shrink-0 rounded-xl bg-background/70 px-4 py-3 backdrop-blur-sm">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Asia/Dhaka
-            </p>
-            <p className="mt-0.5 font-heading text-xl font-semibold tabular-nums text-foreground">
-              {clock}
-            </p>
-            <p className="text-xs text-muted-foreground">{formatDhakaToday()}</p>
+          <div className="flex gap-2">
+            <Button
+              className="min-h-11 flex-1 sm:flex-none"
+              render={<Link href="/dashboard/batches" />}
+            >
+              <CompassIcon />
+              Browse
+            </Button>
+            <Button
+              variant="secondary"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => {
+                void reload()
+              }}
+            >
+              <RefreshCwIcon />
+              Refresh
+            </Button>
           </div>
         </div>
       </header>
@@ -220,7 +221,7 @@ export default function StudentDashboardPage() {
       {error ? (
         <div
           role="alert"
-          className="rounded-lg bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
+          className="rounded-xl bg-status-overdue-bg px-4 py-3 text-sm text-status-overdue"
         >
           {error}
         </div>
@@ -233,11 +234,8 @@ export default function StudentDashboardPage() {
             label: 'Courses',
             value: enrollments.length,
             hint:
-              enrollments.length === 1
-                ? 'Active shelf'
-                : 'On your shelf',
+              enrollments.length === 1 ? 'Active shelf' : 'On your shelf',
             tone: 'brand',
-            href: undefined,
           },
           {
             key: 'dues',
@@ -276,13 +274,13 @@ export default function StudentDashboardPage() {
 
       <RecordingsTimeline items={recordings} />
 
-      <section className="space-y-4">
+      <section className="space-y-3 sm:space-y-4">
         <div className="space-y-1">
           <h2 className="font-heading text-lg font-semibold tracking-tight text-foreground">
             Your courses
           </h2>
           <p className="text-sm text-muted-foreground">
-            Covers, class actions, and this month&apos;s due — per enrollment.
+            Swipe the shelf · join, copy, or pay per course
           </p>
         </div>
         <CourseShelf

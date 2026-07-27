@@ -33,7 +33,7 @@ export function PasswordInput({
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="absolute end-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        className="absolute end-1.5 top-1/2 size-9 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}
         tabIndex={-1}

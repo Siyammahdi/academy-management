@@ -59,7 +59,7 @@ export function RecordingsTimeline({ items }: RecordingsTimelineProps) {
       </div>
 
       {/* Day picker — horizontal snap for mobile app feel */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:snap-none sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {groups.map((group) => {
           const selected = group.key === current.key
           return (
@@ -71,10 +71,10 @@ export function RecordingsTimeline({ items }: RecordingsTimelineProps) {
                 setPlayingId(null)
               }}
               className={cn(
-                'shrink-0 snap-start rounded-xl px-4 py-3 text-left transition-colors',
+                'min-h-16 shrink-0 snap-start rounded-xl px-4 py-3 text-left transition-colors',
                 selected
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-primary-wash text-primary-strong hover:bg-primary/15',
+                  : 'bg-primary-wash text-primary-strong active:bg-primary/15',
               )}
             >
               <p className="text-xs font-medium opacity-80">

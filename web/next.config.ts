@@ -17,7 +17,11 @@ console.log('API_PROXY_TARGET =', API_PROXY_TARGET);
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: 'i.ytimg.com' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'i.ytimg.com' },
+      // Marketing photography placeholders — see lib/marketing/media.ts.
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+    ],
   },
   async rewrites() {
     if (!API_PROXY_TARGET) return []

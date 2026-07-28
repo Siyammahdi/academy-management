@@ -59,13 +59,17 @@
 | Primitives (Button, Input, Card, Pill, Select, Modal, Textarea) | 🟡 🌐 |
 | Ledger components (LedgerLine, AmountCell, StatusPill) | 🟡 🌐 The signature component |
 | Auth pages (login, register) | 🌐 Wired to the API, error-envelope mapping |
-| Public: about, contact | 🌐 |
-| Public: landing page | ⛔ Placeholder only — **being designed by the owner** |
+| Public: about, contact | 🌐 Editorial rebuild; photography from `lib/marketing/media.ts` |
+| Public: landing page | 🌐 Eight editorial sections, GSAP motion per section, course/batch facts read live from the public API |
+| Public: marketing copy + photography registries (`lib/marketing/`) | 🌐 Single edit point for wording and images. **Images are licensed Unsplash placeholders** pending the client's own photography |
+| Marketing motion utilities (`lib/gsap/`) | 🌐 Mask reveals, parallax, counters, line draw, magnetic CTA; all gated on `prefers-reduced-motion` |
 | Public: guest payment (`/pay`) | 🌐 Three-step flow |
 | Admin: overview, courses, batches, roster, payments | 🌐 |
 | Manager: overview, batches, roster, verification queue | 🌐 |
 | Student: dashboard, dues, payments, browse/enroll, payment modal | 🌐 |
 | Class features UI (link, homework, recordings) | 🌐 |
+
+**Deliberately absent from the public site:** testimonials, student success stories, and any aggregate statistic the platform cannot evidence. The live figures on the home page are counted from `GET /courses` and `GET /batches` and hide themselves when there is nothing open. Add a testimonials section only when real, attributable quotes exist.
 
 **Every ✅/🟡 frontend item is also 🌐 — no page in this application has been visually verified in a browser.** Layout, contrast, responsive behaviour, and visual alignment are unconfirmed. This is the single largest verification gap.
 

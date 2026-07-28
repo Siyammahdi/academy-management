@@ -1,33 +1,99 @@
-import Link from 'next/link';
-import { Container } from './container';
+'use client'
 
-const FOOTER_LINKS = [
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
-  { href: '/login', label: 'Log in' },
-];
+import Link from 'next/link'
+
+import { useMarketingCopy } from '@/components/i18n/locale-provider'
+import { Container } from './container'
 
 export function SiteFooter() {
+  const t = useMarketingCopy()
+
+  const columns = [
+    {
+      title: t.footer.academyColumn,
+      links: [
+        { href: '/#programs', label: t.footer.programs },
+        { href: '/#enrollment', label: t.footer.howEnrollment },
+        { href: '/about', label: t.footer.about },
+        { href: '/#faq', label: t.footer.questions },
+      ],
+    },
+    {
+      title: t.footer.studentsColumn,
+      links: [
+        { href: '/register', label: t.footer.createAccount },
+        { href: '/login', label: t.footer.logIn },
+        { href: '/pay', label: t.footer.payGuest },
+        { href: '/contact', label: t.footer.contact },
+      ],
+    },
+  ] as const
+
   return (
-    <footer className="border-t border-rule">
+    <footer className="border-t border-border bg-background">
       <Container width="marketing">
-        <div className="flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-body text-sm text-ink-muted">
-            © {new Date().getFullYear()} An Nahda Academy
-          </p>
-          <nav className="flex items-center gap-6" aria-label="Footer">
-            {FOOTER_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-body text-sm text-ink-muted hover:text-ink"
+        <div className="grid gap-12 py-14 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2.5 font-heading text-base font-semibold tracking-tight text-foreground"
+            >
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">
+                AN
+              </span>
+              {t.academy.name}
+            </Link>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {t.footer.blurb}
+            </p>
+            <div className="mt-6 flex flex-col gap-1.5 text-sm">
+              <a
+                href={`mailto:${t.contact.email}`}
+                className="text-primary-strong underline-offset-4 hover:underline"
               >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+                {t.contact.email}
+              </a>
+              <a
+                href={`tel:${t.contact.phone.replace(/[^+\d]/g, '')}`}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {t.contact.phone}
+              </a>
+            </div>
+          </div>
+
+          {columns.map((column) => (
+            <nav
+              key={column.title}
+              className="lg:col-span-3 lg:col-start-auto"
+              aria-label={column.title}
+            >
+              <h2 className="text-xs font-medium tracking-wide text-primary-strong uppercase">
+                {column.title}
+              </h2>
+              <ul className="mt-4 flex flex-col gap-3">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-border py-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} {t.academy.name}
+          </p>
+          <p className="text-xs text-muted-foreground">{t.footer.classesNote}</p>
         </div>
       </Container>
     </footer>
-  );
+  )
 }

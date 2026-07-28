@@ -1,14 +1,13 @@
-import { Container } from '../../components/layout/container';
+import type { Metadata } from 'next'
 
-// Placeholder — the landing page is being designed separately (task item 6).
+import { LandingPage } from '@/components/marketing/landing-page'
+
+export const metadata: Metadata = {
+  title: 'An Nahda Academy',
+  description:
+    'Arabic and Qur’an study with structured enrollment, clear fees, live class links, homework, and recordings — for students and families.',
+}
+
 export default function HomePage() {
-  return (
-    <Container width="marketing">
-      <div className="py-24 text-center">
-        <p className="font-body text-body text-ink-muted">
-          An Nahda Academy — landing page coming soon.
-        </p>
-      </div>
-    </Container>
-  );
+  return <LandingPage />
 }

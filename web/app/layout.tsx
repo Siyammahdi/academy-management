@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { Inter, Geist_Mono } from 'next/font/google'
+import { Inter, Geist_Mono, Noto_Sans_Bengali } from 'next/font/google'
 
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 
 import './globals.css'
+import 'lenis/dist/lenis.css'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,6 +18,13 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
+})
+
+const notoBengali = Noto_Sans_Bengali({
+  subsets: ['bengali'],
+  variable: '--font-bengali',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -49,7 +57,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${geistMono.variable} ${notoBengali.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-svh font-sans antialiased">

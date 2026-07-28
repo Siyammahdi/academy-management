@@ -1,16 +1,16 @@
-import type { ReactNode } from 'react';
-import { cx } from '../../lib/cx';
+import type { ReactNode } from 'react'
+
+import { cn } from '@/lib/utils'
 
 export interface PageHeaderProps {
-  eyebrow?: string;
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-  className?: string;
+  eyebrow?: string
+  title: string
+  description?: string
+  actions?: ReactNode
+  className?: string
 }
 
-// doc 09 §3 — page titles use the display face, sparingly; headings are
-// weight 600, never 700+.
+// doc 09 §3 — page titles use the heading face sparingly; weight 600.
 export function PageHeader({
   eyebrow,
   title,
@@ -19,15 +19,20 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cx('flex flex-col gap-3 border-b border-rule pb-6', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-3 border-b border-border pb-6',
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           {eyebrow ? (
-            <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
+            <span className="text-xs font-medium tracking-wide text-primary-strong uppercase">
               {eyebrow}
             </span>
           ) : null}
-          <h1 className="font-display text-h1 font-semibold text-ink">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {title}
           </h1>
         </div>
@@ -36,10 +41,10 @@ export function PageHeader({
         ) : null}
       </div>
       {description ? (
-        <p className="max-w-reading font-body text-body text-ink-muted">
+        <p className="max-w-prose text-base leading-relaxed text-muted-foreground">
           {description}
         </p>
       ) : null}
     </div>
-  );
+  )
 }

@@ -185,4 +185,15 @@
   .font-numeric {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Bangla marketing copy — Noto Sans Bengali stacked ahead of the UI sans. */
+  html[lang='bn'] body {
+    font-family: var(--font-bengali), var(--font-sans), ui-sans-serif, system-ui,
+      sans-serif;
+  }
+
+  html[lang='bn'] .font-heading {
+    font-family: var(--font-bengali), var(--font-heading), ui-sans-serif,
+      system-ui, sans-serif;
+  }
 }

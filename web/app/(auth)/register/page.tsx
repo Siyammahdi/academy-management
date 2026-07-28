@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import type { FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2Icon } from 'lucide-react'
 
 import { AuthShell } from '@/components/auth/auth-shell'
 import { PasswordInput } from '@/components/auth/password-input'
@@ -219,16 +218,9 @@ export default function RegisterPage() {
           type="submit"
           size="lg"
           className="h-12 w-full text-base"
-          disabled={isPending}
+          loading={isPending}
         >
-          {isPending ? (
-            <>
-              <Loader2Icon className="animate-spin" />
-              Creating account…
-            </>
-          ) : (
-            'Create account'
-          )}
+          {isPending ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
     </AuthShell>

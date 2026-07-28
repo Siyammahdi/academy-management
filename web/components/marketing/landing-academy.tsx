@@ -6,7 +6,14 @@ import { Eyebrow } from '@/components/marketing/eyebrow'
 import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
 import { MarketingImage } from '@/components/marketing/marketing-image'
 import { Container } from '@/components/layout/container'
-import { fadeRise, imageReveal, parallax, wordRise } from '@/lib/gsap/motion'
+import {
+  blurRise,
+  imageReveal,
+  parallax,
+  scrubScale,
+  skewRise,
+  wordRise,
+} from '@/lib/gsap/motion'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { MEDIA } from '@/lib/marketing/media'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
@@ -25,34 +32,39 @@ export function LandingAcademy() {
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-academy-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.035 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 5 })
+
+    const quote = root.querySelector('[data-academy-quote]')
+    if (quote) skewRise(gsap, quote, { y: 40, skew: 4, start: 'top 88%' })
 
     const tall = root.querySelector('[data-academy-tall]')
     const tallFrame = tall?.querySelector('[data-image-frame]')
+    const tallImage = tall?.querySelector('[data-image]')
     if (tall && tallFrame) {
-      imageReveal(gsap, tallFrame)
-      // Drift the whole frame rather than the picture inside it, so the
-      // photograph never separates from its edges.
-      parallax(gsap, tall, { amount: 26 })
+      imageReveal(gsap, tallFrame, { from: 'bottom', scale: 1.28 })
+      parallax(gsap, tall, { amount: 32 })
+      if (tallImage) scrubScale(gsap, tallImage, { from: 1.15, to: 1, trigger: tall })
     }
 
     const detailFrame = root.querySelector(
       '[data-academy-detail] [data-image-frame]',
     )
-    if (detailFrame) imageReveal(gsap, detailFrame, { from: 'left' })
+    if (detailFrame) imageReveal(gsap, detailFrame, { from: 'left', scale: 1.2 })
 
     const paragraphs = root.querySelectorAll('[data-academy-copy]')
-    if (paragraphs.length) fadeRise(gsap, paragraphs, { stagger: 0.12 })
+    if (paragraphs.length) blurRise(gsap, paragraphs, { stagger: 0.14, y: 32 })
 
     const aside = root.querySelector('[data-academy-aside]')
-    if (aside) fadeRise(gsap, aside, { y: 20 })
+    if (aside) {
+      skewRise(gsap, aside, { y: 48, skew: 3, start: 'top 90%' })
+    }
   }, [])
 
   return (
     <section
       ref={rootRef}
       id="academy"
-      className="relative scroll-mt-24 overflow-hidden bg-background py-24 sm:py-32"
+      className="relative scroll-mt-24 bg-background py-24 sm:py-32"
       aria-labelledby="academy-heading"
     >
       <LandingAtmosphere tone="wash" />
@@ -70,7 +82,7 @@ export function LandingAcademy() {
               </h2>
 
               <blockquote
-                data-academy-copy
+                data-academy-quote
                 className="mt-8 border-l-2 border-primary pl-5 text-lg leading-relaxed text-pretty text-primary-strong sm:text-xl"
               >
                 {story.quote}

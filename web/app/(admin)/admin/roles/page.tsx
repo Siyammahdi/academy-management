@@ -567,7 +567,7 @@ export default function AdminRolesPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" className="min-h-11" disabled={createBusy}>
+            <Button type="submit" className="min-h-11" loading={createBusy}>
               {createBusy ? 'Creating…' : 'Create user'}
             </Button>
           </div>

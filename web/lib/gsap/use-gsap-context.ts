@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react'
 
-import { registerGsap } from '@/lib/gsap'
+import { registerGsap, ScrollTrigger } from '@/lib/gsap'
 import { usePrefersReducedMotion } from '@/lib/gsap/use-prefers-reduced-motion'
 
 type GsapFactory = (
@@ -37,6 +37,14 @@ export function useGsapContext(
       factory(gsap)
     }, scope)
 
-    return () => ctx.revert()
+    // Pin/scrub starts need a refresh after this section's triggers exist.
+    const raf = requestAnimationFrame(() => {
+      ScrollTrigger.refresh()
+    })
+
+    return () => {
+      cancelAnimationFrame(raf)
+      ctx.revert()
+    }
   }, [reducedMotion, scope, ...deps])
 }

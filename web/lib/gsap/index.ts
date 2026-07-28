@@ -16,16 +16,29 @@ export function registerGsap(): typeof gsap {
 
 export { gsap, ScrollTrigger }
 
-/** Default ease for premium, restrained motion. */
+/**
+ * Expressive easings for marketing motion. Application UI stays on Luma
+ * defaults — these are landing-only.
+ */
 export const EASE = {
   out: 'power3.out',
   inOut: 'power2.inOut',
   soft: 'power2.out',
+  /** Snappy Webflow-style settle. */
+  expo: 'expo.out',
+  expoInOut: 'expo.inOut',
+  /** Soft overshoot for playful entrances. */
+  back: 'back.out(1.35)',
+  backSoft: 'back.out(1.1)',
+  /** Smooth cinematic glide. */
+  power4: 'power4.out',
+  circ: 'circ.out',
 } as const
 
 export const DURATION = {
-  hero: 1.05,
-  reveal: 0.85,
-  stagger: 0.1,
-  hover: 0.35,
+  hero: 1.15,
+  reveal: 0.95,
+  stagger: 0.08,
+  hover: 0.4,
+  scrub: 1.2,
 } as const

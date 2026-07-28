@@ -98,7 +98,7 @@ export function AuthShell({
               Enrollment &amp; billing
             </p>
             <h2 className="font-heading text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl lg:text-5xl">
-              Your courses, dues, and class — in one calm place.
+            Your Arabic learning journey starts here
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
               Teaching stays on Telegram and Zoom. This portal keeps who is

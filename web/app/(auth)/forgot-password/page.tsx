@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react'
 import type { FormEvent } from 'react'
 import Link from 'next/link'
-import { Loader2Icon } from 'lucide-react'
 
 import { AuthShell } from '@/components/auth/auth-shell'
 import { Button } from '@/components/ui/button'
@@ -121,16 +120,9 @@ export default function ForgotPasswordPage() {
             type="submit"
             size="lg"
             className="h-12 w-full text-base"
-            disabled={isPending}
+            loading={isPending}
           >
-            {isPending ? (
-              <>
-                <Loader2Icon className="animate-spin" />
-                Sending…
-              </>
-            ) : (
-              'Send reset link'
-            )}
+            {isPending ? 'Sending…' : 'Send reset link'}
           </Button>
         </form>
       )}

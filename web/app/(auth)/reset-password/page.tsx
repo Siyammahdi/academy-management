@@ -4,7 +4,6 @@ import { Suspense, useState, useTransition } from 'react'
 import type { FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2Icon } from 'lucide-react'
 
 import { AuthShell } from '@/components/auth/auth-shell'
 import { PasswordInput } from '@/components/auth/password-input'
@@ -143,15 +142,13 @@ function ResetPasswordForm() {
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isPending}>
-        {isPending ? (
-          <>
-            <Loader2Icon className="animate-spin" />
-            Saving…
-          </>
-        ) : (
-          'Set new password'
-        )}
+      <Button
+        type="submit"
+        size="lg"
+        className="h-12 w-full text-base"
+        loading={isPending}
+      >
+        {isPending ? 'Saving…' : 'Set new password'}
       </Button>
     </form>
   )

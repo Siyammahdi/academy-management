@@ -8,7 +8,7 @@ import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
 import { MarketingImage } from '@/components/marketing/marketing-image'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
-import { imageReveal, wordRise } from '@/lib/gsap/motion'
+import { blurRise, imageReveal, scrubScale, wordRise } from '@/lib/gsap/motion'
 import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { MEDIA } from '@/lib/marketing/media'
@@ -29,13 +29,25 @@ export function LandingAssurance() {
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-assurance-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.035 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 4 })
+
+    const lead = root.querySelector('[data-assurance-lead]')
+    if (lead) blurRise(gsap, lead, { y: 20, blur: 8 })
 
     const frame = root.querySelector('[data-assurance-image] [data-image-frame]')
-    if (frame) imageReveal(gsap, frame, { from: 'left' })
+    const picture = root.querySelector('[data-assurance-image] [data-image]')
+    if (frame) imageReveal(gsap, frame, { from: 'left', scale: 1.2 })
+    if (picture) {
+      scrubScale(gsap, picture, {
+        from: 1.1,
+        to: 1,
+        trigger: root.querySelector('[data-assurance-image]'),
+      })
+    }
 
     root.querySelectorAll('[data-assurance-row]').forEach((row) => {
       const rule = row.querySelector('[data-assurance-rule]')
+      const index = row.querySelector('[data-assurance-index]')
       const copy = row.querySelectorAll('[data-assurance-copy]')
       const tl = gsap.timeline({
         scrollTrigger: { trigger: row, start: 'top 88%', once: true },
@@ -45,22 +57,43 @@ export function LandingAssurance() {
         tl.fromTo(
           rule,
           { scaleX: 0 },
-          { scaleX: 1, duration: 0.7, ease: EASE.inOut, transformOrigin: 'left' },
+          {
+            scaleX: 1,
+            duration: 0.85,
+            ease: EASE.expoInOut,
+            transformOrigin: 'left',
+          },
+        )
+      }
+      if (index) {
+        tl.fromTo(
+          index,
+          { opacity: 0, y: 16, rotateZ: -8 },
+          { opacity: 1, y: 0, rotateZ: 0, duration: 0.65, ease: EASE.back },
+          '-=0.5',
         )
       }
       tl.fromTo(
         copy,
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.7, stagger: 0.06, ease: EASE.out },
-        '-=0.45',
+        { opacity: 0, y: 24, filter: 'blur(8px)' },
+        {
+          opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: 0.85,
+          stagger: 0.07,
+          ease: EASE.expo,
+        },
+        '-=0.4',
       )
+
     })
   }, [])
 
   return (
     <section
       ref={rootRef}
-      className="relative overflow-hidden bg-primary-strong py-24 text-primary-foreground sm:py-32"
+      className="relative bg-primary-strong py-24 text-primary-foreground sm:py-32"
       aria-labelledby="assurance-heading"
     >
       <LandingAtmosphere tone="deep" density="rich" />
@@ -76,7 +109,10 @@ export function LandingAssurance() {
               >
                 {assurances.heading}
               </h2>
-              <p className="mt-5 max-w-sm text-base leading-relaxed text-primary-foreground/70">
+              <p
+                data-assurance-lead
+                className="mt-5 max-w-sm text-base leading-relaxed text-primary-foreground/70"
+              >
                 {assurances.lead}
               </p>
 
@@ -112,7 +148,7 @@ export function LandingAssurance() {
                 />
                 <div className="flex gap-6">
                   <span
-                    data-assurance-copy
+                    data-assurance-index
                     className="font-heading text-sm font-semibold tabular-nums text-primary-foreground/50"
                   >
                     {String(index + 1).padStart(2, '0')}

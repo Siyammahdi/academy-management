@@ -343,7 +343,7 @@ function ClassLinkModal({
           >
             Cancel
           </Button>
-          <Button type="submit" className="min-h-11" disabled={saving}>
+          <Button type="submit" className="min-h-11" loading={saving}>
             {saving ? 'Saving…' : 'Save link'}
           </Button>
         </div>

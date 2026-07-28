@@ -12,24 +12,26 @@ import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
 import { EASE } from '@/lib/gsap'
-import { splitWords } from '@/lib/gsap/split-text'
-import { parallax } from '@/lib/gsap/motion'
+import { splitChars, splitWords } from '@/lib/gsap/split-text'
+import { parallax, scrubScale } from '@/lib/gsap/motion'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMagnetic } from '@/lib/gsap/use-magnetic'
+import { useTilt } from '@/lib/gsap/use-tilt'
 import { usePrefersReducedMotion } from '@/lib/gsap/use-prefers-reduced-motion'
 import { MEDIA } from '@/lib/marketing/media'
 import { cn } from '@/lib/utils'
 
 /**
- * Opening statement. One cinematic timeline on load: the rule draws, the
- * headline rises word by word out of its masks, and the photography unmasks
- * behind the inset detail. Nothing here loops or repeats on scroll.
+ * Opening statement. One cinematic load timeline: eyebrow rule draws, the
+ * headline rises letter-by-letter, photography unmasks with scale settle,
+ * and the inset detail drifts in. Scroll continues the image scrub.
  */
 export function LandingHero() {
   const t = useMarketingCopy()
   const rootRef = useRef<HTMLElement>(null)
   const reduced = usePrefersReducedMotion()
-  const magneticRef = useMagnetic<HTMLAnchorElement>()
+  const magneticRef = useMagnetic<HTMLAnchorElement>(0.36)
+  const tiltRef = useTilt<HTMLDivElement>(6)
 
   useGsapContext(rootRef, (gsap) => {
     const root = rootRef.current
@@ -46,68 +48,129 @@ export function LandingHero() {
     const detail = q('[data-hero-detail]')
     const soft = root.querySelectorAll('[data-hero-fade]')
     const facts = root.querySelectorAll('[data-hero-fact]')
+    const arrow = q('[data-hero-arrow]')
 
     if (!headline || !frame) return
 
-    const words = splitWords(headline)
-    const tl = gsap.timeline({ defaults: { ease: EASE.out } })
+    // Prefer letter kinetic on short Latin-leaning headlines; fall back to
+    // words when the split would be impractically long (e.g. dense BN copy).
+    const preferChars = (headline.textContent?.trim().length ?? 0) <= 56
+    const units = preferChars ? splitChars(headline) : splitWords(headline)
+
+    gsap.set(units, { yPercent: 130, rotateZ: preferChars ? 10 : 5, opacity: 0 })
+    gsap.set([soft, facts, detail].filter(Boolean), { opacity: 0 })
+    if (frame) gsap.set(frame, { clipPath: 'inset(14% 10% 14% 10%)', scale: 0.92 })
+
+    const tl = gsap.timeline({ defaults: { ease: EASE.expo } })
 
     if (eyebrow) {
       tl.fromTo(
         eyebrow,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.5 },
+        { opacity: 0, y: 16, filter: 'blur(8px)' },
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7 },
       )
     }
     if (rule) {
       tl.fromTo(
         rule,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: EASE.inOut },
-        '-=0.3',
+        { scaleX: 1, duration: 0.75, ease: EASE.expoInOut },
+        '-=0.45',
       )
     }
 
-    tl.fromTo(
-      words,
-      { yPercent: 115 },
-      { yPercent: 0, duration: 1.05, stagger: 0.04 },
-      '-=0.3',
+    tl.to(
+      units,
+      {
+        yPercent: 0,
+        rotateZ: 0,
+        opacity: 1,
+        duration: preferChars ? 0.9 : 1.1,
+        stagger: preferChars ? 0.016 : 0.04,
+        ease: preferChars ? EASE.backSoft : EASE.expo,
+      },
+      '-=0.25',
     )
       .fromTo(
         frame,
-        { clipPath: 'inset(0% 0% 100% 0%)' },
-        { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.2, ease: EASE.inOut },
-        '-=0.95',
+        {
+          opacity: 1,
+          clipPath: 'inset(14% 10% 14% 10%)',
+          scale: 0.92,
+        },
+        {
+          clipPath: 'inset(0% 0% 0% 0%)',
+          scale: 1,
+          duration: 1.4,
+          ease: EASE.expoInOut,
+        },
+        '-=0.85',
       )
       .fromTo(
         soft,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.12 },
-        '-=0.85',
+        { opacity: 0, y: 28, filter: 'blur(10px)' },
+        {
+          opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: 0.95,
+          stagger: 0.14,
+        },
+        '-=0.95',
       )
 
     if (picture) {
-      tl.fromTo(picture, { scale: 1.25 }, { scale: 1, duration: 1.6 }, '-=1.6')
+      tl.fromTo(
+        picture,
+        { scale: 1.32, rotate: 2 },
+        { scale: 1, rotate: 0, duration: 1.7, ease: EASE.expo },
+        '-=1.7',
+      )
+      scrubScale(gsap, picture, { from: 1.08, to: 1, trigger: root })
     }
+
     if (detail) {
       tl.fromTo(
         detail,
-        { opacity: 0, x: -28, y: 20 },
-        { opacity: 1, x: 0, y: 0, duration: 0.9 },
-        '-=0.9',
+        { opacity: 0, x: -40, y: 36, rotate: -4, scale: 0.9 },
+        {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotate: 0,
+          scale: 1,
+          duration: 1.05,
+          ease: EASE.back,
+        },
+        '-=1.1',
       )
+      parallax(gsap, detail, { amount: 48, trigger: root })
     }
+
     tl.fromTo(
       facts,
-      { opacity: 0, y: 14 },
-      { opacity: 1, y: 0, duration: 0.6, stagger: 0.08 },
-      '-=0.4',
+      { opacity: 0, y: 22, filter: 'blur(6px)' },
+      {
+        opacity: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        duration: 0.7,
+        stagger: 0.1,
+      },
+      '-=0.35',
     )
 
-    if (detail) {
-      parallax(gsap, detail, { amount: 40, trigger: rootRef.current })
+    if (arrow) {
+      gsap.to(arrow, {
+        x: 4,
+        duration: 0.85,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+        delay: tl.duration(),
+      })
     }
+
   }, [])
 
   const hidden = !reduced ? 'opacity-0' : undefined
@@ -158,7 +221,9 @@ export function LandingHero() {
                 render={<Link ref={magneticRef} href="#programs" />}
               >
                 {t.hero.ctaPrograms}
-                <ArrowRightIcon />
+                <span data-hero-arrow className="inline-flex">
+                  <ArrowRightIcon />
+                </span>
               </Button>
               <Button
                 size="lg"
@@ -172,7 +237,7 @@ export function LandingHero() {
           </div>
 
           <div className="relative lg:col-span-5">
-            <div data-hero-visual>
+            <div ref={tiltRef} data-hero-visual className="will-change-transform">
               <MarketingImage
                 image={MEDIA.heroPrimary}
                 className="aspect-4/5 w-full"

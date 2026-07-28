@@ -388,7 +388,7 @@ function CreateHomeworkModal({
           >
             Cancel
           </Button>
-          <Button type="submit" className="min-h-11" disabled={saving}>
+          <Button type="submit" className="min-h-11" loading={saving}>
             {saving ? 'Saving…' : 'Add homework'}
           </Button>
         </div>

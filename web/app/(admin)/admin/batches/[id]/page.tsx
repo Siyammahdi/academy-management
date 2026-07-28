@@ -566,7 +566,7 @@ export default function AdminBatchOverviewPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="min-h-11" disabled={editSaving}>
+              <Button type="submit" className="min-h-11" loading={editSaving}>
                 {editSaving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>

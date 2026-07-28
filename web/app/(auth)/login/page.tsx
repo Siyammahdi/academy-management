@@ -4,7 +4,6 @@ import { Suspense, useState, useTransition } from 'react'
 import type { FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2Icon } from 'lucide-react'
 
 import { AuthShell } from '@/components/auth/auth-shell'
 import { PasswordInput } from '@/components/auth/password-input'
@@ -25,6 +24,25 @@ function isSafeInternalPath(value: string | null): value is string {
   return Boolean(value && value.startsWith('/') && !value.startsWith('//'))
 }
 
+/** Temporary quick-fill presets for local / staging sign-in. Remove before production. */
+const QUICK_LOGINS = [
+  {
+    label: 'Admin',
+    email: 'admin@nahda.local',
+    password: 'ChangeMe123!',
+  },
+  {
+    label: 'Manager',
+    email: 'siyammanager@gmail.com',
+    password: 'siyammanager',
+  },
+  {
+    label: 'Student',
+    email: 'siyamstu@gmail.com',
+    password: 'siyamstu',
+  },
+] as const
+
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -37,6 +55,13 @@ function LoginForm() {
     email?: string
     password?: string
   }>({})
+
+  function fillQuickLogin(preset: (typeof QUICK_LOGINS)[number]): void {
+    setEmail(preset.email)
+    setPassword(preset.password)
+    setError(null)
+    setFieldErrors({})
+  }
 
   function validate(): boolean {
     const next: { email?: string; password?: string } = {}
@@ -74,6 +99,30 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6" noValidate>
+      <div className="rounded-xl border border-dashed border-primary/30 bg-primary-wash/60 p-3 sm:p-4">
+        <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
+          Temporary · quick fill
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Fills email and password only — then press Sign in.
+        </p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {QUICK_LOGINS.map((preset) => (
+            <Button
+              key={preset.label}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-10 bg-background"
+              disabled={isPending}
+              onClick={() => fillQuickLogin(preset)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <FieldGroup className="gap-4 sm:gap-5">
         <Field data-invalid={Boolean(fieldErrors.email) || undefined}>
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -105,7 +154,7 @@ function LoginForm() {
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <Link
               href="/forgot-password"
-              className="min-h-11 inline-flex items-center text-xs font-medium text-primary-strong underline-offset-4 hover:underline"
+              className="inline-flex min-h-11 items-center text-xs font-medium text-primary-strong underline-offset-4 hover:underline"
             >
               Forgot password?
             </Link>
@@ -158,16 +207,9 @@ function LoginForm() {
         type="submit"
         size="lg"
         className="h-12 w-full text-base"
-        disabled={isPending}
+        loading={isPending}
       >
-        {isPending ? (
-          <>
-            <Loader2Icon className="animate-spin" />
-            Signing in…
-          </>
-        ) : (
-          'Sign in'
-        )}
+        {isPending ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
   )

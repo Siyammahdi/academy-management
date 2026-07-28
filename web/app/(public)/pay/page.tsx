@@ -186,7 +186,7 @@ export default function GuestPayPage() {
                 {lookupError}
               </p>
             ) : null}
-            <Button type="submit" disabled={isLookingUp}>
+            <Button type="submit" loading={isLookingUp}>
               {isLookingUp ? 'Looking up…' : 'Find dues'}
             </Button>
           </form>
@@ -269,7 +269,7 @@ export default function GuestPayPage() {
 
             {payMode === 'choose' ? (
               <div className="flex flex-col gap-3">
-                <Button onClick={handlePayOnline} disabled={isSubmitting}>
+                <Button onClick={handlePayOnline} loading={isSubmitting}>
                   {isSubmitting ? 'Starting…' : 'Pay online'}
                 </Button>
                 <Button
@@ -318,7 +318,7 @@ export default function GuestPayPage() {
                   onChange={(e) => setProofUrl(e.target.value)}
                 />
                 <div className="flex flex-col gap-3">
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" loading={isSubmitting}>
                     {isSubmitting ? 'Submitting…' : 'Submit payment'}
                   </Button>
                   <Button

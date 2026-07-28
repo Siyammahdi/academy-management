@@ -9,7 +9,8 @@ import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
 import { MarketingImage } from '@/components/marketing/marketing-image'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
-import { fadeRise, parallax, wordRise } from '@/lib/gsap/motion'
+import { blurRise, parallax, scrubScale, wordRise } from '@/lib/gsap/motion'
+import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMagnetic } from '@/lib/gsap/use-magnetic'
 import { MEDIA } from '@/lib/marketing/media'
@@ -20,20 +21,75 @@ export function LandingCta() {
   const t = useMarketingCopy()
   const closing = t.closing
   const rootRef = useRef<HTMLElement>(null)
-  const magneticRef = useMagnetic<HTMLAnchorElement>(0.22)
+  const magneticRef = useMagnetic<HTMLAnchorElement>(0.28)
 
   useGsapContext(rootRef, (gsap) => {
     const root = rootRef.current
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-cta-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.04, start: 'top 80%' })
+    if (headline) {
+      wordRise(gsap, headline, { stagger: 0.045, start: 'top 82%', rotate: 5 })
+    }
 
     const soft = root.querySelectorAll('[data-cta-fade]')
-    if (soft.length) fadeRise(gsap, soft, { stagger: 0.1, y: 20, start: 'top 78%' })
+    if (soft.length) {
+      blurRise(gsap, soft, {
+        stagger: 0.12,
+        y: 28,
+        blur: 10,
+        start: 'top 80%',
+      })
+    }
 
     const picture = root.querySelector('[data-image]')
-    if (picture) parallax(gsap, picture, { amount: 30, trigger: root })
+    if (picture) {
+      parallax(gsap, picture, { amount: 36, trigger: root })
+      scrubScale(gsap, picture, { from: 1.2, to: 1.05, trigger: root })
+    }
+
+    const wash = root.querySelector('[data-cta-wash]')
+    if (wash) {
+      gsap.fromTo(
+        wash,
+        { opacity: 0.95 },
+        {
+          opacity: 0.78,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: root,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: true,
+          },
+        },
+      )
+    }
+
+    const arrow = root.querySelector('[data-cta-arrow]')
+    if (arrow) {
+      gsap.to(arrow, {
+        x: 5,
+        duration: 0.9,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+        scrollTrigger: { trigger: root, start: 'top 75%', once: true },
+      })
+    }
+
+    // Soft scale of the whole CTA block as it enters.
+    gsap.fromTo(
+      root.querySelector('[data-cta-content]'),
+      { y: 48, scale: 0.97 },
+      {
+        y: 0,
+        scale: 1,
+        duration: 1.15,
+        ease: EASE.expo,
+        scrollTrigger: { trigger: root, start: 'top 78%', once: true },
+      },
+    )
   }, [])
 
   return (
@@ -50,12 +106,13 @@ export function LandingCta() {
       />
       <div
         aria-hidden
+        data-cta-wash
         className="absolute inset-0 -z-10 bg-primary-strong/85"
       />
       <LandingAtmosphere tone="deep" density="rich" className="-z-10" />
 
       <Container width="marketing" className="relative z-10">
-        <div className="max-w-3xl">
+        <div data-cta-content className="max-w-3xl will-change-transform">
           <Eyebrow tone="inverse" data-cta-fade>
             {closing.eyebrow}
           </Eyebrow>
@@ -83,7 +140,9 @@ export function LandingCta() {
               render={<Link ref={magneticRef} href="/register" />}
             >
               {closing.createAccount}
-              <ArrowRightIcon />
+              <span data-cta-arrow className="inline-flex">
+                <ArrowRightIcon />
+              </span>
             </Button>
             <Button
               size="lg"

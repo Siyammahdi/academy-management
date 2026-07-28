@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowRightIcon, CheckIcon } from 'lucide-react'
+import { ArrowUpRightIcon } from 'lucide-react'
 
 import { Eyebrow } from '@/components/marketing/eyebrow'
 import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
@@ -16,49 +16,116 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { BatchWithSeats, Course } from '@/lib/api-client'
 import { formatDate, formatMoney } from '@/lib/format'
-import { fadeRise, imageReveal, wordRise } from '@/lib/gsap/motion'
+import { blurRise, wordRise } from '@/lib/gsap/motion'
+import { EASE, ScrollTrigger } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import type { MarketingCopy, MarketingProgramCopy } from '@/lib/marketing/types'
 import { cn } from '@/lib/utils'
 
 /**
- * The academy runs a deliberately small catalogue, so the two flagship
- * programs get full editorial spreads instead of a card grid. Fees and seat
- * counts are read live from the public course/batch endpoints; when a
- * program has no course record yet the panel degrades to copy and a
- * contact route rather than inventing a price.
+ * Sticky stack of course cards. Each card pins near the top of the viewport
+ * while the next slides over it and scales the one beneath — the classic
+ * Awwwards stack pattern. Parent must not use overflow:hidden or sticky dies.
  */
 export function LandingPrograms() {
   const t = useMarketingCopy()
   const rootRef = useRef<HTMLElement>(null)
+  const { status } = useAcademyData()
+  // First three flagship entries drive the stack (Arabic, Qur’an, Path).
+  const cards = t.flagship.slice(0, 3)
+
+  useEffect(() => {
+    if (status !== 'ready') return
+    const id = requestAnimationFrame(() => ScrollTrigger.refresh())
+    return () => cancelAnimationFrame(id)
+  }, [status])
 
   useGsapContext(rootRef, (gsap) => {
     const root = rootRef.current
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-programs-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.035 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 3 })
 
     const lead = root.querySelector('[data-programs-lead]')
-    if (lead) fadeRise(gsap, lead, { y: 18 })
+    if (lead) blurRise(gsap, lead, { y: 20, blur: 8 })
 
-    root.querySelectorAll('[data-program-panel]').forEach((panel) => {
-      const frame = panel.querySelector('[data-image-frame]')
-      if (frame) imageReveal(gsap, frame, { trigger: panel })
+    const stackCards = root.querySelectorAll<HTMLElement>('[data-stack-card]')
+    const mm = gsap.matchMedia()
 
-      const copy = panel.querySelectorAll('[data-program-copy]')
-      if (copy.length) {
-        fadeRise(gsap, copy, { stagger: 0.09, trigger: panel, y: 26 })
-      }
+    mm.add('(min-width: 768px)', () => {
+      stackCards.forEach((card, index) => {
+        const inner = card.querySelector<HTMLElement>('[data-stack-inner]')
+        if (!inner) return
+
+        // Scale + dim the card underneath as the next one covers it.
+        if (index < stackCards.length - 1) {
+          const next = stackCards[index + 1]
+          gsap.fromTo(
+            inner,
+            { scale: 1, filter: 'brightness(1)' },
+            {
+              scale: 0.94,
+              filter: 'brightness(0.92)',
+              ease: 'none',
+              transformOrigin: 'center top',
+              scrollTrigger: {
+                trigger: next,
+                start: 'top bottom',
+                end: 'top 12%',
+                scrub: true,
+              },
+            },
+          )
+        }
+
+        const pieces = inner.querySelectorAll('[data-stack-reveal]')
+        if (pieces.length) {
+          gsap.fromTo(
+            pieces,
+            { opacity: 0, y: 28 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.85,
+              stagger: 0.08,
+              ease: EASE.expo,
+              scrollTrigger: {
+                trigger: card,
+                start: 'top 78%',
+                once: true,
+              },
+            },
+          )
+        }
+      })
     })
-  }, [])
+
+    mm.add('(max-width: 767px)', () => {
+      stackCards.forEach((card) => {
+        const inner = card.querySelector('[data-stack-inner]')
+        if (!inner) return
+        gsap.fromTo(
+          inner,
+          { opacity: 0, y: 36 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.85,
+            ease: EASE.expo,
+            scrollTrigger: { trigger: card, start: 'top 88%', once: true },
+          },
+        )
+      })
+    })
+  }, [cards.length])
 
   return (
     <section
       ref={rootRef}
       id="programs"
-      className="relative scroll-mt-24 overflow-hidden bg-primary-wash py-24 sm:py-32"
+      className="relative scroll-mt-24 bg-background py-24 sm:py-32"
       aria-labelledby="programs-heading"
     >
       <LandingAtmosphere tone="wash" density="rich" />
@@ -80,128 +147,267 @@ export function LandingPrograms() {
           </p>
         </div>
 
-        <div className="mt-16 flex flex-col gap-20 sm:mt-20 sm:gap-28">
-          {t.flagship.map((program, index) => (
-            <ProgramPanel
+        <div className="relative mt-14 space-y-6 pb-[2vh] sm:mt-20 sm:space-y-8">
+          {cards.map((program, index) => (
+            <StackCard
               key={program.slug}
               program={program}
-              reversed={index % 2 === 1}
+              index={index}
+              total={cards.length}
             />
           ))}
         </div>
-
-        {/* <OtherCourses /> */}
       </Container>
     </section>
   )
 }
 
-function ProgramPanel({
+/**
+ * Soft three-tone stack — cream, lavender, mint — so every card reads as
+ * its own colour while staying on design-system surface tokens (doc 09 §2).
+ */
+const CARD_THEMES = [
+  {
+    surface: 'bg-status-pending-bg border-status-pending/20',
+    label: 'text-status-pending',
+    title: 'text-foreground',
+    emphasis: 'text-status-pending',
+    body: 'text-muted-foreground',
+    focus: 'text-foreground',
+    item: 'text-foreground',
+    dot: 'bg-status-pending',
+    imageRing: 'ring-8 ring-background/70',
+    button: 'bg-status-pending text-primary-foreground hover:bg-status-pending/90',
+    buttonVariant: 'default' as const,
+    iconWrap: 'bg-primary-foreground/20',
+    inverse: false,
+  },
+  {
+    surface: 'bg-primary-wash border-primary/25',
+    label: 'text-primary-strong',
+    title: 'text-primary-strong',
+    emphasis: 'text-primary',
+    body: 'text-primary-strong/70',
+    focus: 'text-primary-strong',
+    item: 'text-primary-strong',
+    dot: 'bg-primary',
+    imageRing: 'ring-8 ring-background/70',
+    button: '',
+    buttonVariant: 'default' as const,
+    iconWrap: 'bg-primary-foreground/20',
+    inverse: false,
+  },
+  {
+    surface: 'bg-status-paid-bg border-status-paid/20',
+    label: 'text-status-paid',
+    title: 'text-foreground',
+    emphasis: 'text-status-paid',
+    body: 'text-muted-foreground',
+    focus: 'text-foreground',
+    item: 'text-foreground',
+    dot: 'bg-status-paid',
+    imageRing: 'ring-8 ring-background/70',
+    button: 'bg-status-paid text-primary-foreground hover:bg-status-paid/90',
+    buttonVariant: 'default' as const,
+    iconWrap: 'bg-primary-foreground/20',
+    inverse: false,
+  },
+] as const
+
+function StackCard({
   program,
-  reversed,
+  index,
+  total,
 }: {
   program: MarketingProgramCopy
-  reversed: boolean
+  index: number
+  total: number
 }) {
   const t = useMarketingCopy()
   const ui = t.programs
   const { status, openBatchByCourseId } = useAcademyData()
   const course = useCourseByKeywords(program.keywords)
   const batch = course ? (openBatchByCourseId.get(course.id) ?? null) : null
+  const canEnroll = Boolean(batch && batch.seatsRemaining > 0)
+  const isPath = program.slug === 'path'
+  const theme = CARD_THEMES[index % CARD_THEMES.length] ?? CARD_THEMES[0]
+
+  // Sticky offset steps slightly so edges of lower cards peek out.
+  const top = `calc(5.5rem + ${index * 0.75}rem)`
 
   return (
     <article
-      data-program-panel
-      className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14"
+      data-stack-card
+      className="md:sticky"
+      style={{ top, zIndex: 10 + index }}
     >
       <div
+        data-stack-inner
         className={cn(
-          'lg:row-start-1',
-          reversed ? 'lg:col-span-7 lg:col-start-6' : 'lg:col-span-7',
+          'will-change-transform rounded-3xl border p-6 sm:p-8 lg:p-10',
+          theme.surface,
         )}
       >
-        <MarketingImage
-          image={program.image}
-          className="aspect-5/4 w-full"
-          sizes="(min-width: 1024px) 55vw, 100vw"
-        />
-      </div>
+        <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
+          {/* Left — identity + story */}
+          <div className="lg:col-span-4">
+            <p
+              data-stack-reveal
+              className={cn(
+                'text-xs font-medium tracking-wide uppercase',
+                theme.label,
+              )}
+            >
+              {program.index}
+              {program.category ? ` / ${program.category}` : ''}
+            </p>
 
-      <div
-        className={cn(
-          'lg:row-start-1',
-          reversed
-            ? 'lg:col-span-5 lg:col-start-1'
-            : 'lg:col-span-5 lg:col-start-8',
-        )}
-      >
-        <div data-program-copy className="flex items-center gap-4">
-          <span className="font-heading text-sm font-semibold tabular-nums text-primary-strong">
-            {program.index}
-          </span>
-          <span className="h-px flex-1 bg-primary/30" aria-hidden />
-          <BatchState
-            status={status}
-            batch={batch}
-            hasCourse={course !== null}
-            labels={ui}
-          />
-        </div>
+            <h3
+              data-stack-reveal
+              className={cn(
+                'mt-5 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl lg:text-4xl',
+                theme.title,
+              )}
+            >
+              {course?.title ?? program.name}
+              {program.emphasis ? (
+                <>
+                  {' '}
+                  <em
+                    className={cn(
+                      'font-heading font-medium italic',
+                      theme.emphasis,
+                    )}
+                  >
+                    {program.emphasis}
+                  </em>
+                </>
+              ) : null}
+            </h3>
 
-        <h3
-          data-program-copy
-          className="mt-6 font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
-        >
-          {course?.title ?? program.name}
-        </h3>
-        <p data-program-copy className="mt-2 text-base text-primary-strong">
-          {program.tagline}
-        </p>
-        <p
-          data-program-copy
-          className="mt-5 text-base leading-relaxed text-pretty text-muted-foreground"
-        >
-          {course?.description?.trim() || program.description}
-        </p>
+            <p
+              data-stack-reveal
+              className={cn(
+                'mt-5 max-w-sm text-sm leading-relaxed text-pretty sm:text-base',
+                theme.body,
+              )}
+            >
+              {course?.description?.trim() || program.description}
+            </p>
 
-        <ul data-program-copy className="mt-7 grid gap-3 sm:grid-cols-2">
-          {program.includes.map((item) => (
-            <li key={item} className="flex items-start gap-2.5">
-              <CheckIcon
-                className="mt-0.5 size-4 shrink-0 text-primary-strong"
-                aria-hidden
+            <div data-stack-reveal className="mt-6">
+              <BatchState
+                status={status}
+                batch={batch}
+                hasCourse={course !== null}
+                isPath={isPath}
+                labels={ui}
               />
-              <span className="text-sm leading-relaxed text-foreground">
-                {item}
-              </span>
-            </li>
-          ))}
-        </ul>
+            </div>
+          </div>
 
-        <div data-program-copy className="mt-8">
-          <ProgramTerms
-            status={status}
-            course={course}
-            batch={batch}
-            labels={ui}
-          />
-        </div>
+          {/* Center — photograph */}
+          <div data-stack-reveal className="lg:col-span-4">
+            <MarketingImage
+              image={program.image}
+              className={cn(
+                'aspect-4/5 w-full sm:aspect-square',
+                theme.imageRing,
+              )}
+              sizes="(min-width: 1024px) 28vw, 100vw"
+            />
+          </div>
 
-        <div data-program-copy className="mt-8">
-          <Button
-            className="min-h-11"
-            variant={batch && batch.seatsRemaining > 0 ? 'default' : 'outline'}
-            render={
-              <Link
-                href={
-                  batch && batch.seatsRemaining > 0 ? '/register' : '/contact'
+          {/* Right — features + CTA */}
+          <div className="lg:col-span-4">
+            {program.focus ? (
+              <p
+                data-stack-reveal
+                className={cn(
+                  'font-heading text-lg font-semibold tracking-tight sm:text-xl',
+                  theme.focus,
+                )}
+              >
+                {program.focus}
+              </p>
+            ) : null}
+
+            <ul data-stack-reveal className="mt-5 space-y-3">
+              {program.includes.map((item) => (
+                <li
+                  key={item}
+                  className={cn(
+                    'flex items-start gap-2.5 text-sm leading-relaxed',
+                    theme.item,
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'mt-1.5 size-1.5 shrink-0 rounded-full',
+                      theme.dot,
+                    )}
+                  />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <div data-stack-reveal className="mt-8">
+              <ProgramTerms
+                status={status}
+                course={course}
+                batch={batch}
+                isPath={isPath}
+                labels={ui}
+                inverse={theme.inverse}
+              />
+            </div>
+
+            <div data-stack-reveal className="mt-8">
+              <Button
+                className={cn(
+                  'min-h-11 gap-2 rounded-full px-5',
+                  theme.button || undefined,
+                )}
+                variant={
+                  theme.button
+                    ? 'default'
+                    : canEnroll
+                      ? 'default'
+                      : 'outline'
                 }
-              />
-            }
-          >
-            {batch && batch.seatsRemaining > 0 ? ui.register : ui.askNext}
-            <ArrowRightIcon />
-          </Button>
+                render={
+                  <Link
+                    href={
+                      canEnroll
+                        ? '/register'
+                        : isPath
+                          ? '#enrollment'
+                          : '/contact'
+                    }
+                  />
+                }
+              >
+                {canEnroll
+                  ? ui.register
+                  : isPath
+                    ? ui.viewProgram
+                    : ui.askNext}
+                <span
+                  className={cn(
+                    'flex size-7 items-center justify-center rounded-full',
+                    theme.iconWrap,
+                  )}
+                >
+                  <ArrowUpRightIcon className="size-3.5" />
+                </span>
+              </Button>
+            </div>
+
+            {/* Keep last card from feeling cut off under the sticky stack. */}
+            {index === total - 1 ? <span className="sr-only" /> : null}
+          </div>
         </div>
       </div>
     </article>
@@ -212,13 +418,17 @@ function BatchState({
   status,
   batch,
   hasCourse,
+  isPath,
   labels,
 }: {
   status: 'loading' | 'ready' | 'error'
   batch: BatchWithSeats | null
   hasCourse: boolean
+  isPath: boolean
   labels: MarketingCopy['programs']
 }) {
+  if (isPath) return null
+
   if (status === 'loading') {
     return <Skeleton className="h-6 w-28 rounded-md" />
   }
@@ -254,74 +464,103 @@ function BatchState({
   )
 }
 
-/** Fees and dates, always taken from the API — never hard-coded in copy. */
 function ProgramTerms({
   status,
   course,
   batch,
+  isPath,
   labels,
+  inverse = false,
 }: {
   status: 'loading' | 'ready' | 'error'
   course: Course | null
   batch: BatchWithSeats | null
+  isPath: boolean
   labels: MarketingCopy['programs']
+  inverse?: boolean
 }) {
+  if (isPath) return null
+
   if (status === 'loading') {
-    return <Skeleton className="h-20 w-full rounded-xl" />
+    return <Skeleton className="h-16 w-full rounded-xl" />
   }
+
+  const muted = inverse
+    ? 'text-primary-foreground/60'
+    : 'text-muted-foreground'
+  const strong = inverse ? 'text-primary-foreground' : 'text-foreground'
+  const rule = inverse ? 'border-primary-foreground/20' : 'border-primary/15'
 
   if (!course) {
     return (
-      <p className="border-t border-primary/20 pt-6 text-sm leading-relaxed text-muted-foreground">
+      <p className={cn('text-sm leading-relaxed', muted)}>
         {labels.feesPending}
       </p>
     )
   }
 
   return (
-    <div className="border-t border-primary/20 pt-6">
-      <dl className="flex flex-wrap gap-x-10 gap-y-5">
+    <dl className={cn('flex flex-wrap gap-x-8 gap-y-4 border-t pt-5', rule)}>
+      <div>
+        <dt
+          className={cn(
+            'text-xs font-medium tracking-wide uppercase',
+            muted,
+          )}
+        >
+          {labels.entryFee}
+        </dt>
+        <dd
+          className={cn(
+            'mt-1 font-heading text-lg font-semibold tabular-nums',
+            strong,
+          )}
+        >
+          {formatMoney(course.enrollmentFee)}
+        </dd>
+      </div>
+      {course.billingType === 'monthly' ? (
         <div>
-          <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {labels.entryFee}
+          <dt
+            className={cn(
+              'text-xs font-medium tracking-wide uppercase',
+              muted,
+            )}
+          >
+            {labels.monthly}
           </dt>
-          <dd className="mt-1.5 font-heading text-xl font-semibold tabular-nums text-foreground">
-            {formatMoney(course.enrollmentFee)}
+          <dd
+            className={cn(
+              'mt-1 font-heading text-lg font-semibold tabular-nums',
+              strong,
+            )}
+          >
+            {formatMoney(course.monthlyFee)}
           </dd>
         </div>
-        {course.billingType === 'monthly' ? (
-          <div>
-            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              {labels.monthly}
-            </dt>
-            <dd className="mt-1.5 font-heading text-xl font-semibold tabular-nums text-foreground">
-              {formatMoney(course.monthlyFee)}
-            </dd>
-          </div>
-        ) : (
-          <div>
-            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              {labels.billing}
-            </dt>
-            <dd className="mt-1.5 font-heading text-xl font-semibold tracking-tight text-foreground">
-              {labels.onePayment}
-            </dd>
-          </div>
-        )}
-        {batch ? (
-          <div>
-            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              {labels.seatsLeft}
-            </dt>
-            <dd className="mt-1.5 font-heading text-xl font-semibold tabular-nums text-foreground">
-              {batch.seatsRemaining}
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-
+      ) : null}
       {batch ? (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <div>
+          <dt
+            className={cn(
+              'text-xs font-medium tracking-wide uppercase',
+              muted,
+            )}
+          >
+            {labels.seatsLeft}
+          </dt>
+          <dd
+            className={cn(
+              'mt-1 font-heading text-lg font-semibold tabular-nums',
+              strong,
+            )}
+          >
+            {batch.seatsRemaining}
+          </dd>
+        </div>
+      ) : null}
+      {batch ? (
+        <p className={cn('basis-full text-xs', muted)}>
           {labels.batchMeta(
             batch.name,
             formatDate(batch.courseStartDate),
@@ -329,54 +568,6 @@ function ProgramTerms({
           )}
         </p>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * Anything else the academy is running gets an honest mention without
- * competing with the flagship programs for attention.
- */
-function OtherCourses() {
-  const t = useMarketingCopy()
-  const { status, courses, openBatchByCourseId } = useAcademyData()
-
-  if (status !== 'ready') return null
-
-  const flagshipKeywords = t.flagship.flatMap((p) => p.keywords)
-  const others = courses.filter((course) => {
-    const title = course.title.toLowerCase()
-    return !flagshipKeywords.some((keyword) => title.includes(keyword))
-  })
-
-  if (others.length === 0) return null
-
-  return (
-    <div className="mt-20 border-t border-primary/20 pt-10 sm:mt-28">
-      <h3 className="text-xs font-medium tracking-wide text-primary-strong uppercase">
-        {t.programs.alsoRunning}
-      </h3>
-      <ul className="mt-6 grid gap-x-10 gap-y-5 sm:grid-cols-2">
-        {others.map((course) => {
-          const batch = openBatchByCourseId.get(course.id)
-          return (
-            <li
-              key={course.id}
-              className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-primary/15 pb-4"
-            >
-              <span className="font-heading text-base font-medium text-foreground">
-                {course.title}
-              </span>
-              <span className="text-sm tabular-nums text-muted-foreground">
-                {course.billingType === 'monthly'
-                  ? `${formatMoney(course.monthlyFee)} ${t.programs.perMonth}`
-                  : formatMoney(course.enrollmentFee)}
-                {batch && batch.seatsRemaining > 0 ? t.programs.openSuffix : ''}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    </dl>
   )
 }

@@ -123,7 +123,7 @@ export function PaymentModal({
 
         {mode === 'choose' ? (
           <div className="flex flex-col gap-3">
-            <Button onClick={handlePayOnline} disabled={isSubmitting}>
+            <Button onClick={handlePayOnline} loading={isSubmitting}>
               {isSubmitting ? 'Starting…' : 'Pay online'}
             </Button>
             <Button
@@ -173,7 +173,7 @@ export function PaymentModal({
               >
                 Back
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" loading={isSubmitting}>
                 {isSubmitting ? 'Submitting…' : 'Submit payment'}
               </Button>
             </div>

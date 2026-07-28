@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2Icon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -46,14 +47,23 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonProps = ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    /** Shows a spinner and disables the control while work is in flight. */
+    loading?: boolean
+  }
+
 function Button({
   className,
   variant = "default",
   size = "default",
   render,
   nativeButton,
+  loading = false,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
   // Base UI defaults nativeButton=true. When `render` swaps in a Link/<a>,
   // we must opt out or the console warns and a11y semantics break.
   const resolvedNativeButton =
@@ -62,12 +72,21 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-loading={loading ? "" : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       render={render}
       nativeButton={resolvedNativeButton}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading ? (
+        <Loader2Icon className="animate-spin" aria-hidden />
+      ) : null}
+      {children}
+    </ButtonPrimitive>
   )
 }
 
 export { Button, buttonVariants }
+export type { ButtonProps }

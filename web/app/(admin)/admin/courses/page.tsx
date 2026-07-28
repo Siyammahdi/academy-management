@@ -282,7 +282,7 @@ function CourseForm({
         >
           Cancel
         </Button>
-        <Button type="submit" className="min-h-11" disabled={isSubmitting}>
+        <Button type="submit" className="min-h-11" loading={isSubmitting}>
           {isSubmitting
             ? 'Saving…'
             : mode === 'create'
@@ -580,7 +580,7 @@ export default function AdminCoursesPage() {
               onClick={() => {
                 void handleConfirmArchive()
               }}
-              disabled={isArchiving}
+              loading={isArchiving}
             >
               {isArchiving ? 'Archiving…' : 'Archive course'}
             </Button>

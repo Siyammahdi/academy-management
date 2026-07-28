@@ -1,7 +1,7 @@
 import type { gsap as GsapNS } from 'gsap'
 
 import { DURATION, EASE } from '@/lib/gsap'
-import { splitWords } from '@/lib/gsap/split-text'
+import { splitChars, splitWords } from '@/lib/gsap/split-text'
 
 type Gsap = typeof GsapNS
 
@@ -28,7 +28,7 @@ export function fadeRise(
   targets: gsap.TweenTarget,
   options: ScrollOptions & { y?: number; stagger?: number } = {},
 ): void {
-  const { y = 24, stagger = 0.08, start = 'top 85%', trigger, delay = 0 } = options
+  const { y = 28, stagger = 0.08, start = 'top 85%', trigger, delay = 0 } = options
   const scrollTarget = trigger ?? firstElement(targets)
 
   gsap.fromTo(
@@ -40,7 +40,83 @@ export function fadeRise(
       duration: DURATION.reveal,
       stagger,
       delay,
-      ease: EASE.out,
+      ease: EASE.power4,
+      scrollTrigger: scrollTarget
+        ? { trigger: scrollTarget, start, once: true }
+        : undefined,
+    },
+  )
+}
+
+/**
+ * Soft-focus rise — the Framer-style blur settle used on leads and asides.
+ */
+export function blurRise(
+  gsap: Gsap,
+  targets: gsap.TweenTarget,
+  options: ScrollOptions & { y?: number; stagger?: number; blur?: number } = {},
+): void {
+  const {
+    y = 36,
+    stagger = 0.1,
+    blur = 12,
+    start = 'top 86%',
+    trigger,
+    delay = 0,
+  } = options
+  const scrollTarget = trigger ?? firstElement(targets)
+
+  gsap.fromTo(
+    targets,
+    { opacity: 0, y, filter: `blur(${blur}px)` },
+    {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      duration: 1.05,
+      stagger,
+      delay,
+      ease: EASE.expo,
+      scrollTrigger: scrollTarget
+        ? { trigger: scrollTarget, start, once: true }
+        : undefined,
+    },
+  )
+}
+
+/**
+ * Playful entrance with a settling skew — signature of kinetic templates.
+ */
+export function skewRise(
+  gsap: Gsap,
+  targets: gsap.TweenTarget,
+  options: ScrollOptions & {
+    y?: number
+    skew?: number
+    stagger?: number
+  } = {},
+): void {
+  const {
+    y = 60,
+    skew = 6,
+    stagger = 0.1,
+    start = 'top 88%',
+    trigger,
+    delay = 0,
+  } = options
+  const scrollTarget = trigger ?? firstElement(targets)
+
+  gsap.fromTo(
+    targets,
+    { opacity: 0, y, skewY: skew, transformOrigin: 'left bottom' },
+    {
+      opacity: 1,
+      y: 0,
+      skewY: 0,
+      duration: 1.05,
+      stagger,
+      delay,
+      ease: EASE.expo,
       scrollTrigger: scrollTarget
         ? { trigger: scrollTarget, start, once: true }
         : undefined,
@@ -55,21 +131,29 @@ export function fadeRise(
 export function wordRise(
   gsap: Gsap,
   headline: HTMLElement,
-  options: ScrollOptions & { stagger?: number } = {},
+  options: ScrollOptions & { stagger?: number; rotate?: number } = {},
 ): HTMLElement[] {
-  const { stagger = 0.045, start = 'top 82%', trigger, delay = 0 } = options
+  const {
+    stagger = 0.045,
+    start = 'top 82%',
+    trigger,
+    delay = 0,
+    rotate = 4,
+  } = options
   const words = splitWords(headline)
   if (words.length === 0) return words
 
   gsap.fromTo(
     words,
-    { yPercent: 115 },
+    { yPercent: 120, rotateZ: rotate, opacity: 0.15 },
     {
       yPercent: 0,
+      rotateZ: 0,
+      opacity: 1,
       duration: DURATION.hero,
       stagger,
       delay,
-      ease: EASE.out,
+      ease: EASE.expo,
       scrollTrigger: { trigger: trigger ?? headline, start, once: true },
     },
   )
@@ -78,19 +162,61 @@ export function wordRise(
 }
 
 /**
- * Photography reveal: the frame unmasks from the bottom while the image
- * itself settles back from a slight scale — the layered look, not a fade.
+ * Letter-level kinetic reveal. Best for short headlines; grapheme-safe.
+ */
+export function charRise(
+  gsap: Gsap,
+  headline: HTMLElement,
+  options: ScrollOptions & { stagger?: number } = {},
+): HTMLElement[] {
+  const { stagger = 0.018, start = 'top 82%', trigger, delay = 0 } = options
+  const chars = splitChars(headline)
+  if (chars.length === 0) return chars
+
+  gsap.fromTo(
+    chars,
+    { yPercent: 130, rotateZ: 8, opacity: 0 },
+    {
+      yPercent: 0,
+      rotateZ: 0,
+      opacity: 1,
+      duration: 0.95,
+      stagger,
+      delay,
+      ease: EASE.backSoft,
+      scrollTrigger: { trigger: trigger ?? headline, start, once: true },
+    },
+  )
+
+  return chars
+}
+
+/**
+ * Photography reveal: the frame unmasks while the image settles from scale.
  */
 export function imageReveal(
   gsap: Gsap,
   frame: Element,
-  options: ScrollOptions & { from?: 'bottom' | 'left' } = {},
+  options: ScrollOptions & {
+    from?: 'bottom' | 'left' | 'right' | 'top'
+    scale?: number
+  } = {},
 ): void {
-  const { start = 'top 85%', trigger, delay = 0, from = 'bottom' } = options
+  const {
+    start = 'top 85%',
+    trigger,
+    delay = 0,
+    from = 'bottom',
+    scale = 1.22,
+  } = options
   const inner = frame.querySelector('[data-image]')
 
-  const clipFrom =
-    from === 'bottom' ? 'inset(100% 0% 0% 0%)' : 'inset(0% 100% 0% 0%)'
+  const clipFrom = {
+    bottom: 'inset(100% 0% 0% 0%)',
+    top: 'inset(0% 0% 100% 0%)',
+    left: 'inset(0% 100% 0% 0%)',
+    right: 'inset(0% 0% 0% 100%)',
+  }[from]
 
   const tl = gsap.timeline({
     scrollTrigger: { trigger: trigger ?? frame, start, once: true },
@@ -100,14 +226,14 @@ export function imageReveal(
   tl.fromTo(
     frame,
     { clipPath: clipFrom },
-    { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.15, ease: EASE.inOut },
+    { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.35, ease: EASE.expoInOut },
   )
 
   if (inner) {
     tl.fromTo(
       inner,
-      { scale: 1.18 },
-      { scale: 1, duration: 1.4, ease: EASE.out },
+      { scale, rotate: from === 'left' || from === 'right' ? -1.5 : 1.5 },
+      { scale: 1, rotate: 0, duration: 1.55, ease: EASE.expo },
       0,
     )
   }
@@ -132,6 +258,36 @@ export function parallax(
         start: 'top bottom',
         end: 'bottom top',
         scrub: true,
+      },
+    },
+  )
+}
+
+/**
+ * Image zooms gently as it scrolls through the viewport — cinematic scrub.
+ */
+export function scrubScale(
+  gsap: Gsap,
+  target: Element,
+  options: {
+    from?: number
+    to?: number
+    trigger?: Element | null
+  } = {},
+): void {
+  const { from = 1.18, to = 1, trigger } = options
+
+  gsap.fromTo(
+    target,
+    { scale: from },
+    {
+      scale: to,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: trigger ?? target,
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: 1.1,
       },
     },
   )
@@ -181,8 +337,8 @@ export function countUp(
 
   gsap.to(counter, {
     value,
-    duration: 1.4,
-    ease: EASE.out,
+    duration: 1.6,
+    ease: EASE.expo,
     onUpdate: () => {
       el.textContent = String(Math.round(counter.value))
     },
@@ -201,14 +357,77 @@ export function cardsIn(
 
   gsap.fromTo(
     targets,
-    { opacity: 0, y: 40, scale: 0.985 },
+    { opacity: 0, y: 48, scale: 0.94, rotateZ: 1.5 },
     {
       opacity: 1,
       y: 0,
       scale: 1,
-      duration: 0.9,
+      rotateZ: 0,
+      duration: 1,
       stagger,
-      ease: EASE.out,
+      ease: EASE.expo,
+      scrollTrigger: scrollTarget
+        ? { trigger: scrollTarget, start, once: true }
+        : undefined,
+    },
+  )
+}
+
+/**
+ * Horizontal wipe for rules and progress bars — origin left by default.
+ */
+export function ruleDraw(
+  gsap: Gsap,
+  line: Element,
+  options: ScrollOptions & { origin?: 'left' | 'right' | 'center' } = {},
+): void {
+  const {
+    start = 'top 88%',
+    trigger,
+    delay = 0,
+    origin = 'left',
+  } = options
+
+  gsap.fromTo(
+    line,
+    { scaleX: 0 },
+    {
+      scaleX: 1,
+      transformOrigin: origin,
+      duration: 0.9,
+      delay,
+      ease: EASE.expoInOut,
+      scrollTrigger: {
+        trigger: trigger ?? line,
+        start,
+        once: true,
+      },
+    },
+  )
+}
+
+/**
+ * Pop-in with soft overshoot — for step indices and small markers.
+ */
+export function popIn(
+  gsap: Gsap,
+  targets: gsap.TweenTarget,
+  options: ScrollOptions & { stagger?: number } = {},
+): void {
+  const { stagger = 0.12, start = 'top 88%', trigger, delay = 0 } = options
+  const scrollTarget = trigger ?? firstElement(targets)
+
+  gsap.fromTo(
+    targets,
+    { opacity: 0, scale: 0.5, rotateZ: -12 },
+    {
+      opacity: 1,
+      scale: 1,
+      rotateZ: 0,
+      duration: 0.75,
+      stagger,
+      delay,
+      ease: EASE.back,
       scrollTrigger: scrollTarget
         ? { trigger: scrollTarget, start, once: true }
         : undefined,

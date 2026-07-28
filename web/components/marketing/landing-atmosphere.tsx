@@ -47,9 +47,9 @@ export function LandingAtmosphere({
     if (!root) return
 
     root.querySelectorAll<HTMLElement>('[data-float]').forEach((orb, i) => {
-      const ampY = 18 + (i % 3) * 8
-      const ampX = 10 + (i % 2) * 6
-      const duration = 7 + i * 1.4
+      const ampY = 22 + (i % 3) * 10
+      const ampX = 14 + (i % 2) * 8
+      const duration = 6.5 + i * 1.5
 
       gsap.to(orb, {
         y: ampY,
@@ -58,28 +58,31 @@ export function LandingAtmosphere({
         ease: 'sine.inOut',
         yoyo: true,
         repeat: -1,
-        delay: i * 0.35,
+        delay: i * 0.4,
       })
 
       gsap.to(orb, {
-        scale: 1.08,
-        duration: duration * 1.15,
+        scale: 1.12,
+        opacity: Number(orb.dataset.opacityPeak ?? 1),
+        duration: duration * 1.2,
         ease: 'sine.inOut',
         yoyo: true,
         repeat: -1,
-        delay: i * 0.5,
+        delay: i * 0.55,
       })
     })
 
     root.querySelectorAll<HTMLElement>('[data-drift]').forEach((ring, i) => {
       gsap.to(ring, {
-        rotation: i % 2 === 0 ? 18 : -14,
-        duration: 18 + i * 4,
+        rotation: i % 2 === 0 ? 28 : -22,
+        scale: 1.06,
+        duration: 16 + i * 5,
         ease: 'sine.inOut',
         yoyo: true,
         repeat: -1,
       })
     })
+
   }, [density, tone])
 
   const isDeep = tone === 'deep'
@@ -121,6 +124,7 @@ export function LandingAtmosphere({
 
       <span
         data-float
+        data-opacity-peak="0.9"
         className={cn(
           'absolute -top-16 -left-10 size-56 rounded-full blur-3xl sm:size-72',
           isDeep ? 'bg-primary/40' : 'bg-primary/20',
@@ -128,6 +132,7 @@ export function LandingAtmosphere({
       />
       <span
         data-float
+        data-opacity-peak="0.85"
         className={cn(
           'absolute top-1/3 -right-12 size-48 rounded-full blur-3xl sm:size-64',
           isDeep ? 'bg-primary-foreground/10' : 'bg-primary/15',
@@ -136,6 +141,7 @@ export function LandingAtmosphere({
       {rich ? (
         <span
           data-float
+          data-opacity-peak="0.8"
           className={cn(
             'absolute -bottom-20 left-1/3 size-64 rounded-full blur-3xl sm:size-80',
             isDeep ? 'bg-primary/30' : 'bg-primary-wash',

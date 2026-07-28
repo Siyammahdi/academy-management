@@ -3,12 +3,14 @@
 import { AcademyDataProvider } from '@/components/marketing/academy-data'
 import { LandingHero } from '@/components/marketing/landing-hero'
 import { LandingAcademy } from '@/components/marketing/landing-academy'
+import { LandingMarquee } from '@/components/marketing/landing-marquee'
 import { LandingPrograms } from '@/components/marketing/landing-programs'
 import { LandingExperience } from '@/components/marketing/landing-experience'
 import { LandingEnrollment } from '@/components/marketing/landing-enrollment'
 import { LandingAssurance } from '@/components/marketing/landing-assurance'
 import { LandingFaq } from '@/components/marketing/landing-faq'
 import { LandingCta } from '@/components/marketing/landing-cta'
+import { LandingScrollProgress } from '@/components/marketing/landing-scroll-progress'
 import { LandingSmoothScroll } from '@/components/marketing/landing-smooth-scroll'
 import { useLocale } from '@/components/i18n/locale-provider'
 
@@ -24,9 +26,11 @@ export function LandingPage() {
   return (
     <LandingSmoothScroll>
       <AcademyDataProvider>
+        <LandingScrollProgress />
         <div key={locale}>
           <LandingHero />
           <LandingAcademy />
+          <LandingMarquee />
           <LandingPrograms />
           <LandingExperience />
           <LandingEnrollment />

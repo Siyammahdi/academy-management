@@ -73,6 +73,7 @@ export const en: MarketingCopy = {
     perMonth: '/ month',
     register: 'Register to enroll',
     askNext: 'Ask about the next batch',
+    viewProgram: 'View program',
     batchOnRequest: 'Batch dates on request',
     enrollmentClosed: 'Enrollment closed',
     fullNext: 'Full — try next batch',
@@ -94,6 +95,9 @@ export const en: MarketingCopy = {
       index: '01',
       name: 'Learning Arabic',
       tagline: 'The language, taught as a language',
+      emphasis: 'as a language',
+      focus: 'Built in sequence.',
+      category: 'Arabic',
       description:
         'Reading, vocabulary and grammar built in sequence rather than in fragments. Each batch works through one part of the curriculum together, so nobody is quietly left behind while the class moves on.',
       includes: [
@@ -110,6 +114,9 @@ export const en: MarketingCopy = {
       index: '02',
       name: 'Qur’an Learning',
       tagline: 'Recitation and memorization, ongoing',
+      emphasis: 'ongoing',
+      focus: 'Corrected in the room.',
+      category: 'Qur’an',
       description:
         'An ongoing program rather than a short course — recitation corrected in the session, memorization carried month to month, at a pace a small batch makes possible.',
       includes: [
@@ -119,6 +126,25 @@ export const en: MarketingCopy = {
         'Recordings organised by class day',
       ],
       image: MEDIA.programQuran,
+    },
+    {
+      slug: 'path',
+      keywords: [],
+      index: '03',
+      name: 'Basic to Advanced',
+      tagline: 'One curriculum, taught in parts',
+      emphasis: 'in parts',
+      focus: 'Eight months at a time.',
+      category: 'Path',
+      description:
+        'Programs run in parts of roughly eight months each. A part tells you where you are in the curriculum — Basic, Intermediate, then Advanced — and never changes what you owe.',
+      includes: [
+        'Clear part of the curriculum',
+        'Same teacher across the part',
+        'Fees fixed for the batch',
+        'Progress that belongs to your cohort',
+      ],
+      image: MEDIA.journey,
     },
   ],
   experience: {
@@ -204,7 +230,7 @@ export const en: MarketingCopy = {
         body: 'Falling behind adds a re-enrollment fee to your balance — once for the lapse, not once per month — and clears when your dues are settled. You are never removed for owing money.',
       },
       {
-        title: 'Every payment is confirmed by someone accountable',
+        title: 'Every payment is confirmed by accountable',
         body: "Online payments are settled by the bank's own confirmation, never by the page you land on. Receipts are checked and marked verified by a named manager.",
       },
       {

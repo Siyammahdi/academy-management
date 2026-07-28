@@ -12,7 +12,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { fadeRise, wordRise } from '@/lib/gsap/motion'
+import { blurRise, skewRise, wordRise } from '@/lib/gsap/motion'
+import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
 
@@ -27,20 +28,37 @@ export function LandingFaq() {
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-faq-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.04 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 3 })
 
     const items = root.querySelectorAll('[data-faq-item]')
-    if (items.length) fadeRise(gsap, items, { stagger: 0.06, y: 18 })
+    if (items.length) {
+      skewRise(gsap, items, { stagger: 0.08, y: 28, skew: 2, start: 'top 90%' })
+    }
 
     const aside = root.querySelector('[data-faq-aside]')
-    if (aside) fadeRise(gsap, aside, { y: 20 })
+    if (aside) blurRise(gsap, aside, { y: 24, blur: 10 })
+
+    const footer = root.querySelector('[data-faq-footer]')
+    if (footer) {
+      gsap.fromTo(
+        footer,
+        { opacity: 0, y: 16 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: EASE.expo,
+          scrollTrigger: { trigger: footer, start: 'top 92%', once: true },
+        },
+      )
+    }
   }, [])
 
   return (
     <section
       ref={rootRef}
       id="faq"
-      className="relative scroll-mt-24 overflow-hidden bg-background py-24 sm:py-32"
+      className="relative scroll-mt-24 bg-background py-24 sm:py-32"
       aria-labelledby="faq-heading"
     >
       <LandingAtmosphere tone="wash" />
@@ -88,7 +106,10 @@ export function LandingFaq() {
               ))}
             </Accordion>
 
-            <p className="mt-8 text-sm text-muted-foreground">
+            <p
+              data-faq-footer
+              className="mt-8 text-sm text-muted-foreground"
+            >
               {faq.readyPrefix}{' '}
               <Link
                 href="/register"

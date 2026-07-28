@@ -364,7 +364,7 @@ function CreateRecordingModal({
           >
             Cancel
           </Button>
-          <Button type="submit" className="min-h-11" disabled={saving}>
+          <Button type="submit" className="min-h-11" loading={saving}>
             {saving ? 'Saving…' : 'Add recording'}
           </Button>
         </div>

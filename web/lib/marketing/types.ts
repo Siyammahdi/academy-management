@@ -12,6 +12,12 @@ export interface MarketingProgramCopy {
   index: string
   name: string
   tagline: string
+  /** Italicised phrase shown beside the name in stack cards. */
+  emphasis?: string
+  /** Short right-column focus line on stack cards. */
+  focus?: string
+  /** Small category label (e.g. Arabic) for stack index row. */
+  category?: string
   description: string
   includes: string[]
   image: MarketingImage
@@ -79,6 +85,7 @@ export interface MarketingCopy {
     perMonth: string
     register: string
     askNext: string
+    viewProgram: string
     batchOnRequest: string
     enrollmentClosed: string
     fullNext: string

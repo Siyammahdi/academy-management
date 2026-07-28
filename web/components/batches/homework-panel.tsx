@@ -282,7 +282,7 @@ function HomeworkFormModal({
           >
             Cancel
           </Button>
-          <Button type="submit" className="min-h-11" disabled={isSubmitting}>
+          <Button type="submit" className="min-h-11" loading={isSubmitting}>
             {isSubmitting
               ? 'Saving…'
               : homework

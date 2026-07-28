@@ -9,7 +9,17 @@ import { MarketingImage } from '@/components/marketing/marketing-image'
 import { useAcademyData } from '@/components/marketing/academy-data'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
-import { countUp, fadeRise, imageReveal, lineDraw, wordRise } from '@/lib/gsap/motion'
+import {
+  blurRise,
+  countUp,
+  imageReveal,
+  lineDraw,
+  popIn,
+  scrubScale,
+  skewRise,
+  wordRise,
+} from '@/lib/gsap/motion'
+import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { MEDIA } from '@/lib/marketing/media'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
@@ -29,26 +39,46 @@ export function LandingEnrollment() {
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-journey-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.035 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 4 })
+
+    const markers = root.querySelectorAll('[data-journey-marker]')
+    if (markers.length) popIn(gsap, markers, { stagger: 0.16 })
 
     const steps = root.querySelectorAll('[data-journey-step]')
-    if (steps.length) fadeRise(gsap, steps, { stagger: 0.14, y: 30 })
+    if (steps.length) {
+      skewRise(gsap, steps, { stagger: 0.16, y: 40, skew: 3 })
+    }
 
     const line = root.querySelector('[data-journey-line]')
     const list = root.querySelector('[data-journey-list]')
     if (line && list) {
-      lineDraw(gsap, line, { trigger: list, start: 'top 75%', end: 'bottom 80%' })
+      lineDraw(gsap, line, {
+        trigger: list,
+        start: 'top 75%',
+        end: 'bottom 80%',
+      })
     }
 
     const frame = root.querySelector('[data-journey-image] [data-image-frame]')
-    if (frame) imageReveal(gsap, frame)
+    const picture = root.querySelector('[data-journey-image] [data-image]')
+    if (frame) imageReveal(gsap, frame, { from: 'bottom', scale: 1.24 })
+    if (picture) {
+      scrubScale(gsap, picture, {
+        from: 1.12,
+        to: 1,
+        trigger: root.querySelector('[data-journey-image]'),
+      })
+    }
+
+    const aside = root.querySelector('[data-journey-aside]')
+    if (aside) blurRise(gsap, aside, { y: 28, blur: 8, start: 'top 90%' })
   }, [])
 
   return (
     <section
       ref={rootRef}
       id="enrollment"
-      className="relative scroll-mt-24 overflow-hidden bg-background py-24 sm:py-32"
+      className="relative scroll-mt-24 bg-background py-24 sm:py-32"
       aria-labelledby="journey-heading"
     >
       <LandingAtmosphere tone="wash" />
@@ -81,6 +111,7 @@ export function LandingEnrollment() {
                 <li key={step.index} data-journey-step className="relative">
                   <span
                     aria-hidden
+                    data-journey-marker
                     className="absolute top-1.5 -left-10 flex size-6 items-center justify-center rounded-md bg-primary-wash text-xs font-semibold tabular-nums text-primary-strong"
                   >
                     {step.index}
@@ -103,7 +134,10 @@ export function LandingEnrollment() {
                 className="aspect-4/5 w-full"
                 sizes="(min-width: 1024px) 30vw, 100vw"
               />
-              <div className="mt-6 rounded-xl bg-muted p-6">
+              <div
+                data-journey-aside
+                className="mt-6 rounded-xl bg-muted p-6"
+              >
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {journey.aside}
                 </p>
@@ -148,11 +182,19 @@ function LiveRail() {
         const value = Number(el.dataset.count ?? '0')
         countUp(gsap, el, value, { trigger: rail })
       })
-      fadeRise(gsap, rail.querySelectorAll('[data-rail-item]'), {
-        trigger: rail,
-        stagger: 0.08,
-        y: 18,
-      })
+      gsap.fromTo(
+        rail.querySelectorAll('[data-rail-item]'),
+        { opacity: 0, y: 28, filter: 'blur(8px)' },
+        {
+          opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: 0.9,
+          stagger: 0.1,
+          ease: EASE.expo,
+          scrollTrigger: { trigger: rail, start: 'top 85%', once: true },
+        },
+      )
     },
     [status, programCount, openCount, seatCount],
   )

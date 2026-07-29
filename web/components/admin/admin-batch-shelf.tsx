@@ -1,34 +1,18 @@
 import Link from 'next/link'
-import { ArrowRightIcon, UsersIcon } from 'lucide-react'
 
-import { StatusBadge } from '@/components/money/status-badge'
+import { BatchCard } from '@/components/batches/batch-card'
 import { Button } from '@/components/ui/button'
-import { formatDate } from '@/lib/format'
-import type { Batch, BatchStatus } from '@/lib/api-client'
+import type { Batch, Course } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
-
-const STATUS_TONE: Record<BatchStatus, 'neutral' | 'pending' | 'paid'> = {
-  upcoming: 'neutral',
-  enrolling: 'pending',
-  running: 'paid',
-  completed: 'neutral',
-}
-
-const STATUS_LABEL: Record<BatchStatus, string> = {
-  upcoming: 'Upcoming',
-  enrolling: 'Enrolling',
-  running: 'Running',
-  completed: 'Completed',
-}
 
 interface AdminBatchShelfProps {
   batches: Batch[]
-  courseTitleById: Map<string, string>
+  courseById: Map<string, Pick<Course, 'title' | 'hasThumbnail' | 'updatedAt'>>
 }
 
 export function AdminBatchShelf({
   batches,
-  courseTitleById,
+  courseById,
 }: AdminBatchShelfProps) {
   if (batches.length === 0) {
     return (
@@ -56,73 +40,33 @@ export function AdminBatchShelf({
       )}
     >
       {batches.map((batch) => {
-        const title = courseTitleById.get(batch.courseId) ?? 'Course'
-        const tone =
-          batch.status === 'enrolling' || batch.status === 'running'
-            ? 'bg-primary-strong text-primary-foreground'
-            : 'bg-primary-wash text-primary-strong'
-
+        const course = courseById.get(batch.courseId)
         return (
-          <article
+          <BatchCard
             key={batch.id}
-            className={cn(
-              'flex w-72 max-w-full shrink-0 snap-center flex-col overflow-hidden rounded-xl bg-muted/60',
-              'md:w-auto md:max-w-none',
-            )}
-          >
-            <div
-              className={cn(
-                'flex min-h-32 flex-col justify-between p-4 md:aspect-video md:min-h-0',
-                tone,
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                {batch.status === 'enrolling' || batch.status === 'running' ? (
-                  <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-medium">
-                    {STATUS_LABEL[batch.status]}
-                  </span>
-                ) : (
-                  <StatusBadge
-                    tone={STATUS_TONE[batch.status]}
-                    label={STATUS_LABEL[batch.status]}
-                  />
-                )}
-                <UsersIcon className="size-4 shrink-0 opacity-80" />
-              </div>
-              <div className="min-w-0 pt-3">
-                <p className="font-heading text-lg font-semibold leading-snug break-words">
-                  {batch.name}
-                </p>
-                <p className="mt-0.5 truncate text-sm opacity-80">{title}</p>
-              </div>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-              <p className="text-xs tabular-nums text-muted-foreground">
-                Starts {formatDate(batch.courseStartDate)} · capacity{' '}
-                {batch.capacity}
-              </p>
-
-              <div className="mt-auto grid grid-cols-2 gap-2">
-                <Button
-                  size="sm"
-                  className="min-h-11"
-                  render={<Link href={`/admin/batches/${batch.id}`} />}
-                >
-                  Open
-                  <ArrowRightIcon />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="min-h-11"
-                  render={<Link href="/admin/batches" />}
-                >
-                  All batches
-                </Button>
-              </div>
-            </div>
-          </article>
+            courseId={batch.courseId}
+            name={batch.name}
+            status={batch.status}
+            capacity={batch.capacity}
+            courseStartDate={batch.courseStartDate}
+            course={{
+              title: course?.title ?? 'Course',
+              hasThumbnail: course?.hasThumbnail,
+              updatedAt: course?.updatedAt,
+            }}
+            workspaceHref={`/admin/batches/${batch.id}`}
+            secondaryActions={[
+              {
+                label: 'All batches',
+                href: '/admin/batches',
+              },
+              {
+                label: 'Roster',
+                href: `/admin/batches/${batch.id}/roster`,
+              },
+            ]}
+            className="w-72 max-w-full shrink-0 snap-center md:w-auto md:max-w-none"
+          />
         )
       })}
     </div>

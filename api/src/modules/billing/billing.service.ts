@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   Batch,
   BillingPeriod,
-  Course,
   Enrollment,
   PeriodStatus,
   Prisma,
@@ -19,6 +18,10 @@ import {
   buildPaginatedResult,
   resolvePagination,
 } from '../../common/utils/pagination';
+import {
+  COURSE_PUBLIC_SELECT,
+  type CoursePublicRow,
+} from '../courses/course.presentation';
 
 // Roster/capacity's own definition of "still holds a seat" (doc 05 §4.1) —
 // billing eligibility uses the same set; only 'withdrawn' is excluded.
@@ -44,7 +47,7 @@ export type BillingPeriodWithContext = BillingPeriod & {
   // Decimal arithmetic stays server-side (doc 07 §6) — the frontend never
   // subtracts amountPaid from amountOwed itself, it just displays this.
   outstanding: Prisma.Decimal;
-  enrollment: Enrollment & { batch: Batch & { course: Course } };
+  enrollment: Enrollment & { batch: Batch & { course: CoursePublicRow } };
 };
 
 function isPeriodStatus(value: string): value is PeriodStatus {
@@ -87,7 +90,15 @@ export class BillingService {
         take,
         orderBy: { periodMonth: 'desc' },
         include: {
-          enrollment: { include: { batch: { include: { course: true } } } },
+          enrollment: {
+            include: {
+              batch: {
+                include: {
+                  course: { select: COURSE_PUBLIC_SELECT },
+                },
+              },
+            },
+          },
         },
       }),
       this.prisma.billingPeriod.count({ where }),

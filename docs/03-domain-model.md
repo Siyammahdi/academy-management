@@ -102,6 +102,7 @@ The **template** — what a program is and what it *currently* costs. Not enroll
 | `enrollmentFee` | Decimal. Current price. Also the penalty basis. |
 | `monthlyFee` | Decimal. Unused when `one_time`. |
 | `parts` | Ordered list of `{ name, durationMonths }` — **descriptive only** |
+| `thumbnail` / `thumbnailMimeType` | Optional cover image stored as bytes in Postgres — **not** a URL. Never returned in JSON; clients use `GET /courses/:id/thumbnail` and the `hasThumbnail` flag. |
 | `status` | `active` \| `archived` |
 | `createdAt` | |
 

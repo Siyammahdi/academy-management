@@ -240,6 +240,10 @@ model Course {
   enrollmentFee Decimal      @map("enrollment_fee") @db.Decimal(10, 2)
   monthlyFee    Decimal      @map("monthly_fee") @db.Decimal(10, 2)   // unused when one_time (FEE-07)
   parts         Json?        // [{ name, durationMonths }] — descriptive only, drives nothing
+  // Cover image stored in-DB (not a URL). Bytes are never returned in JSON —
+  // clients use GET /courses/:id/thumbnail and the hasThumbnail flag.
+  thumbnail         Bytes?
+  thumbnailMimeType String?  @map("thumbnail_mime_type")
   status        CourseStatus @default(active)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")

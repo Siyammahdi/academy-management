@@ -45,7 +45,7 @@ Every error returns this envelope. No exceptions.
 
 ### Error codes
 
-`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
+`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `THUMBNAIL_INVALID`
 
 Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
 
@@ -106,10 +106,11 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET` | `/courses` | Public | Active only |
+| `GET` | `/courses` | Public | Active only. Each course includes `hasThumbnail` (boolean). Image bytes are never inlined. |
 | `GET` | `/courses/:id` | Public | Includes open batches |
-| `POST` | `/courses` | Admin | |
-| `PATCH` | `/courses/:id` | Admin | **Never affects existing batches** (FEE-03) |
+| `GET` | `/courses/:id/thumbnail` | Public | Raw cover image (`Content-Type` from stored mime). `404` when none. |
+| `POST` | `/courses` | Admin | Optional `thumbnail: { mimeType, data }` (base64) stored as Bytes |
+| `PATCH` | `/courses/:id` | Admin | **Never affects existing batches** (FEE-03). Optional thumbnail replace, or `clearThumbnail: true` |
 | `POST` | `/courses/:id/archive` | Admin | |
 
 ```jsonc
@@ -124,10 +125,16 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
     { "name": "Basic", "durationMonths": 8 },
     { "name": "Intermediate", "durationMonths": 8 },
     { "name": "Advanced", "durationMonths": 8 }
-  ]
+  ],
+  // optional — jpeg/png/webp/gif, decoded size ≤ 2 MB, stored as Bytes on the row
+  "thumbnail": {
+    "mimeType": "image/jpeg",
+    "data": "<base64>"
+  }
 }
 ```
 
+Error code `THUMBNAIL_INVALID` (400) when the mime type or decoded size is rejected.
 ---
 
 ## 4. Batches

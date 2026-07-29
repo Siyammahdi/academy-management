@@ -164,7 +164,13 @@ export class HomeworkService {
           },
         },
       },
-      include: { batch: { include: { course: true } } },
+      include: {
+        batch: {
+          include: {
+            course: { select: { title: true } },
+          },
+        },
+      },
       orderBy: { dueDate: 'asc' },
     });
   }

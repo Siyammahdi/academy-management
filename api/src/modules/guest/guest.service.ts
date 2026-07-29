@@ -44,7 +44,15 @@ export class GuestService {
     const periods = await this.prisma.billingPeriod.findMany({
       where: { enrollment: { studentId: student.id }, status: { not: 'paid' } },
       include: {
-        enrollment: { include: { batch: { include: { course: true } } } },
+        enrollment: {
+          include: {
+            batch: {
+              include: {
+                course: { select: { title: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { periodMonth: 'asc' },
     });

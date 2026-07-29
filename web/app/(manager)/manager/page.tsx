@@ -34,6 +34,7 @@ import {
   listCourses,
   listPendingPayments,
   type BatchWithSeats,
+  type Course,
   type Homework,
   type PendingPayment,
   type Recording,
@@ -58,7 +59,7 @@ interface ManagerHomeData {
   pending: PendingPayment[]
   pendingTotal: number
   atRiskCount: number
-  courseTitleById: Map<string, string>
+  courseById: Map<string, Pick<Course, 'title' | 'hasThumbnail' | 'updatedAt'>>
   homeworkDueToday: HomeworkPreview[]
   homeworkOverdue: number
   recentRecordings: RecordingPreview[]
@@ -74,7 +75,16 @@ async function fetchHomeData(): Promise<ManagerHomeData> {
     listCourses(1, 100),
   ])
 
-  const courseTitleById = new Map(courses.data.map((c) => [c.id, c.title]))
+  const courseById = new Map(
+    courses.data.map((c) => [
+      c.id,
+      {
+        title: c.title,
+        hasThumbnail: c.hasThumbnail,
+        updatedAt: c.updatedAt,
+      },
+    ]),
+  )
 
   const [homeworkLists, recordingLists, seatSnapshots] = await Promise.all([
     Promise.all(
@@ -121,7 +131,7 @@ async function fetchHomeData(): Promise<ManagerHomeData> {
     pending: pendingPage.data,
     pendingTotal: pendingPage.meta.total,
     atRiskCount: atRisk.count,
-    courseTitleById,
+    courseById,
     homeworkDueToday,
     homeworkOverdue,
     recentRecordings,
@@ -202,7 +212,7 @@ export default function ManagerOverviewPage() {
     pending,
     pendingTotal,
     atRiskCount,
-    courseTitleById,
+    courseById,
     homeworkDueToday,
     homeworkOverdue,
     recentRecordings,
@@ -580,7 +590,7 @@ export default function ManagerOverviewPage() {
         </div>
         <ManagedBatchShelf
           batches={batches}
-          courseTitleById={courseTitleById}
+          courseById={courseById}
         />
       </section>
     </div>

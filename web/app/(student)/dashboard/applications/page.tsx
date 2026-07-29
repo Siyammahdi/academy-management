@@ -91,6 +91,8 @@ export default function StudentApplicationsPage() {
               <CourseCover
                 courseId={enrollment.batch.course.id}
                 title={enrollment.batch.course.title}
+                hasThumbnail={enrollment.batch.course.hasThumbnail}
+                updatedAt={enrollment.batch.course.updatedAt}
                 className="aspect-video w-full"
               />
               <div className="space-y-3 p-4">

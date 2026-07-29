@@ -1,32 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { RefreshCwIcon, SearchIcon } from 'lucide-react'
 
+import { BatchCard } from '@/components/batches/batch-card'
 import { ManagerPageHeader } from '@/components/manager/manager-page-header'
-import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getManagedBatches, listCourses } from '@/lib/api-client'
-import type { BatchStatus, BatchWithSeats } from '@/lib/api-client'
-import { formatDate } from '@/lib/format'
-
-const STATUS_TONE: Record<BatchStatus, 'neutral' | 'pending' | 'paid'> = {
-  upcoming: 'neutral',
-  enrolling: 'pending',
-  running: 'paid',
-  completed: 'neutral',
-}
-
-const STATUS_LABELS: Record<BatchStatus, string> = {
-  upcoming: 'Upcoming',
-  enrolling: 'Enrolling',
-  running: 'Running',
-  completed: 'Completed',
-}
+import type { BatchStatus, BatchWithSeats, Course } from '@/lib/api-client'
 
 /**
  * Manager — My Batches
@@ -34,7 +18,7 @@ const STATUS_LABELS: Record<BatchStatus, string> = {
  */
 export default function ManagerBatchesPage() {
   const [batches, setBatches] = useState<BatchWithSeats[] | null>(null)
-  const [courseTitleById, setCourseTitleById] = useState<Map<string, string>>(
+  const [courseById, setCourseById] = useState<Map<string, Course>>(
     () => new Map(),
   )
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +32,7 @@ export default function ManagerBatchesPage() {
         listCourses(1, 100),
       ])
       setBatches(batchList)
-      setCourseTitleById(new Map(courses.data.map((c) => [c.id, c.title])))
+      setCourseById(new Map(courses.data.map((c) => [c.id, c])))
       setError(null)
     } catch {
       setError('Your batches could not be loaded. Try again.')
@@ -71,13 +55,13 @@ export default function ManagerBatchesPage() {
     return batches.filter((batch) => {
       if (statusFilter !== 'all' && batch.status !== statusFilter) return false
       if (!q) return true
-      const course = courseTitleById.get(batch.courseId) ?? ''
+      const course = courseById.get(batch.courseId)?.title ?? ''
       return (
         batch.name.toLowerCase().includes(q) ||
         course.toLowerCase().includes(q)
       )
     })
-  }, [batches, courseTitleById, query, statusFilter])
+  }, [batches, courseById, query, statusFilter])
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -134,9 +118,9 @@ export default function ManagerBatchesPage() {
       </div>
 
       {!batches && !error ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-72 w-full rounded-xl" />
           ))}
         </div>
       ) : null}
@@ -164,65 +148,39 @@ export default function ManagerBatchesPage() {
       ) : null}
 
       {filtered.length > 0 ? (
-        <ul className="flex flex-col gap-2">
-          {filtered.map((batch) => (
-            <li
-              key={batch.id}
-              className="flex flex-col gap-3 rounded-xl bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-heading text-base font-semibold text-foreground">
-                    {batch.name}
-                  </h2>
-                  <StatusBadge
-                    tone={STATUS_TONE[batch.status]}
-                    label={STATUS_LABELS[batch.status]}
-                  />
-                  <StatusBadge
-                    tone={batch.classLink ? 'paid' : 'pending'}
-                    label={batch.classLink ? 'Link set' : 'No link'}
-                  />
-                </div>
-                <p className="truncate text-sm text-muted-foreground">
-                  {courseTitleById.get(batch.courseId) ?? 'Course'} · Starts{' '}
-                  <span className="tabular-nums">
-                    {formatDate(batch.courseStartDate)}
-                  </span>
-                </p>
-                <p className="text-xs tabular-nums text-muted-foreground">
-                  {batch.seatsRemaining} of {batch.capacity} seats left
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  className="min-h-11"
-                  render={
-                    <Link href={`/manager/batches/${batch.id}/roster`} />
-                  }
-                >
-                  Roster
-                </Button>
-                <Button
-                  variant="outline"
-                  className="min-h-11"
-                  render={
-                    <Link href={`/manager/batches/${batch.id}/classroom`} />
-                  }
-                >
-                  Classroom
-                </Button>
-                <Button
-                  className="min-h-11"
-                  render={<Link href={`/manager/batches/${batch.id}`} />}
-                >
-                  Open workspace
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((batch) => {
+            const course = courseById.get(batch.courseId)
+            return (
+              <BatchCard
+                key={batch.id}
+                courseId={batch.courseId}
+                name={batch.name}
+                status={batch.status}
+                capacity={batch.capacity}
+                courseStartDate={batch.courseStartDate}
+                seatsRemaining={batch.seatsRemaining}
+                course={{
+                  title: course?.title ?? 'Course',
+                  hasThumbnail: course?.hasThumbnail,
+                  updatedAt: course?.updatedAt,
+                }}
+                workspaceHref={`/manager/batches/${batch.id}`}
+                facts={[batch.classLink ? 'Class link set' : 'No class link']}
+                secondaryActions={[
+                  {
+                    label: 'Roster',
+                    href: `/manager/batches/${batch.id}/roster`,
+                  },
+                  {
+                    label: 'Classroom',
+                    href: `/manager/batches/${batch.id}/classroom`,
+                  },
+                ]}
+              />
+            )
+          })}
+        </div>
       ) : null}
     </div>
   )

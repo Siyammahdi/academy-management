@@ -42,7 +42,7 @@ export function OnboardingDashboard({
 }: OnboardingDashboardProps) {
   const [clock, setClock] = useState(() => formatDhakaClock())
   const [openBatches, setOpenBatches] = useState<BatchWithSeats[] | null>(null)
-  const [courseTitleById, setCourseTitleById] = useState<Map<string, string>>(
+  const [courseById, setCourseById] = useState<Map<string, Course>>(
     () => new Map(),
   )
   const [recentCourses, setRecentCourses] = useState<Course[] | null>(null)
@@ -59,9 +59,7 @@ export function OnboardingDashboard({
         batchPage.data.slice(0, 4).map((batch) => getBatch(batch.id)),
       )
       setOpenBatches(enriched)
-      setCourseTitleById(
-        new Map(coursePage.data.map((c) => [c.id, c.title])),
-      )
+      setCourseById(new Map(coursePage.data.map((c) => [c.id, c])))
       setRecentCourses(
         [...coursePage.data]
           .filter((c) => c.status === 'active')
@@ -178,6 +176,8 @@ export function OnboardingDashboard({
                 <CourseCover
                   courseId={enrollment.batch.course.id}
                   title={enrollment.batch.course.title}
+                  hasThumbnail={enrollment.batch.course.hasThumbnail}
+                  updatedAt={enrollment.batch.course.updatedAt}
                   compact
                   className="size-16 shrink-0 rounded-lg"
                 />
@@ -226,8 +226,8 @@ export function OnboardingDashboard({
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {openBatches.map((batch) => {
-              const title =
-                courseTitleById.get(batch.courseId) ?? 'Course'
+              const course = courseById.get(batch.courseId)
+              const title = course?.title ?? 'Course'
               const seatsLeft = batch.seatsRemaining
               const isFull = seatsLeft <= 0
               return (
@@ -238,6 +238,8 @@ export function OnboardingDashboard({
                   <CourseCover
                     courseId={batch.courseId}
                     title={title}
+                    hasThumbnail={course?.hasThumbnail}
+                    updatedAt={course?.updatedAt}
                     className="aspect-video w-full"
                   />
                   <div className="space-y-2 p-4">
@@ -291,6 +293,8 @@ export function OnboardingDashboard({
                 <CourseCover
                   courseId={course.id}
                   title={course.title}
+                  hasThumbnail={course.hasThumbnail}
+                  updatedAt={course.updatedAt}
                   className="aspect-square w-full"
                   compact
                 />

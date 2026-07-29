@@ -90,6 +90,8 @@ export function CourseShelf({
             <CourseCover
               courseId={enrollment.batch.course.id}
               title={enrollment.batch.course.title}
+              hasThumbnail={enrollment.batch.course.hasThumbnail}
+              updatedAt={enrollment.batch.course.updatedAt}
               className="aspect-video w-full"
             />
 

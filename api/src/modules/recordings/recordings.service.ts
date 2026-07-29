@@ -166,7 +166,13 @@ export class RecordingsService {
           },
         },
       },
-      include: { batch: { include: { course: true } } },
+      include: {
+        batch: {
+          include: {
+            course: { select: { title: true } },
+          },
+        },
+      },
       orderBy: { recordedFor: 'desc' },
     });
   }

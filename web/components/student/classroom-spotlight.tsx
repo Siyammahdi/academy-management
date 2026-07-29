@@ -62,6 +62,8 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
           <CourseCover
             courseId={current!.batch.course.id}
             title={current!.batch.course.title}
+            hasThumbnail={current!.batch.course.hasThumbnail}
+            updatedAt={current!.batch.course.updatedAt}
             className="absolute inset-0 h-full w-full rounded-none opacity-95 [&_span]:text-primary-foreground"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-primary-strong via-primary-strong/40 to-transparent lg:bg-gradient-to-r" />

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
 import Link from 'next/link'
 import {
   ArchiveIcon,
@@ -14,10 +13,10 @@ import {
 import { toast } from 'sonner'
 
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { CourseEditorSheet } from '@/components/admin/course-editor-sheet'
 import { AmountCell } from '@/components/money/amount-cell'
 import { StatusBadge } from '@/components/money/status-badge'
 import { CourseCover } from '@/components/student/course-cover'
-import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
@@ -26,13 +25,9 @@ import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/error-message'
 import {
   archiveCourse,
-  createCourse,
   listCourses,
-  updateCourse,
   type BillingType,
   type Course,
-  type CoursePart,
-  type CreateCourseInput,
 } from '@/lib/api-client'
 
 const BILLING_TYPE_LABELS: Record<BillingType, string> = {
@@ -40,265 +35,12 @@ const BILLING_TYPE_LABELS: Record<BillingType, string> = {
   one_time: 'One-time',
 }
 
-interface CourseFormState {
-  title: string
-  description: string
-  billingType: BillingType
-  enrollmentFee: string
-  monthlyFee: string
-  parts: CoursePart[]
-}
-
-function emptyForm(): CourseFormState {
-  return {
-    title: '',
-    description: '',
-    billingType: 'monthly',
-    enrollmentFee: '',
-    monthlyFee: '',
-    parts: [],
-  }
-}
-
-function courseToForm(course: Course): CourseFormState {
-  return {
-    title: course.title,
-    description: course.description ?? '',
-    billingType: course.billingType,
-    enrollmentFee: course.enrollmentFee,
-    monthlyFee: course.monthlyFee,
-    parts: course.parts ?? [],
-  }
-}
-
-const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/
-
-function CourseForm({
-  mode,
-  courseId,
-  initial,
-  onCancel,
-  onSaved,
-}: {
-  mode: 'create' | 'edit'
-  courseId?: string
-  initial: CourseFormState
-  onCancel: () => void
-  onSaved: (course: Course, mode: 'create' | 'edit') => void
-}) {
-  const [form, setForm] = useState(initial)
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  function updatePart(index: number, patch: Partial<CoursePart>): void {
-    setForm((prev) => ({
-      ...prev,
-      parts: prev.parts.map((part, i) =>
-        i === index ? { ...part, ...patch } : part,
-      ),
-    }))
-  }
-
-  function removePart(index: number): void {
-    setForm((prev) => ({
-      ...prev,
-      parts: prev.parts.filter((_, i) => i !== index),
-    }))
-  }
-
-  function addPart(): void {
-    setForm((prev) => ({
-      ...prev,
-      parts: [...prev.parts, { name: '', durationMonths: 1 }],
-    }))
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    setError(null)
-
-    if (!form.title.trim()) {
-      setError('Enter a course title.')
-      return
-    }
-    if (!DECIMAL_PATTERN.test(form.enrollmentFee)) {
-      setError('Enter the enrollment fee as an amount like 1000.00.')
-      return
-    }
-    if (!DECIMAL_PATTERN.test(form.monthlyFee)) {
-      setError('Enter the monthly fee as an amount like 500.00.')
-      return
-    }
-
-    const input: CreateCourseInput = {
-      title: form.title.trim(),
-      description: form.description.trim() || undefined,
-      billingType: form.billingType,
-      enrollmentFee: form.enrollmentFee,
-      monthlyFee: form.monthlyFee,
-      parts: form.parts.length > 0 ? form.parts : undefined,
-    }
-
-    setIsSubmitting(true)
-    try {
-      onSaved(
-        mode === 'create'
-          ? await createCourse(input)
-          : await updateCourse(courseId ?? '', input),
-        mode,
-      )
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? apiErrorMessage(
-              err.body,
-              'This course could not be saved. Try again.',
-            )
-          : 'This course could not be saved. Try again.',
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <Input
-        label="Title"
-        required
-        value={form.title}
-        onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-      />
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-muted-foreground">
-          Description
-        </label>
-        <textarea
-          rows={3}
-          value={form.description}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, description: e.target.value }))
-          }
-          className="w-full rounded-lg border border-transparent bg-input/50 px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
-        />
-      </div>
-      <FilterDropdown
-        label="Billing type"
-        value={form.billingType}
-        options={[
-          { value: 'monthly', label: 'Monthly' },
-          { value: 'one_time', label: 'One-time' },
-        ]}
-        onChange={(value) =>
-          setForm((p) => ({
-            ...p,
-            billingType: value as BillingType,
-          }))
-        }
-      />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Enrollment fee (৳)"
-          required
-          inputMode="decimal"
-          placeholder="1000.00"
-          value={form.enrollmentFee}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, enrollmentFee: e.target.value }))
-          }
-        />
-        <Input
-          label="Monthly fee (৳)"
-          required
-          inputMode="decimal"
-          placeholder="500.00"
-          value={form.monthlyFee}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, monthlyFee: e.target.value }))
-          }
-        />
-      </div>
-      {mode === 'edit' ? (
-        <p className="text-sm text-muted-foreground">
-          Changing fees here does not change existing batches — they keep the
-          fees they were created with.
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Parts</span>
-        {form.parts.map((part, index) => (
-          <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <Input
-              label="Name"
-              value={part.name}
-              onChange={(e) => updatePart(index, { name: e.target.value })}
-              className="flex-1"
-            />
-            <Input
-              label="Months"
-              type="number"
-              min={1}
-              value={part.durationMonths}
-              onChange={(e) =>
-                updatePart(index, {
-                  durationMonths: Number.parseInt(e.target.value, 10) || 1,
-                })
-              }
-              className="sm:w-28"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-h-11"
-              onClick={() => removePart(index)}
-            >
-              Remove
-            </Button>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-h-11 self-start"
-          onClick={addPart}
-        >
-          Add part
-        </Button>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-status-overdue" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="secondary"
-          className="min-h-11"
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" className="min-h-11" loading={isSubmitting}>
-          {isSubmitting
-            ? 'Saving…'
-            : mode === 'create'
-              ? 'Create course'
-              : 'Save changes'}
-        </Button>
-      </div>
-    </form>
-  )
-}
-
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create')
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null)
   const [archiveError, setArchiveError] = useState<string | null>(null)
@@ -345,14 +87,24 @@ export default function AdminCoursesPage() {
     )
   }, [courses, query])
 
+  function openCreate(): void {
+    setEditorMode('create')
+    setEditingCourse(null)
+    setEditorOpen(true)
+  }
+
+  function openEdit(course: Course): void {
+    setEditorMode('edit')
+    setEditingCourse(course)
+    setEditorOpen(true)
+  }
+
   function handleSaved(course: Course, mode: 'create' | 'edit'): void {
     setCourses((prev) => {
       if (!prev) return [course]
       if (mode === 'create') return [course, ...prev]
       return prev.map((c) => (c.id === course.id ? course : c))
     })
-    setIsCreateOpen(false)
-    setEditingCourse(null)
     toast.success(mode === 'create' ? 'Course created' : 'Course saved')
   }
 
@@ -399,7 +151,7 @@ export default function AdminCoursesPage() {
               <RefreshCwIcon />
               Refresh
             </Button>
-            <Button className="min-h-11" onClick={() => setIsCreateOpen(true)}>
+            <Button className="min-h-11" onClick={openCreate}>
               <PlusIcon />
               New course
             </Button>
@@ -442,14 +194,11 @@ export default function AdminCoursesPage() {
           </p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             {courses.length === 0
-              ? 'Create a course with enrollment and monthly fees, then open batches under it.'
+              ? 'Create a course with a cover image, enrollment and monthly fees, then open batches under it.'
               : 'Try a different search.'}
           </p>
           {courses.length === 0 ? (
-            <Button
-              className="mt-4 min-h-11"
-              onClick={() => setIsCreateOpen(true)}
-            >
+            <Button className="mt-4 min-h-11" onClick={openCreate}>
               <PlusIcon />
               New course
             </Button>
@@ -467,6 +216,8 @@ export default function AdminCoursesPage() {
               <CourseCover
                 courseId={course.id}
                 title={course.title}
+                hasThumbnail={course.hasThumbnail}
+                updatedAt={course.updatedAt}
                 className="aspect-video w-full"
               />
               <div className="flex flex-1 flex-col gap-3 p-4">
@@ -502,7 +253,7 @@ export default function AdminCoursesPage() {
                   <Button
                     variant="secondary"
                     className="min-h-11"
-                    onClick={() => setEditingCourse(course)}
+                    onClick={() => openEdit(course)}
                   >
                     <PencilIcon />
                     Edit
@@ -532,34 +283,13 @@ export default function AdminCoursesPage() {
         </div>
       ) : null}
 
-      <Modal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="New course"
-      >
-        <CourseForm
-          mode="create"
-          initial={emptyForm()}
-          onCancel={() => setIsCreateOpen(false)}
-          onSaved={handleSaved}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={editingCourse !== null}
-        onClose={() => setEditingCourse(null)}
-        title="Edit course"
-      >
-        {editingCourse ? (
-          <CourseForm
-            mode="edit"
-            courseId={editingCourse.id}
-            initial={courseToForm(editingCourse)}
-            onCancel={() => setEditingCourse(null)}
-            onSaved={handleSaved}
-          />
-        ) : null}
-      </Modal>
+      <CourseEditorSheet
+        open={editorOpen}
+        mode={editorMode}
+        course={editingCourse}
+        onOpenChange={setEditorOpen}
+        onSaved={handleSaved}
+      />
 
       <Modal
         isOpen={archivingCourse !== null}

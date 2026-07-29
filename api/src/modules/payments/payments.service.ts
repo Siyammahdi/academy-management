@@ -8,7 +8,6 @@ import { randomUUID } from 'node:crypto';
 import {
   Batch,
   BillingPeriod,
-  Course,
   Enrollment,
   Payment,
   Prisma,
@@ -23,6 +22,10 @@ import { PeriodAlreadyPaidException } from '../../common/exceptions/period-alrea
 import { PaymentAlreadySettledException } from '../../common/exceptions/payment-already-settled.exception';
 import { InvalidWebhookSignatureException } from '../../common/exceptions/invalid-webhook-signature.exception';
 import { formatMoney } from '../../common/utils/money';
+import {
+  COURSE_PUBLIC_SELECT,
+  type CoursePublicRow,
+} from '../courses/course.presentation';
 import { derivePeriodStatus } from '../../common/utils/period';
 import { GatewayService } from '../gateway/gateway.service';
 import type { SslcommerzWebhookPayload } from '../gateway/gateway.service';
@@ -41,7 +44,7 @@ export type PaymentWithBillingPeriod = Payment & {
   billingPeriod: BillingPeriod & {
     enrollment: Enrollment & {
       student: Student;
-      batch: Batch & { course: Course };
+      batch: Batch & { course: CoursePublicRow };
     };
   };
 };
@@ -282,7 +285,11 @@ export class PaymentsService {
               enrollment: {
                 include: {
                   student: true,
-                  batch: { include: { course: true } },
+                  batch: {
+                    include: {
+                      course: { select: COURSE_PUBLIC_SELECT },
+                    },
+                  },
                 },
               },
             },
@@ -387,7 +394,11 @@ export class PaymentsService {
               enrollment: {
                 include: {
                   student: true,
-                  batch: { include: { course: true } },
+                  batch: {
+                    include: {
+                      course: { select: COURSE_PUBLIC_SELECT },
+                    },
+                  },
                 },
               },
             },

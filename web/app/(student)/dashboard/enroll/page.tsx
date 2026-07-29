@@ -18,6 +18,7 @@ import {
   listBatches,
   listCourses,
   type BatchWithSeats,
+  type Course,
 } from '@/lib/api-client'
 import { formatDate, formatMoney } from '@/lib/format'
 
@@ -43,7 +44,7 @@ function enrollErrorMessage(err: unknown): string {
 export default function StudentEnrollPage() {
   const { hasActive, reload: reloadEnrollment } = useStudentEnrollment()
   const [batches, setBatches] = useState<BatchWithSeats[] | null>(null)
-  const [courseTitleById, setCourseTitleById] = useState<Map<string, string>>(
+  const [courseById, setCourseById] = useState<Map<string, Course>>(
     () => new Map(),
   )
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +62,7 @@ export default function StudentEnrollPage() {
         list.data.map((batch) => getBatch(batch.id)),
       )
       setBatches(enriched)
-      setCourseTitleById(new Map(courseList.data.map((c) => [c.id, c.title])))
+      setCourseById(new Map(courseList.data.map((c) => [c.id, c])))
       setError(null)
     } catch {
       setError('Open batches could not be loaded. Try again.')
@@ -161,6 +162,8 @@ export default function StudentEnrollPage() {
             const isFull = batch.seatsRemaining <= 0
             const isEnrolled = enrolledIds.has(batch.id)
             const rowError = rowErrors[batch.id]
+            const course = courseById.get(batch.courseId)
+            const courseTitle = course?.title ?? 'Course'
             return (
               <li
                 key={batch.id}
@@ -169,14 +172,16 @@ export default function StudentEnrollPage() {
                 <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                   <CourseCover
                     courseId={batch.courseId}
-                    title={courseTitleById.get(batch.courseId) ?? 'Course'}
+                    title={courseTitle}
+                    hasThumbnail={course?.hasThumbnail}
+                    updatedAt={course?.updatedAt}
                     compact
                     className="size-16 shrink-0 rounded-xl sm:size-20"
                   />
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-heading text-base font-semibold text-foreground">
-                        {courseTitleById.get(batch.courseId) ?? 'Course'}
+                        {courseTitle}
                       </h2>
                       <StatusBadge tone="pending" label="Enrolling" />
                     </div>

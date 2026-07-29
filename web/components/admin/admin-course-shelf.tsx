@@ -50,6 +50,8 @@ export function AdminCourseShelf({ courses }: AdminCourseShelfProps) {
           <CourseCover
             courseId={course.id}
             title={course.title}
+            hasThumbnail={course.hasThumbnail}
+            updatedAt={course.updatedAt}
             className="aspect-video w-full"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">

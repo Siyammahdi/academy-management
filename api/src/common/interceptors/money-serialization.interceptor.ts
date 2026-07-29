@@ -12,9 +12,15 @@ import { formatMoney, isDecimal } from '../utils/money';
 // serialized as fixed 2-decimal strings). Walks every response body and
 // reformats any Prisma.Decimal it finds, so no controller has to remember
 // to do it by hand.
+//
+// Also strips Course.thumbnail Bytes (never JSON-safe) and turns
+// thumbnailMimeType into hasThumbnail for nested course includes.
 function reshape(value: unknown): unknown {
   if (isDecimal(value)) {
     return formatMoney(value);
+  }
+  if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+    return undefined;
   }
   if (Array.isArray(value)) {
     return value.map(reshape);
@@ -23,10 +29,37 @@ function reshape(value: unknown): unknown {
     return value;
   }
   if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
     const result: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value)) {
+    let sawThumbnailMime = false;
+    let thumbnailMime: unknown;
+    let sawHasThumbnail = false;
+    let hadThumbnailBytes = false;
+
+    for (const [key, val] of entries) {
+      if (key === 'thumbnail') {
+        if (Buffer.isBuffer(val) || val instanceof Uint8Array) {
+          hadThumbnailBytes = val.length > 0;
+        }
+        continue;
+      }
+      if (key === 'thumbnailMimeType') {
+        sawThumbnailMime = true;
+        thumbnailMime = val;
+        continue;
+      }
+      if (key === 'hasThumbnail') {
+        sawHasThumbnail = true;
+      }
       result[key] = reshape(val);
     }
+
+    if (!sawHasThumbnail && (sawThumbnailMime || hadThumbnailBytes)) {
+      result.hasThumbnail =
+        hadThumbnailBytes ||
+        (typeof thumbnailMime === 'string' && thumbnailMime.length > 0);
+    }
+
     return result;
   }
   return value;

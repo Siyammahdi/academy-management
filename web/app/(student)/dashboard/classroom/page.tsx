@@ -148,6 +148,8 @@ export default function StudentClassroomPage() {
                       <CourseCover
                         courseId={enrollment.batch.course.id}
                         title={enrollment.batch.course.title}
+                        hasThumbnail={enrollment.batch.course.hasThumbnail}
+                        updatedAt={enrollment.batch.course.updatedAt}
                         compact
                         className="size-16 shrink-0 rounded-xl sm:size-20"
                       />

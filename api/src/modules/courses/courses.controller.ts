@@ -2,13 +2,16 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-import type { Course } from '@prisma/client';
+import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -19,6 +22,7 @@ import type { CourseWithOpenBatches } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import type { Paginated, PaginationQuery } from '../../common/utils/pagination';
+import type { CourseResponse } from './course.presentation';
 
 @Controller('courses')
 export class CoursesController {
@@ -26,8 +30,23 @@ export class CoursesController {
 
   @Public()
   @Get()
-  list(@Query() query: PaginationQuery): Promise<Paginated<Course>> {
+  list(@Query() query: PaginationQuery): Promise<Paginated<CourseResponse>> {
     return this.coursesService.listActive(query);
+  }
+
+  @Public()
+  @Get(':id/thumbnail')
+  async thumbnail(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.coursesService.getThumbnail(id);
+    if (!file) {
+      throw new NotFoundException('Not found');
+    }
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return new StreamableFile(file.body);
   }
 
   @Public()
@@ -42,7 +61,7 @@ export class CoursesController {
   create(
     @Body() dto: CreateCourseDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<Course> {
+  ): Promise<CourseResponse> {
     return this.coursesService.create(dto, user);
   }
 
@@ -53,7 +72,7 @@ export class CoursesController {
     @Param('id') id: string,
     @Body() dto: UpdateCourseDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<Course> {
+  ): Promise<CourseResponse> {
     return this.coursesService.update(id, dto, user);
   }
 
@@ -63,7 +82,7 @@ export class CoursesController {
   archive(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
-  ): Promise<Course> {
+  ): Promise<CourseResponse> {
     return this.coursesService.archive(id, user);
   }
 }

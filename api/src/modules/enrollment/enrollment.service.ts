@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import {
   Batch,
-  Course,
   Enrollment,
   EnrollmentStatus,
   Prisma,
@@ -23,6 +22,10 @@ import {
   derivePeriodDueDate,
 } from '../../common/utils/period';
 import { LateJoinerDto } from './dto/late-joiner.dto';
+import {
+  COURSE_PUBLIC_SELECT,
+  type CoursePublicRow,
+} from '../courses/course.presentation';
 import {
   Paginated,
   PaginationQuery,
@@ -52,7 +55,7 @@ export interface EnrollResult {
 }
 
 export type EnrollmentWithBatch = Enrollment & {
-  batch: Batch & { course: Course };
+  batch: Batch & { course: CoursePublicRow };
 };
 
 interface CreateEnrollmentParams {
@@ -142,7 +145,13 @@ export class EnrollmentService {
         skip,
         take,
         orderBy: { enrolledAt: 'desc' },
-        include: { batch: { include: { course: true } } },
+        include: {
+          batch: {
+            include: {
+              course: { select: COURSE_PUBLIC_SELECT },
+            },
+          },
+        },
       }),
       this.prisma.enrollment.count({ where }),
     ]);

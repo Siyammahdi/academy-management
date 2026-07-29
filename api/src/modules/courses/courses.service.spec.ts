@@ -39,7 +39,11 @@ describe('CoursesService', () => {
         billingType: 'monthly',
         enrollmentFee: { toString: () => '1000.00' },
         monthlyFee: { toString: () => '500.00' },
+        parts: null,
         status: 'active',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+        thumbnailMimeType: null,
       };
       const tx = { course: { create: jest.fn().mockResolvedValue(created) } };
       const { service, audit } = createService(tx);
@@ -54,7 +58,19 @@ describe('CoursesService', () => {
         admin,
       );
 
-      expect(result).toBe(created);
+      expect(result).toEqual({
+        id: 'course1',
+        title: 'Arabic',
+        description: null,
+        billingType: 'monthly',
+        enrollmentFee: created.enrollmentFee,
+        monthlyFee: created.monthlyFee,
+        parts: null,
+        status: 'active',
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+        hasThumbnail: false,
+      });
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'course_created',
@@ -84,10 +100,18 @@ describe('CoursesService', () => {
         description: null,
         billingType: 'monthly',
         enrollmentFee: { toString: () => '1000.00' },
-        monthlyFee: { toString: () => '500.00' },
+        monthlyFee: { toString: () => '1000.00' },
+        parts: null,
         status: 'active',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+        thumbnailMimeType: null,
       };
-      const after = { ...before, monthlyFee: { toString: () => '600.00' } };
+      const after = {
+        ...before,
+        monthlyFee: { toString: () => '600.00' },
+        updatedAt: new Date('2026-01-02'),
+      };
       const tx = {
         course: {
           findUnique: jest.fn().mockResolvedValue(before),
@@ -102,7 +126,8 @@ describe('CoursesService', () => {
         admin,
       );
 
-      expect(result).toBe(after);
+      expect(result.hasThumbnail).toBe(false);
+      expect(result.id).toBe('course1');
       // No batch table is ever touched by a course update — batches keep
       // their own frozen snapshot (doc 05 §2), never re-read from Course.
       expect(tx).not.toHaveProperty('batch');
@@ -118,8 +143,20 @@ describe('CoursesService', () => {
 
   describe('archive', () => {
     it('sets status to archived and writes a course_updated audit entry', async () => {
-      const before = { id: 'course1', status: 'active' };
-      const after = { id: 'course1', status: 'archived' };
+      const before = {
+        id: 'course1',
+        title: 'Arabic',
+        description: null,
+        billingType: 'monthly',
+        enrollmentFee: { toString: () => '1000.00' },
+        monthlyFee: { toString: () => '500.00' },
+        parts: null,
+        status: 'active',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+        thumbnailMimeType: null,
+      };
+      const after = { ...before, status: 'archived' };
       const tx = {
         course: {
           findUnique: jest.fn().mockResolvedValue(before),
@@ -130,7 +167,7 @@ describe('CoursesService', () => {
 
       const result = await service.archive('course1', admin);
 
-      expect(result).toBe(after);
+      expect(result.status).toBe('archived');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'course_updated',

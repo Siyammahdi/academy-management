@@ -13,6 +13,9 @@ export function apiErrorMessage(body: ApiErrorBody, fallback: string): string {
   ) {
     return body.details.join(' ');
   }
+  if (body.error === 'THUMBNAIL_INVALID' && body.message) {
+    return body.message;
+  }
   return fallback;
 }
 

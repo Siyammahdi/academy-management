@@ -25,7 +25,7 @@
 | Auth | ✅ | Register, login, JWT + refresh rotation (SHA-256 hashed, rotated on use), argon2 passwords, 4 guards |
 | Users / Roles | ✅ | Multi-role per user; role assignment only via Prisma Studio — **no UI or endpoint** |
 | Students | ✅ | Profiles, sequential `ANA-####` IDs generated in-transaction |
-| Courses | ✅ | CRUD, archive, fee definitions, parts (JSON, inert) |
+| Courses | ✅ | CRUD, archive, fee definitions, parts (JSON, inert), in-DB cover thumbnail (`Bytes` + mime; served via `GET /courses/:id/thumbnail`) |
 | Batches | ✅ | CRUD, **fee snapshotting** (FEE-02/03 tested), capacity, windows, multi-manager assignment |
 | Enrollment | ✅ | Self-enroll, late joiners, withdrawal; concurrency-safe capacity with `SELECT FOR UPDATE` + Serializable + bounded P2034 retry |
 | Billing | ✅ | Period generation, amount-derived status, `/me/billing-periods` |

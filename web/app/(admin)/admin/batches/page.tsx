@@ -5,18 +5,15 @@ import type { FormEvent } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
-  ArrowRightIcon,
-  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
-  UsersIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { BatchCard } from '@/components/batches/batch-card'
 import { AmountCell } from '@/components/money/amount-cell'
-import { StatusBadge } from '@/components/money/status-badge'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +39,6 @@ import {
   type UserSummary,
 } from '@/lib/api-client'
 import { apiErrorMessage } from '@/lib/error-message'
-import { formatDate } from '@/lib/format'
 
 const STATUS_OPTIONS: BatchStatus[] = [
   'upcoming',
@@ -56,13 +52,6 @@ const STATUS_LABELS: Record<BatchStatus, string> = {
   enrolling: 'Enrolling',
   running: 'Running',
   completed: 'Completed',
-}
-
-const STATUS_TONE: Record<BatchStatus, 'neutral' | 'pending' | 'paid'> = {
-  upcoming: 'neutral',
-  enrolling: 'pending',
-  running: 'paid',
-  completed: 'neutral',
 }
 
 function isoToDateInput(iso: string): string {
@@ -511,13 +500,13 @@ function AdminBatchesPageContent() {
     null,
   )
 
-  const courseTitleById = useMemo(
-    () => new Map(courses.map((c) => [c.id, c.title])),
+  const courseById = useMemo(
+    () => new Map(courses.map((c) => [c.id, c])),
     [courses],
   )
 
   const courseFilterTitle = courseIdFromUrl
-    ? (courseTitleById.get(courseIdFromUrl) ?? null)
+    ? (courseById.get(courseIdFromUrl)?.title ?? null)
     : null
 
   async function reload(): Promise<void> {
@@ -559,13 +548,13 @@ function AdminBatchesPageContent() {
     const q = query.trim().toLowerCase()
     if (!q) return batches
     return batches.filter((batch) => {
-      const courseTitle = courseTitleById.get(batch.courseId) ?? ''
+      const courseTitle = courseById.get(batch.courseId)?.title ?? ''
       return (
         batch.name.toLowerCase().includes(q) ||
         courseTitle.toLowerCase().includes(q)
       )
     })
-  }, [batches, query, courseTitleById])
+  }, [batches, query, courseById])
 
   function handleSaved(mode: 'create' | 'edit'): void {
     setIsCreateOpen(false)
@@ -714,90 +703,50 @@ function AdminBatchesPageContent() {
       ) : null}
 
       {filtered.length > 0 ? (
-        <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((batch) => {
-            const courseTitle =
-              courseTitleById.get(batch.courseId) ?? 'Course'
+            const course = courseById.get(batch.courseId)
             const managerCount = batch.managers.length
 
             return (
-              <article
+              <BatchCard
                 key={batch.id}
-                className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-muted/60"
-              >
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-heading text-base font-semibold text-foreground">
-                        {batch.name}
-                      </h2>
-                      <StatusBadge
-                        tone={STATUS_TONE[batch.status]}
-                        label={STATUS_LABELS[batch.status]}
-                      />
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {courseTitle}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p className="tabular-nums">
-                      {batch.seatsRemaining} / {batch.capacity} seats left
-                    </p>
-                    <p>
-                      {managerCount} manager{managerCount === 1 ? '' : 's'}
-                    </p>
-                    <p className="tabular-nums">
-                      Starts {formatDate(batch.courseStartDate)}
-                    </p>
-                  </div>
-
-                  <div className="mt-auto grid grid-cols-2 gap-2">
-                    <Button
-                      className="min-h-11"
-                      render={
-                        <Link href={`/admin/batches/${batch.id}`} />
-                      }
-                    >
-                      Open workspace
-                      <ArrowRightIcon />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="min-h-11"
-                      render={
-                        <Link href={`/admin/batches/${batch.id}/roster`} />
-                      }
-                    >
-                      Roster
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      className="min-h-11"
-                      onClick={() => setEditingBatch(batch)}
-                    >
-                      <PencilIcon />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="min-h-11"
-                      onClick={() => openStatusModal(batch)}
-                    >
-                      Status
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="min-h-11"
-                      onClick={() => setManagersTarget(batch)}
-                    >
-                      <UsersIcon />
-                      Managers
-                    </Button>
-                  </div>
-                </div>
-              </article>
+                courseId={batch.courseId}
+                name={batch.name}
+                status={batch.status}
+                capacity={batch.capacity}
+                courseStartDate={batch.courseStartDate}
+                seatsRemaining={batch.seatsRemaining}
+                course={{
+                  title: course?.title ?? 'Course',
+                  hasThumbnail: course?.hasThumbnail,
+                  updatedAt: course?.updatedAt,
+                }}
+                workspaceHref={`/admin/batches/${batch.id}`}
+                facts={[
+                  `${managerCount} manager${managerCount === 1 ? '' : 's'}`,
+                ]}
+                secondaryActions={[
+                  {
+                    label: 'Roster',
+                    href: `/admin/batches/${batch.id}/roster`,
+                  },
+                  {
+                    label: 'Managers',
+                    onClick: () => setManagersTarget(batch),
+                  },
+                ]}
+                menuActions={[
+                  {
+                    label: 'Edit batch',
+                    onClick: () => setEditingBatch(batch),
+                  },
+                  {
+                    label: 'Change status',
+                    onClick: () => openStatusModal(batch),
+                  },
+                ]}
+              />
             )
           })}
         </div>

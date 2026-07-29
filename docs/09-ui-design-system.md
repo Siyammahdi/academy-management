@@ -141,7 +141,7 @@ Use Luma's spacing scale and the product radius below. **Do not invent spacing v
 - Highlight **classroom join**, **homework**, and **recorded classes** as first-class modules — not buried lists.
 - Classroom actions: **Join class** + **Copy link** side by side.
 - Recordings organized **by class day** (Asia/Dhaka calendar date), newest day first.
-- Courses show a **cover** (branded generative art when no image field exists in the API).
+- Courses show a **cover** — admin-uploaded thumbnail when `hasThumbnail`, otherwise branded generative art.
 - Mobile / tablet should feel app-like: horizontal snap rows, large tap targets (≥44px), stacked spotlight → homework → recordings → courses.
 - Counts are fine; **never sum money across enrollments** (BIL-07).
 

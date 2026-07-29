@@ -41,8 +41,16 @@ export interface Course {
   monthlyFee: string;
   parts: CoursePart[] | null;
   status: CourseStatus;
+  /** True when a cover image is stored on the course row. */
+  hasThumbnail: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CourseThumbnailInput {
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | string;
+  /** Raw base64 (no data-URL prefix required). */
+  data: string;
 }
 
 export interface CreateCourseInput {
@@ -52,9 +60,12 @@ export interface CreateCourseInput {
   enrollmentFee: string;
   monthlyFee: string;
   parts?: CoursePart[];
+  thumbnail?: CourseThumbnailInput;
 }
 
-export type UpdateCourseInput = Partial<CreateCourseInput>;
+export type UpdateCourseInput = Partial<CreateCourseInput> & {
+  clearThumbnail?: boolean;
+};
 
 export interface Batch {
   id: string;
@@ -238,6 +249,16 @@ export function archiveCourse(id: string): Promise<Course> {
 
 export function getCourse(id: string): Promise<Course> {
   return apiFetch(`/courses/${id}`);
+}
+
+/** Public binary cover — use in <img src>. Cache-bust with updatedAt. */
+export function courseThumbnailUrl(
+  courseId: string,
+  updatedAt?: string,
+): string {
+  const base = `${API_BASE_URL}/courses/${courseId}/thumbnail`;
+  if (!updatedAt) return base;
+  return `${base}?v=${encodeURIComponent(updatedAt)}`;
 }
 
 // Batches (doc 06 §4)

@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
+import { courseThumbnailUrl } from '@/lib/api-client'
 
-/** Deterministic brand covers — API has no course image field yet. */
+/** Deterministic brand covers when a course has no uploaded thumbnail. */
 const THEMES = [
   {
     surface: 'bg-primary',
@@ -54,14 +55,23 @@ interface CourseCoverProps {
   title: string
   className?: string
   compact?: boolean
+  /** When true, loads the stored cover from GET /courses/:id/thumbnail. */
+  hasThumbnail?: boolean
+  /** Cache-bust query when the cover changes. */
+  updatedAt?: string
 }
 
-export function CourseCover({
+function BrandCover({
   courseId,
   title,
   className,
-  compact = false,
-}: CourseCoverProps) {
+  compact,
+}: {
+  courseId: string
+  title: string
+  className?: string
+  compact?: boolean
+}) {
   const theme = THEMES[hashId(courseId) % THEMES.length]!
   const initials = courseInitials(title)
 
@@ -114,5 +124,39 @@ export function CourseCover({
         ) : null}
       </div>
     </div>
+  )
+}
+
+export function CourseCover({
+  courseId,
+  title,
+  className,
+  compact = false,
+  hasThumbnail = false,
+  updatedAt,
+}: CourseCoverProps) {
+  if (hasThumbnail && courseId !== 'empty') {
+    return (
+      <div
+        className={cn('relative overflow-hidden bg-muted', className)}
+        aria-hidden
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- API-served binary, not a static asset */}
+        <img
+          src={courseThumbnailUrl(courseId, updatedAt)}
+          alt=""
+          className="absolute inset-0 size-full object-cover"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <BrandCover
+      courseId={courseId}
+      title={title}
+      className={className}
+      compact={compact}
+    />
   )
 }

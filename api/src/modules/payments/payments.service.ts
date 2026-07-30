@@ -20,6 +20,7 @@ import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { ArrearsExistException } from '../../common/exceptions/arrears-exist.exception';
 import { PeriodAlreadyPaidException } from '../../common/exceptions/period-already-paid.exception';
 import { PaymentAlreadySettledException } from '../../common/exceptions/payment-already-settled.exception';
+import { PaymentAmountInvalidException } from '../../common/exceptions/payment-amount-invalid.exception';
 import { InvalidWebhookSignatureException } from '../../common/exceptions/invalid-webhook-signature.exception';
 import { formatMoney } from '../../common/utils/money';
 import {
@@ -30,6 +31,7 @@ import { derivePeriodStatus } from '../../common/utils/period';
 import { GatewayService } from '../gateway/gateway.service';
 import type { SslcommerzWebhookPayload } from '../gateway/gateway.service';
 import { PayManualDto } from './dto/pay-manual.dto';
+import { ConfirmGatewayPaymentDto } from './dto/confirm-gateway-payment.dto';
 import { RefundDto } from './dto/refund.dto';
 import { GuestPayGatewayDto } from './dto/guest-pay-gateway.dto';
 import { GuestPayManualDto } from './dto/guest-pay-manual.dto';
@@ -117,12 +119,13 @@ export class PaymentsService {
     actor: AuthUser,
   ): Promise<Payment> {
     const studentId = this.requireStudentId(actor);
-    await this.loadPeriodForPayment(billingPeriodId, studentId);
+    const period = await this.loadPeriodForPayment(billingPeriodId, studentId);
+    const amount = this.requireFullOutstandingAmount(period, dto.amount);
 
     return this.prisma.$transaction((tx) =>
       this.createPendingPayment(tx, {
         billingPeriodId,
-        amount: new Prisma.Decimal(dto.amount),
+        amount,
         method: 'manual',
         paidBy: 'student',
         transactionReference: dto.transactionReference,
@@ -171,12 +174,13 @@ export class PaymentsService {
     billingPeriodId: string,
     dto: GuestPayManualDto,
   ): Promise<Payment> {
-    await this.loadPeriodForPayment(billingPeriodId);
+    const period = await this.loadPeriodForPayment(billingPeriodId);
+    const amount = this.requireFullOutstandingAmount(period, dto.amount);
 
     return this.prisma.$transaction((tx) =>
       this.createPendingPayment(tx, {
         billingPeriodId,
-        amount: new Prisma.Decimal(dto.amount),
+        amount,
         method: 'manual',
         paidBy: 'guest',
         transactionReference: dto.transactionReference,
@@ -412,6 +416,8 @@ export class PaymentsService {
   }
 
   // doc 06 §10 — signature-verified, never token-authed.
+  // After signature check, successful payments are confirmed via SSLCommerz's
+  // Order Validation API (val_id) before we settle — IPN alone is not enough.
   async handleWebhook(
     payload: SslcommerzWebhookPayload,
   ): Promise<{ ok: true }> {
@@ -434,26 +440,122 @@ export class PaymentsService {
       return { ok: true }; // PAY-04 — already handled
     }
 
-    const isSuccess =
+    const ipnLooksSuccessful =
       payload.status === 'VALID' || payload.status === 'VALIDATED';
+
+    if (ipnLooksSuccessful) {
+      const valId =
+        typeof payload.val_id === 'string' ? payload.val_id.trim() : '';
+      if (valId.length === 0) {
+        this.logger.warn(
+          `SSLCommerz IPN for ${tranId} missing val_id — not settling`,
+        );
+      } else {
+        try {
+          await this.settleGatewayIfValidated(existing, valId);
+        } catch (error) {
+          // Leave pending on validation failure so a later IPN/confirm can retry.
+          if (
+            !(error instanceof PaymentAlreadySettledException) &&
+            !(error instanceof BadRequestException)
+          ) {
+            throw error;
+          }
+        }
+      }
+      return { ok: true };
+    }
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        if (isSuccess) {
-          await this.settleVerifiedPayment(tx, existing.id, null);
-        } else {
-          await this.settleRejectedPayment(tx, existing.id, null);
-        }
+        await this.settleRejectedPayment(tx, existing.id, null);
       });
     } catch (error) {
-      // PAY-04 — a concurrent duplicate delivery lost the race; that's
-      // success from the webhook's point of view, not an error to report.
       if (!(error instanceof PaymentAlreadySettledException)) {
         throw error;
       }
     }
 
     return { ok: true };
+  }
+
+  /**
+   * Success-URL confirm (PAY-03 safe): still validates with SSLCommerz Order
+   * Validation API — never trusts the browser alone. Needed when IPN cannot
+   * reach the API (local/dev). Settling activates enrollment (ENR-06).
+   */
+  async confirmGatewayPayment(
+    dto: ConfirmGatewayPaymentDto,
+  ): Promise<{
+    status: string;
+    enrollmentActivated: boolean;
+  }> {
+    const existing = await this.prisma.payment.findUnique({
+      where: { transactionReference: dto.transactionReference.trim() },
+      include: { billingPeriod: { include: { enrollment: true } } },
+    });
+    if (!existing || existing.method !== 'gateway') {
+      throw new NotFoundException('Not found');
+    }
+
+    if (existing.status === 'verified') {
+      const enrollment = existing.billingPeriod.enrollment;
+      return {
+        status: 'verified',
+        enrollmentActivated: enrollment.status === 'active',
+      };
+    }
+    if (existing.status === 'rejected' || existing.status === 'expired') {
+      return { status: existing.status, enrollmentActivated: false };
+    }
+
+    await this.settleGatewayIfValidated(existing, dto.valId.trim());
+
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: { id: existing.billingPeriod.enrollmentId },
+      select: { status: true },
+    });
+
+    return {
+      status: 'verified',
+      enrollmentActivated: enrollment?.status === 'active',
+    };
+  }
+
+  /**
+   * Shared by IPN and success-return confirm. Validates amount/status at
+   * SSLCommerz, then settles (payment verified + enrollment active).
+   */
+  private async settleGatewayIfValidated(
+    payment: Payment,
+    valId: string,
+  ): Promise<void> {
+    const validated = await this.gateway.validateTransaction(valId);
+    if (
+      !validated ||
+      validated.tran_id !== payment.transactionReference ||
+      (validated.status !== 'VALID' && validated.status !== 'VALIDATED') ||
+      formatMoney(payment.amount) !==
+        formatMoney(new Prisma.Decimal(validated.amount))
+    ) {
+      this.logger.warn(
+        `SSLCommerz validation failed or amount mismatch for ${payment.transactionReference}`,
+      );
+      throw new BadRequestException(
+        'Payment could not be confirmed with the bank yet. Wait a moment and try again.',
+      );
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await this.settleVerifiedPayment(tx, payment.id, null);
+      });
+    } catch (error) {
+      if (error instanceof PaymentAlreadySettledException) {
+        return;
+      }
+      throw error;
+    }
   }
 
   // PAY-05 — a gateway payment still pending past 60 minutes expires.
@@ -545,6 +647,27 @@ export class PaymentsService {
       );
     }
     return actor.studentId;
+  }
+
+  // Manual payments must clear the full outstanding balance. Partial-payment
+  // requests (REQ) are not built yet — underpaying would skip that gate.
+  private requireFullOutstandingAmount(
+    period: BillingPeriod,
+    amountRaw: string,
+  ): Prisma.Decimal {
+    const outstanding = period.amountOwed.minus(period.amountPaid);
+    const amount = new Prisma.Decimal(amountRaw);
+    if (amount.lessThanOrEqualTo(0)) {
+      throw new PaymentAmountInvalidException(
+        'Payment amount must be greater than zero.',
+      );
+    }
+    if (!amount.equals(outstanding)) {
+      throw new PaymentAmountInvalidException(
+        `Pay the full outstanding amount (${formatMoney(outstanding)}). Partial payments need admissions approval.`,
+      );
+    }
+    return amount;
   }
 
   // Shared by the authenticated student flow (studentId provided — must

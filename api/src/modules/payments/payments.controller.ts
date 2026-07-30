@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Payment, Refund } from '@prisma/client';
+import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
@@ -17,6 +18,7 @@ import { BatchScopeGuard } from '../../common/guards/batch-scope.guard';
 import { SelfApprovalGuard } from '../../common/guards/self-approval.guard';
 import { PaymentsService, PaymentWithBillingPeriod } from './payments.service';
 import { PayManualDto } from './dto/pay-manual.dto';
+import { ConfirmGatewayPaymentDto } from './dto/confirm-gateway-payment.dto';
 import { RefundDto } from './dto/refund.dto';
 import type { Paginated, PaginationQuery } from '../../common/utils/pagination';
 
@@ -25,6 +27,18 @@ import type { Paginated, PaginationQuery } from '../../common/utils/pagination';
 @Controller()
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  /**
+   * Public — SSLCommerz success redirect confirms via Order Validation API
+   * (not the browser alone). Activates enrollment on success (ENR-06).
+   */
+  @Public()
+  @Post('payments/gateway/confirm')
+  confirmGateway(
+    @Body() dto: ConfirmGatewayPaymentDto,
+  ): Promise<{ status: string; enrollmentActivated: boolean }> {
+    return this.paymentsService.confirmGatewayPayment(dto);
+  }
 
   @Roles('student')
   @UseGuards(RolesGuard)

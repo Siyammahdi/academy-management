@@ -5,12 +5,22 @@ import { DomainException } from '../../common/exceptions/domain.exception';
 /** Scalar course fields safe to load on list/nested includes — never Bytes. */
 export const COURSE_PUBLIC_SELECT = {
   id: true,
+  slug: true,
   title: true,
   description: true,
   billingType: true,
   enrollmentFee: true,
   monthlyFee: true,
   parts: true,
+  featured: true,
+  featuredOrder: true,
+  tagline: true,
+  category: true,
+  emphasis: true,
+  focus: true,
+  highlights: true,
+  audience: true,
+  outcomes: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -23,6 +33,8 @@ export type CoursePublicRow = Prisma.CourseGetPayload<{
 
 export type CourseResponse = Omit<CoursePublicRow, 'thumbnailMimeType'> & {
   hasThumbnail: boolean;
+  highlights: string[] | null;
+  outcomes: string[] | null;
 };
 
 const ALLOWED_MIME = new Set([
@@ -41,10 +53,31 @@ export class ThumbnailInvalidException extends DomainException {
   }
 }
 
+export class CourseSlugTakenException extends DomainException {
+  constructor() {
+    super(
+      'COURSE_SLUG_TAKEN',
+      'That course URL is already in use. Choose a different slug.',
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+function asStringList(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const items = value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items.length > 0 ? items : null;
+}
+
 export function presentCourse(course: CoursePublicRow): CourseResponse {
-  const { thumbnailMimeType, ...rest } = course;
+  const { thumbnailMimeType, highlights, outcomes, ...rest } = course;
   return {
     ...rest,
+    highlights: asStringList(highlights),
+    outcomes: asStringList(outcomes),
     hasThumbnail:
       typeof thumbnailMimeType === 'string' && thumbnailMimeType.length > 0,
   };
@@ -56,12 +89,39 @@ export function presentCourses(courses: CoursePublicRow[]): CourseResponse[] {
 
 /** Strip Bytes if a full Course row was loaded; expose hasThumbnail instead. */
 export function presentCourseRow(course: Course): CourseResponse {
-  const { thumbnail: _thumbnail, thumbnailMimeType, ...rest } = course;
+  const { thumbnail: _thumbnail, thumbnailMimeType, highlights, outcomes, ...rest } =
+    course;
   return {
     ...rest,
+    highlights: asStringList(highlights),
+    outcomes: asStringList(outcomes),
     hasThumbnail:
       typeof thumbnailMimeType === 'string' && thumbnailMimeType.length > 0,
   };
+}
+
+/** Lowercase hyphenated slug from a title (or explicit slug input). */
+export function slugifyCourse(input: string): string {
+  const slug = input
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return slug.length > 0 ? slug : 'course';
+}
+
+export function normalizeStringList(
+  values: string[] | undefined,
+): string[] | undefined {
+  if (values === undefined) return undefined;
+  const cleaned = values
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+    .slice(0, 20);
+  return cleaned;
 }
 
 export function decodeThumbnailPayload(input: {
@@ -103,7 +163,6 @@ export function decodeThumbnailPayload(input: {
     );
   }
 
-  // Copy into a fresh ArrayBuffer-backed view for Prisma Bytes typing.
   const copy = new Uint8Array(new ArrayBuffer(bytes.byteLength));
   copy.set(bytes);
   return { mimeType, bytes: copy };

@@ -151,6 +151,34 @@ describe('BatchesService', () => {
     });
   });
 
+  describe('list', () => {
+    it('open=true filters by enrollment window (ENR-02), not only status enrolling', async () => {
+      const findMany = jest.fn().mockResolvedValue([]);
+      const count = jest.fn().mockResolvedValue(0);
+      const { service } = createService(
+        {},
+        {
+          batch: { findMany, count },
+          $transaction: jest
+            .fn()
+            .mockImplementation((ops: unknown[]) => Promise.all(ops)),
+        },
+      );
+
+      await service.list({ open: 'true', page: '1', limit: '20' });
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            enrollmentOpensAt: expect.objectContaining({ lte: expect.any(Date) }),
+            enrollmentClosesAt: expect.objectContaining({ gte: expect.any(Date) }),
+            status: { not: 'completed' },
+          }),
+        }),
+      );
+    });
+  });
+
   describe('getById', () => {
     it('computes seatsRemaining from capacity minus active/pending enrollments', async () => {
       const { service, prisma } = createService(
@@ -218,10 +246,17 @@ describe('BatchesService', () => {
 
   describe('updateClassLink', () => {
     it('records the new link and writes a class_link_updated audit entry', async () => {
-      const before = { id: 'batch1', classLink: null };
+      const before = {
+        id: 'batch1',
+        classLink: null,
+        classStartsAt: null,
+        classEndsAt: null,
+      };
       const after = {
         id: 'batch1',
         classLink: 'https://meet.example.com/room',
+        classStartsAt: null,
+        classEndsAt: null,
       };
       const tx = {
         batch: {
@@ -248,8 +283,16 @@ describe('BatchesService', () => {
           targetType: 'Batch',
           targetId: 'batch1',
           details: {
-            before: { classLink: null },
-            after: { classLink: 'https://meet.example.com/room' },
+            before: {
+              classLink: null,
+              classStartsAt: null,
+              classEndsAt: null,
+            },
+            after: {
+              classLink: 'https://meet.example.com/room',
+              classStartsAt: null,
+              classEndsAt: null,
+            },
           },
         }),
         tx,

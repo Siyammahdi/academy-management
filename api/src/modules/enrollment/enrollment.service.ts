@@ -104,6 +104,9 @@ export class EnrollmentService {
       if (!before) {
         throw new NotFoundException('Not found');
       }
+      if (before.status === 'withdrawn') {
+        throw new BadRequestException('Enrollment is already withdrawn');
+      }
 
       const after = await tx.enrollment.update({
         where: { id: enrollmentId },
@@ -126,6 +129,67 @@ export class EnrollmentService {
 
       return after;
     });
+  }
+
+  /**
+   * Admin re-includes a withdrawn student on the same enrollment row
+   * (ENR-10 unique on student+batch prevents a second insert). Capacity
+   * is re-checked; status returns to `active`.
+   */
+  async reinstate(enrollmentId: string, actor: AuthUser): Promise<Enrollment> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT id FROM enrollments WHERE id = ${enrollmentId} FOR UPDATE`;
+        const before = await tx.enrollment.findUnique({
+          where: { id: enrollmentId },
+        });
+        if (!before) {
+          throw new NotFoundException('Not found');
+        }
+        if (before.status !== 'withdrawn') {
+          throw new BadRequestException(
+            'Only withdrawn enrollments can be reinstated',
+          );
+        }
+
+        await tx.$executeRaw`SELECT id FROM batches WHERE id = ${before.batchId} FOR UPDATE`;
+        const batch = await tx.batch.findUniqueOrThrow({
+          where: { id: before.batchId },
+        });
+        const activeCount = await tx.enrollment.count({
+          where: {
+            batchId: before.batchId,
+            status: { in: ACTIVE_ENROLLMENT_STATUSES },
+          },
+        });
+        if (activeCount >= batch.capacity) {
+          throw new BatchFullException();
+        }
+
+        const after = await tx.enrollment.update({
+          where: { id: enrollmentId },
+          data: { status: 'active' },
+        });
+
+        await this.audit.record(
+          {
+            actorUserId: actor.id,
+            action: 'enrollment_status_changed',
+            targetType: 'Enrollment',
+            targetId: enrollmentId,
+            details: {
+              change: 'reinstated',
+              before: { status: before.status },
+              after: { status: after.status },
+            },
+          },
+          tx,
+        );
+
+        return after;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async listMine(

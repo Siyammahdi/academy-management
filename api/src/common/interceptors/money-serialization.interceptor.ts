@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -15,9 +16,14 @@ import { formatMoney, isDecimal } from '../utils/money';
 //
 // Also strips Course.thumbnail Bytes (never JSON-safe) and turns
 // thumbnailMimeType into hasThumbnail for nested course includes.
+// StreamableFile (binary covers / PDFs) must pass through untouched —
+// reshaping it turns the stream into a tiny JSON blob in the browser.
 function reshape(value: unknown): unknown {
   if (isDecimal(value)) {
     return formatMoney(value);
+  }
+  if (value instanceof StreamableFile) {
+    return value;
   }
   if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
     return undefined;
@@ -37,7 +43,7 @@ function reshape(value: unknown): unknown {
     let hadThumbnailBytes = false;
 
     for (const [key, val] of entries) {
-      if (key === 'thumbnail') {
+      if (key === 'thumbnail' || key === 'pdf') {
         if (Buffer.isBuffer(val) || val instanceof Uint8Array) {
           hadThumbnailBytes = val.length > 0;
         }
@@ -71,6 +77,13 @@ export class MoneySerializationInterceptor implements NestInterceptor {
     _context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
-    return next.handle().pipe(map((data: unknown) => reshape(data)));
+    return next.handle().pipe(
+      map((data: unknown) => {
+        if (data instanceof StreamableFile) {
+          return data;
+        }
+        return reshape(data);
+      }),
+    );
   }
 }

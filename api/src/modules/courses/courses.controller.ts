@@ -8,7 +8,6 @@ import {
   Post,
   Query,
   Res,
-  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -21,8 +20,9 @@ import { CoursesService } from './courses.service';
 import type { CourseWithOpenBatches } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
-import type { Paginated, PaginationQuery } from '../../common/utils/pagination';
+import type { Paginated } from '../../common/utils/pagination';
 import type { CourseResponse } from './course.presentation';
+import type { ListCoursesParams } from './courses.service';
 
 @Controller('courses')
 export class CoursesController {
@@ -30,7 +30,7 @@ export class CoursesController {
 
   @Public()
   @Get()
-  list(@Query() query: PaginationQuery): Promise<Paginated<CourseResponse>> {
+  list(@Query() query: ListCoursesParams): Promise<Paginated<CourseResponse>> {
     return this.coursesService.listActive(query);
   }
 
@@ -38,21 +38,26 @@ export class CoursesController {
   @Get(':id/thumbnail')
   async thumbnail(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<StreamableFile> {
+    @Res() res: Response,
+  ): Promise<void> {
     const file = await this.coursesService.getThumbnail(id);
     if (!file) {
       throw new NotFoundException('Not found');
     }
+    // Write the binary yourself — StreamableFile was being JSON-serialized by
+    // the global money interceptor into a ~200-byte options blob.
+    const body = Buffer.from(file.body);
+    res.status(200);
     res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Length', String(body.byteLength));
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    return new StreamableFile(file.body);
+    res.end(body);
   }
 
   @Public()
   @Get(':id')
   getById(@Param('id') id: string): Promise<CourseWithOpenBatches> {
-    return this.coursesService.getById(id);
+    return this.coursesService.getByIdOrSlug(id);
   }
 
   @Roles('admin')

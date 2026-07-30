@@ -200,6 +200,8 @@ model StudentIdSequence {
 /// Editing them never affects existing batches (FEE-03).
 model Course {
   id            String       @id @default(cuid())
+  /// URL segment for public /courses/[slug]. Unique among all courses.
+  slug          String       @unique
   title         String
   description   String?
   billingType   BillingType  @map("billing_type")
@@ -210,6 +212,16 @@ model Course {
   // clients use GET /courses/:id/thumbnail and the hasThumbnail flag.
   thumbnail         Bytes?  // raw image bytes (jpeg/png/webp/gif)
   thumbnailMimeType String? @map("thumbnail_mime_type")
+  // Marketing / landing — admin-editable; inert for billing.
+  featured      Boolean @default(false)
+  featuredOrder Int     @default(0) @map("featured_order") // lower = earlier on landing
+  tagline       String?
+  category      String?
+  emphasis      String? // italic phrase beside the title on landing
+  focus         String? // short right-column focus line
+  highlights    Json?   // string[] — bullet list for landing + details
+  audience      String? // who the course is for
+  outcomes      Json?   // string[] — what students gain
   status        CourseStatus @default(active)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
@@ -217,6 +229,7 @@ model Course {
   batches Batch[]
 
   @@index([status])
+  @@index([featured, featuredOrder])
   @@map("courses")
 }
 
@@ -239,6 +252,9 @@ model Batch {
   dueDayEnd         Int         @default(5) @map("due_day_end")
   status            BatchStatus @default(upcoming)
   classLink         String?     @map("class_link")   // Telegram/Zoom link — teaching happens off-platform
+  /// Next live session window (Asia/Dhaka-aware instants). Join opens 5 minutes before start.
+  classStartsAt     DateTime?   @map("class_starts_at")
+  classEndsAt       DateTime?   @map("class_ends_at")
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
@@ -277,8 +293,12 @@ model Homework {
   id          String   @id @default(cuid())
   batchId     String   @map("batch_id")
   title       String
+  /// HTML from the rich-text editor (sanitized on write).
   description String
   dueDate     DateTime @map("due_date")
+  /// Optional PDF worksheet — same in-DB Bytes pattern as course thumbnails.
+  pdf         Bytes?
+  pdfMimeType String?  @map("pdf_mime_type")
   createdAt   DateTime @default(now()) @map("created_at")
 
   batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)

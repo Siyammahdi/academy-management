@@ -20,6 +20,8 @@ import {
 export interface UserSummary {
   id: string
   email: string
+  /** Linked Student.fullName when the user also has a student profile. */
+  fullName: string | null
   roles: RoleName[]
   createdAt: Date
   hasStudentProfile: boolean
@@ -41,7 +43,8 @@ export class UsersService {
   ) {}
 
   // Admin directory + manager picker. Optional `role` narrows to holders of
-  // that role; optional `q` matches email (case-insensitive).
+  // that role; optional `q` matches email or linked student full name
+  // (case-insensitive).
   async list(query: { role?: string; q?: string } = {}): Promise<UserSummary[]> {
     if (query.role !== undefined && !isRoleName(query.role)) {
       throw new BadRequestException(`Invalid role filter: ${query.role}`)
@@ -53,16 +56,29 @@ export class UsersService {
       where: {
         ...(query.role ? { roles: { some: { role: query.role } } } : {}),
         ...(q
-          ? { email: { contains: q, mode: 'insensitive' as const } }
+          ? {
+              OR: [
+                { email: { contains: q, mode: 'insensitive' as const } },
+                {
+                  student: {
+                    fullName: { contains: q, mode: 'insensitive' as const },
+                  },
+                },
+              ],
+            }
           : {}),
       },
-      include: { roles: true, student: { select: { id: true } } },
+      include: {
+        roles: true,
+        student: { select: { id: true, fullName: true } },
+      },
       orderBy: { email: 'asc' },
     })
 
     return users.map((user) => ({
       id: user.id,
       email: user.email,
+      fullName: user.student?.fullName ?? null,
       roles: user.roles.map((r) => r.role),
       createdAt: user.createdAt,
       hasStudentProfile: user.student !== null,
@@ -248,7 +264,10 @@ export class UsersService {
   private async requireUser(userId: string): Promise<UserSummary> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: true, student: { select: { id: true } } },
+      include: {
+        roles: true,
+        student: { select: { id: true, fullName: true } },
+      },
     })
     if (!user) {
       throw new NotFoundException('Not found')
@@ -256,6 +275,7 @@ export class UsersService {
     return {
       id: user.id,
       email: user.email,
+      fullName: user.student?.fullName ?? null,
       roles: user.roles.map((r) => r.role),
       createdAt: user.createdAt,
       hasStudentProfile: user.student !== null,

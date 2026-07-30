@@ -11,6 +11,32 @@ const admin: AuthUser = {
   studentId: null,
 };
 
+function baseCourse(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'course1',
+    slug: 'arabic',
+    title: 'Arabic',
+    description: null,
+    billingType: 'monthly',
+    enrollmentFee: { toString: () => '1000.00' },
+    monthlyFee: { toString: () => '500.00' },
+    parts: null,
+    featured: false,
+    featuredOrder: 0,
+    tagline: null,
+    category: null,
+    emphasis: null,
+    focus: null,
+    highlights: [],
+    outcomes: [],
+    status: 'active',
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    thumbnailMimeType: null,
+    ...overrides,
+  };
+}
+
 function createService(tx: Record<string, unknown>): {
   service: CoursesService;
   audit: { record: jest.Mock };
@@ -32,20 +58,13 @@ function createService(tx: Record<string, unknown>): {
 describe('CoursesService', () => {
   describe('create', () => {
     it('creates the course and writes a course_created audit entry', async () => {
-      const created = {
-        id: 'course1',
-        title: 'Arabic',
-        description: null,
-        billingType: 'monthly',
-        enrollmentFee: { toString: () => '1000.00' },
-        monthlyFee: { toString: () => '500.00' },
-        parts: null,
-        status: 'active',
-        createdAt: new Date('2026-01-01'),
-        updatedAt: new Date('2026-01-01'),
-        thumbnailMimeType: null,
+      const created = baseCourse();
+      const tx = {
+        course: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue(created),
+        },
       };
-      const tx = { course: { create: jest.fn().mockResolvedValue(created) } };
       const { service, audit } = createService(tx);
 
       const result = await service.create(
@@ -58,19 +77,9 @@ describe('CoursesService', () => {
         admin,
       );
 
-      expect(result).toEqual({
-        id: 'course1',
-        title: 'Arabic',
-        description: null,
-        billingType: 'monthly',
-        enrollmentFee: created.enrollmentFee,
-        monthlyFee: created.monthlyFee,
-        parts: null,
-        status: 'active',
-        createdAt: created.createdAt,
-        updatedAt: created.updatedAt,
-        hasThumbnail: false,
-      });
+      expect(result.slug).toBe('arabic');
+      expect(result.hasThumbnail).toBe(false);
+      expect(result.featured).toBe(false);
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'course_created',
@@ -94,24 +103,13 @@ describe('CoursesService', () => {
     });
 
     it('FEE-03: updates only the course row and writes a course_updated audit entry', async () => {
-      const before = {
-        id: 'course1',
-        title: 'Arabic',
-        description: null,
-        billingType: 'monthly',
-        enrollmentFee: { toString: () => '1000.00' },
+      const before = baseCourse({
         monthlyFee: { toString: () => '1000.00' },
-        parts: null,
-        status: 'active',
-        createdAt: new Date('2026-01-01'),
-        updatedAt: new Date('2026-01-01'),
-        thumbnailMimeType: null,
-      };
-      const after = {
-        ...before,
+      });
+      const after = baseCourse({
         monthlyFee: { toString: () => '600.00' },
         updatedAt: new Date('2026-01-02'),
-      };
+      });
       const tx = {
         course: {
           findUnique: jest.fn().mockResolvedValue(before),
@@ -128,8 +126,6 @@ describe('CoursesService', () => {
 
       expect(result.hasThumbnail).toBe(false);
       expect(result.id).toBe('course1');
-      // No batch table is ever touched by a course update — batches keep
-      // their own frozen snapshot (doc 05 §2), never re-read from Course.
       expect(tx).not.toHaveProperty('batch');
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -143,20 +139,8 @@ describe('CoursesService', () => {
 
   describe('archive', () => {
     it('sets status to archived and writes a course_updated audit entry', async () => {
-      const before = {
-        id: 'course1',
-        title: 'Arabic',
-        description: null,
-        billingType: 'monthly',
-        enrollmentFee: { toString: () => '1000.00' },
-        monthlyFee: { toString: () => '500.00' },
-        parts: null,
-        status: 'active',
-        createdAt: new Date('2026-01-01'),
-        updatedAt: new Date('2026-01-01'),
-        thumbnailMimeType: null,
-      };
-      const after = { ...before, status: 'archived' };
+      const before = baseCourse();
+      const after = baseCourse({ status: 'archived', featured: false });
       const tx = {
         course: {
           findUnique: jest.fn().mockResolvedValue(before),
@@ -172,8 +156,8 @@ describe('CoursesService', () => {
         expect.objectContaining({
           action: 'course_updated',
           details: {
-            before: { status: 'active' },
-            after: { status: 'archived' },
+            before: { status: 'active', featured: false },
+            after: { status: 'archived', featured: false },
           },
         }),
         tx,

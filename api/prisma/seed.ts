@@ -43,14 +43,53 @@ async function main(): Promise<void> {
 
   const course = await prisma.course.upsert({
     where: { id: SEED_COURSE_ID },
-    update: {},
+    update: {
+      slug: 'learning-arabic-language',
+      featured: true,
+      featuredOrder: 0,
+      tagline: 'Read, write, and speak with confidence.',
+      category: 'Arabic',
+      emphasis: 'from the foundations',
+      focus: 'A clear path from alphabet to fluency.',
+      highlights: [
+        'Structured Basic → Intermediate → Advanced parts',
+        'Live classes off-platform with recorded catch-up',
+        'Monthly billing after enrollment',
+      ],
+      audience:
+        'Beginners and returning students who want a calm, structured Arabic path.',
+      outcomes: [
+        'Comfortable Qur’anic reading basics',
+        'Everyday conversation confidence',
+        'A habit of consistent study',
+      ],
+    },
     create: {
       id: SEED_COURSE_ID,
+      slug: 'learning-arabic-language',
       title: 'Learning Arabic Language',
       description: 'Foundational Arabic for new students.',
       billingType: 'monthly',
       enrollmentFee: '1000.00',
       monthlyFee: '500.00',
+      featured: true,
+      featuredOrder: 0,
+      tagline: 'Read, write, and speak with confidence.',
+      category: 'Arabic',
+      emphasis: 'from the foundations',
+      focus: 'A clear path from alphabet to fluency.',
+      highlights: [
+        'Structured Basic → Intermediate → Advanced parts',
+        'Live classes off-platform with recorded catch-up',
+        'Monthly billing after enrollment',
+      ],
+      audience:
+        'Beginners and returning students who want a calm, structured Arabic path.',
+      outcomes: [
+        'Comfortable Qur’anic reading basics',
+        'Everyday conversation confidence',
+        'A habit of consistent study',
+      ],
     },
   });
 

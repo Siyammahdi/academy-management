@@ -8,6 +8,7 @@ import { AuthUser } from '../../common/decorators/current-user.decorator';
 import { ArrearsExistException } from '../../common/exceptions/arrears-exist.exception';
 import { PeriodAlreadyPaidException } from '../../common/exceptions/period-already-paid.exception';
 import { PaymentAlreadySettledException } from '../../common/exceptions/payment-already-settled.exception';
+import { PaymentAmountInvalidException } from '../../common/exceptions/payment-amount-invalid.exception';
 
 function decimal(value: string): Prisma.Decimal {
   return new Prisma.Decimal(value);
@@ -289,6 +290,36 @@ describe('PaymentsService', () => {
           studentActor('student1'),
         ),
       ).rejects.toThrow(ArrearsExistException);
+    });
+
+    it('rejects a manual amount that does not match outstanding', async () => {
+      const prisma = {
+        billingPeriod: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'period1',
+            enrollmentId: 'enr1',
+            status: 'unpaid',
+            periodMonth: new Date('2026-01-01'),
+            amountOwed: decimal('500'),
+            amountPaid: decimal('0'),
+            enrollment: { studentId: 'student1' },
+          }),
+          count: jest.fn().mockResolvedValue(0),
+        },
+      };
+      const { service } = createService({}, prisma);
+
+      await expect(
+        service.payManual(
+          'period1',
+          {
+            amount: '100.00',
+            transactionReference: 'ref1',
+            proofUrl: 'https://x.com/p.jpg',
+          },
+          studentActor('student1'),
+        ),
+      ).rejects.toThrow(PaymentAmountInvalidException);
     });
 
     it('does not block payment when there are no arrears', async () => {

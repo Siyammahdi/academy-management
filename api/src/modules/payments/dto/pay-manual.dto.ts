@@ -3,6 +3,7 @@ import { IsPositiveDecimalString } from '../../../common/validators/is-positive-
 
 // PAY-06 — a manual payment requires a transactionReference and a proofUrl.
 // PAY-10 — amount must be > 0.
+// Proof must be an https link (no javascript:/data: URLs).
 export class PayManualDto {
   @IsDecimal({ decimal_digits: '0,2' })
   @IsPositiveDecimalString()
@@ -12,6 +13,6 @@ export class PayManualDto {
   @IsNotEmpty()
   transactionReference: string;
 
-  @IsUrl()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
   proofUrl: string;
 }

@@ -23,6 +23,7 @@ import {
 export interface BatchManagerSummary {
   userId: string;
   email: string;
+  fullName: string | null;
 }
 
 export type BatchWithSeats = Batch & {
@@ -33,6 +34,23 @@ export type BatchWithSeats = Batch & {
 export interface BatchListQuery extends PaginationQuery {
   status?: string;
   courseId?: string;
+  /**
+   * When true/"true", only batches whose enrollment window contains now
+   * (ENR-02). Independent of lifecycle status — a `running` cohort with
+   * an open window is still enrollable. Excludes `completed`.
+   */
+  open?: string | boolean;
+}
+
+/** ENR-02 open window — used by list `?open=true` and course open-batch embeds. */
+export function openEnrollmentWindowWhere(
+  now: Date = new Date(),
+): Prisma.BatchWhereInput {
+  return {
+    enrollmentOpensAt: { lte: now },
+    enrollmentClosesAt: { gte: now },
+    status: { not: BatchStatus.completed },
+  };
 }
 
 export interface RosterEntry {
@@ -89,13 +107,19 @@ export class BatchesService {
     if (query.courseId !== undefined) {
       where.courseId = query.courseId;
     }
+    if (query.open === true || query.open === 'true') {
+      Object.assign(where, openEnrollmentWindowWhere());
+    }
 
+    const openOnly = query.open === true || query.open === 'true';
     const [data, total] = await this.prisma.$transaction([
       this.prisma.batch.findMany({
         where,
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: openOnly
+          ? { enrollmentClosesAt: 'asc' }
+          : { createdAt: 'desc' },
       }),
       this.prisma.batch.count({ where }),
     ]);
@@ -105,7 +129,13 @@ export class BatchesService {
   async getById(id: string): Promise<BatchWithSeats> {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
-      include: { managers: { include: { user: true } } },
+      include: {
+        managers: {
+          include: {
+            user: { include: { student: { select: { fullName: true } } } },
+          },
+        },
+      },
     });
     if (!batch) {
       throw new NotFoundException('Not found');
@@ -122,6 +152,7 @@ export class BatchesService {
       managers: managers.map((m) => ({
         userId: m.userId,
         email: m.user.email,
+        fullName: m.user.student?.fullName ?? null,
       })),
     };
   }
@@ -132,7 +163,13 @@ export class BatchesService {
   async listMine(userId: string): Promise<BatchWithSeats[]> {
     const batches = await this.prisma.batch.findMany({
       where: { managers: { some: { userId } } },
-      include: { managers: { include: { user: true } } },
+      include: {
+        managers: {
+          include: {
+            user: { include: { student: { select: { fullName: true } } } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
     if (batches.length === 0) {
@@ -158,6 +195,7 @@ export class BatchesService {
       managers: managers.map((m) => ({
         userId: m.userId,
         email: m.user.email,
+        fullName: m.user.student?.fullName ?? null,
       })),
     }));
   }
@@ -291,10 +329,8 @@ export class BatchesService {
     });
   }
 
-  // Class links (Telegram/Zoom) — the first deferred course-management
-  // feature (doc 07 §12's extensibility principle): attaches to Batch,
-  // touches nothing else. Manager (own batch, via BatchScopeGuard at the
-  // controller) or admin.
+  // Class links (Telegram/Zoom) + optional next-session schedule. Join opens
+  // 5 minutes before classStartsAt and closes at classEndsAt (student UI).
   async updateClassLink(
     id: string,
     dto: UpdateClassLinkDto,
@@ -306,9 +342,40 @@ export class BatchesService {
         throw new NotFoundException('Not found');
       }
 
+      const scheduleData: {
+        classStartsAt?: Date | null;
+        classEndsAt?: Date | null;
+      } = {};
+
+      if (dto.clearSchedule) {
+        scheduleData.classStartsAt = null;
+        scheduleData.classEndsAt = null;
+      } else if (
+        dto.classStartsAt !== undefined ||
+        dto.classEndsAt !== undefined
+      ) {
+        if (!dto.classStartsAt || !dto.classEndsAt) {
+          throw new BadRequestException(
+            'Both classStartsAt and classEndsAt are required for a class schedule.',
+          );
+        }
+        const startsAt = new Date(dto.classStartsAt);
+        const endsAt = new Date(dto.classEndsAt);
+        if (!(startsAt < endsAt)) {
+          throw new BadRequestException(
+            'classStartsAt must be before classEndsAt',
+          );
+        }
+        scheduleData.classStartsAt = startsAt;
+        scheduleData.classEndsAt = endsAt;
+      }
+
       const after = await tx.batch.update({
         where: { id },
-        data: { classLink: dto.classLink },
+        data: {
+          classLink: dto.classLink,
+          ...scheduleData,
+        },
       });
 
       await this.audit.record(
@@ -318,8 +385,16 @@ export class BatchesService {
           targetType: 'Batch',
           targetId: id,
           details: {
-            before: { classLink: before.classLink },
-            after: { classLink: after.classLink },
+            before: {
+              classLink: before.classLink,
+              classStartsAt: before.classStartsAt?.toISOString() ?? null,
+              classEndsAt: before.classEndsAt?.toISOString() ?? null,
+            },
+            after: {
+              classLink: after.classLink,
+              classStartsAt: after.classStartsAt?.toISOString() ?? null,
+              classEndsAt: after.classEndsAt?.toISOString() ?? null,
+            },
           },
         },
         tx,

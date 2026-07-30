@@ -57,6 +57,16 @@ export class EnrollmentController {
     return this.enrollmentService.withdraw(enrollmentId, user);
   }
 
+  @Roles('admin')
+  @UseGuards(RolesGuard)
+  @Post('enrollments/:id/reinstate')
+  reinstate(
+    @Param('id') enrollmentId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<Enrollment> {
+    return this.enrollmentService.reinstate(enrollmentId, user);
+  }
+
   @Roles('student')
   @UseGuards(RolesGuard)
   @Get('me/enrollments')

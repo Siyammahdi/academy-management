@@ -16,6 +16,6 @@ export const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 // Cast is safe: these are always a plain duration string ("15m", "7d"), just
 // not one TypeScript can narrow from an env var read at runtime.
 export const JWT_ACCESS_EXPIRY = (process.env.JWT_ACCESS_EXPIRY ??
-  '15m') as NonNullable<JwtSignOptions['expiresIn']>;
-export const JWT_REFRESH_EXPIRY = (process.env.JWT_REFRESH_EXPIRY ??
   '7d') as NonNullable<JwtSignOptions['expiresIn']>;
+export const JWT_REFRESH_EXPIRY = (process.env.JWT_REFRESH_EXPIRY ??
+  '30d') as NonNullable<JwtSignOptions['expiresIn']>;

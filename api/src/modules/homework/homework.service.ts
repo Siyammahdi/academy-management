@@ -1,13 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Homework } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { toDhakaDateParts, endOfDhakaDay } from '../../common/utils/dhaka-time';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
+import {
+  decodeHomeworkPdf,
+  HOMEWORK_PUBLIC_SELECT,
+  presentHomework,
+  presentHomeworkRow,
+  sanitizeHomeworkHtml,
+  type HomeworkResponse,
+} from './homework.presentation';
 
-export type HomeworkWithContext = Homework & {
+export type HomeworkWithContext = HomeworkResponse & {
   batch: { id: string; name: string; course: { title: string } };
 };
 
@@ -34,21 +41,29 @@ export class HomeworkService {
     batchId: string,
     dto: CreateHomeworkDto,
     actor: AuthUser,
-  ): Promise<Homework> {
+  ): Promise<HomeworkResponse> {
+    const pdf = dto.pdf ? decodeHomeworkPdf(dto.pdf) : null;
+
     return this.prisma.$transaction(async (tx) => {
       const batch = await tx.batch.findUnique({ where: { id: batchId } });
       if (!batch) {
         throw new NotFoundException('Not found');
       }
 
-      const homework = await tx.homework.create({
+      const created = await tx.homework.create({
         data: {
           batchId,
           title: dto.title,
-          description: dto.description,
+          description: sanitizeHomeworkHtml(dto.description),
           dueDate: resolveDueDate(dto.dueDate),
+          ...(pdf
+            ? { pdf: pdf.bytes, pdfMimeType: pdf.mimeType }
+            : {}),
         },
+        select: HOMEWORK_PUBLIC_SELECT,
       });
+
+      const homework = presentHomework(created);
 
       await this.audit.record(
         {
@@ -60,6 +75,7 @@ export class HomeworkService {
             batchId,
             title: homework.title,
             dueDate: homework.dueDate.toISOString(),
+            hasPdf: homework.hasPdf,
           },
         },
         tx,
@@ -69,32 +85,50 @@ export class HomeworkService {
     });
   }
 
-  async listForBatch(batchId: string): Promise<Homework[]> {
-    return this.prisma.homework.findMany({
+  async listForBatch(batchId: string): Promise<HomeworkResponse[]> {
+    const rows = await this.prisma.homework.findMany({
       where: { batchId },
+      select: HOMEWORK_PUBLIC_SELECT,
       orderBy: { dueDate: 'asc' },
     });
+    return rows.map(presentHomework);
   }
 
   async update(
     id: string,
     dto: UpdateHomeworkDto,
     actor: AuthUser,
-  ): Promise<Homework> {
+  ): Promise<HomeworkResponse> {
+    const pdf = dto.pdf ? decodeHomeworkPdf(dto.pdf) : null;
+
     return this.prisma.$transaction(async (tx) => {
-      const before = await tx.homework.findUnique({ where: { id } });
-      if (!before) {
+      const beforeRow = await tx.homework.findUnique({
+        where: { id },
+        select: HOMEWORK_PUBLIC_SELECT,
+      });
+      if (!beforeRow) {
         throw new NotFoundException('Not found');
       }
+      const before = presentHomework(beforeRow);
 
-      const after = await tx.homework.update({
+      const afterRow = await tx.homework.update({
         where: { id },
         data: {
           title: dto.title,
-          description: dto.description,
+          description:
+            dto.description !== undefined
+              ? sanitizeHomeworkHtml(dto.description)
+              : undefined,
           dueDate: dto.dueDate ? resolveDueDate(dto.dueDate) : undefined,
+          ...(pdf
+            ? { pdf: pdf.bytes, pdfMimeType: pdf.mimeType }
+            : dto.clearPdf
+              ? { pdf: null, pdfMimeType: null }
+              : {}),
         },
+        select: HOMEWORK_PUBLIC_SELECT,
       });
+      const after = presentHomework(afterRow);
 
       await this.audit.record(
         {
@@ -105,13 +139,13 @@ export class HomeworkService {
           details: {
             before: {
               title: before.title,
-              description: before.description,
               dueDate: before.dueDate.toISOString(),
+              hasPdf: before.hasPdf,
             },
             after: {
               title: after.title,
-              description: after.description,
               dueDate: after.dueDate.toISOString(),
+              hasPdf: after.hasPdf,
             },
           },
         },
@@ -148,6 +182,53 @@ export class HomeworkService {
     });
   }
 
+  async getPdf(
+    id: string,
+  ): Promise<{ mimeType: string; body: Uint8Array } | null> {
+    const homework = await this.prisma.homework.findUnique({
+      where: { id },
+      select: { pdf: true, pdfMimeType: true },
+    });
+    if (
+      !homework ||
+      !homework.pdf ||
+      !homework.pdfMimeType ||
+      homework.pdf.length === 0
+    ) {
+      return null;
+    }
+    return { mimeType: homework.pdfMimeType, body: homework.pdf };
+  }
+
+  /** Managers of the batch, admins, or students with an active enrollment. */
+  async canAccessPdf(id: string, actor: AuthUser): Promise<boolean> {
+    const homework = await this.prisma.homework.findUnique({
+      where: { id },
+      select: { batchId: true },
+    });
+    if (!homework) return false;
+    if (actor.roles.includes('admin')) return true;
+    if (actor.roles.includes('manager')) {
+      const assigned = await this.prisma.batchManager.findFirst({
+        where: { batchId: homework.batchId, userId: actor.id },
+        select: { id: true },
+      });
+      return Boolean(assigned);
+    }
+    if (actor.studentId) {
+      const enrollment = await this.prisma.enrollment.findFirst({
+        where: {
+          batchId: homework.batchId,
+          studentId: actor.studentId,
+          status: 'active',
+        },
+        select: { id: true },
+      });
+      return Boolean(enrollment);
+    }
+    return false;
+  }
+
   // Never trust a client-supplied identifier for ownership (doc 04 §6) — the
   // student is derived from the token, and only their ACTIVE enrollments'
   // batches contribute homework.
@@ -156,7 +237,7 @@ export class HomeworkService {
       return [];
     }
 
-    return this.prisma.homework.findMany({
+    const rows = await this.prisma.homework.findMany({
       where: {
         batch: {
           enrollments: {
@@ -164,14 +245,22 @@ export class HomeworkService {
           },
         },
       },
-      include: {
+      select: {
+        ...HOMEWORK_PUBLIC_SELECT,
         batch: {
-          include: {
+          select: {
+            id: true,
+            name: true,
             course: { select: { title: true } },
           },
         },
       },
       orderBy: { dueDate: 'asc' },
+    });
+
+    return rows.map((row) => {
+      const { batch, ...rest } = row;
+      return { ...presentHomework(rest), batch };
     });
   }
 }

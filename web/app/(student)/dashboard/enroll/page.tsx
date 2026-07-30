@@ -9,6 +9,7 @@ import { CourseCover } from '@/components/student/course-cover'
 import { StatusBadge } from '@/components/money/status-badge'
 import { StudentPageHeader } from '@/components/student/student-page-header'
 import { useStudentEnrollment } from '@/components/student/student-enrollment-provider'
+import { PaymentModal } from '@/components/payments/payment-modal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
@@ -37,9 +38,15 @@ function enrollErrorMessage(err: unknown): string {
   return 'Enrollment could not be completed. Try again or contact an admin.'
 }
 
+interface PendingPaymentTarget {
+  billingPeriodId: string
+  outstanding: string
+  periodLabel: string
+}
+
 /**
  * Student — Browse & Enroll
- * Open batches (status=enrolling) + POST /batches/:id/enroll.
+ * Open batches + enroll, then pay the first period in the same step.
  */
 export default function StudentEnrollPage() {
   const { hasActive, reload: reloadEnrollment } = useStudentEnrollment()
@@ -51,11 +58,13 @@ export default function StudentEnrollPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set())
+  const [paymentTarget, setPaymentTarget] =
+    useState<PendingPaymentTarget | null>(null)
 
   async function reload(): Promise<void> {
     try {
       const [list, courseList] = await Promise.all([
-        listBatches({ status: 'enrolling', limit: 50 }),
+        listBatches({ open: true, limit: 50 }),
         listCourses(1, 100),
       ])
       const enriched = await Promise.all(
@@ -83,12 +92,16 @@ export default function StudentEnrollPage() {
     setRowErrors((prev) => ({ ...prev, [batch.id]: '' }))
     setBusyId(batch.id)
     try {
-      await enrollInBatch(batch.id)
+      const result = await enrollInBatch(batch.id)
       setEnrolledIds((prev) => new Set(prev).add(batch.id))
       await reloadEnrollment()
-      toast.success(
-        'Application submitted — complete payment so your enrollment can activate.',
-      )
+      const courseTitle =
+        courseById.get(batch.courseId)?.title ?? 'Course'
+      setPaymentTarget({
+        billingPeriodId: result.firstPeriod.id,
+        outstanding: String(result.firstPeriod.amountOwed),
+        periodLabel: `${courseTitle} · ${batch.name} · entry + first month`,
+      })
     } catch (err) {
       setRowErrors((prev) => ({
         ...prev,
@@ -104,7 +117,7 @@ export default function StudentEnrollPage() {
       <StudentPageHeader
         eyebrow="Discover"
         title="Browse Courses"
-        description="Batches currently open for enrollment. Fees shown are snapshots for that batch — not a combined total."
+        description="Pick an open batch, enroll, and pay in one flow. Fees shown are the batch snapshot — never a combined total."
         actions={
           <Button
             variant="outline"
@@ -206,32 +219,24 @@ export default function StudentEnrollPage() {
                   </div>
                   {isEnrolled ? (
                     <div className="flex shrink-0 flex-wrap gap-2">
-                      <StatusBadge tone="paid" label="Enrolled" />
+                      <StatusBadge tone="pending" label="Pay to activate" />
                       <Button
-                        variant="outline"
                         className="min-h-11"
-                        render={
-                          <Link
-                            href={
-                              hasActive
-                                ? '/dashboard/courses'
-                                : '/dashboard/applications'
-                            }
-                          />
-                        }
+                        render={<Link href="/dashboard/applications" />}
                       >
-                        {hasActive ? 'Your courses' : 'My applications'}
+                        Finish payment
                       </Button>
                     </div>
                   ) : (
                     <Button
                       className="min-h-11 shrink-0"
                       disabled={isFull || busyId === batch.id}
+                      loading={busyId === batch.id}
                       onClick={() => {
                         void handleEnroll(batch)
                       }}
                     >
-                      {busyId === batch.id ? 'Enrolling…' : 'Enroll'}
+                      {busyId === batch.id ? 'Enrolling…' : 'Enroll & pay'}
                     </Button>
                   )}
                 </div>
@@ -239,6 +244,24 @@ export default function StudentEnrollPage() {
             )
           })}
         </ul>
+      ) : null}
+
+      {paymentTarget ? (
+        <PaymentModal
+          isOpen
+          purpose="enrollment"
+          onClose={() => setPaymentTarget(null)}
+          billingPeriodId={paymentTarget.billingPeriodId}
+          periodLabel={paymentTarget.periodLabel}
+          outstanding={paymentTarget.outstanding}
+          onSubmitted={() => {
+            setPaymentTarget(null)
+            void reloadEnrollment()
+            toast.success(
+              'Online payment unlocks class after bank confirmation — no manager review. Manual payments wait for verification.',
+            )
+          }}
+        />
       ) : null}
     </div>
   )

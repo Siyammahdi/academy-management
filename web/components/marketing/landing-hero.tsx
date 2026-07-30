@@ -20,6 +20,7 @@ import { useTilt } from '@/lib/gsap/use-tilt'
 import { usePrefersReducedMotion } from '@/lib/gsap/use-prefers-reduced-motion'
 import { MEDIA } from '@/lib/marketing/media'
 import { cn } from '@/lib/utils'
+import { usePublicAuth } from '@/lib/use-public-auth'
 
 /**
  * Opening statement. One cinematic load timeline: eyebrow rule draws, the
@@ -28,6 +29,10 @@ import { cn } from '@/lib/utils'
  */
 export function LandingHero() {
   const t = useMarketingCopy()
+  const auth = usePublicAuth()
+  const secondaryCta = auth.authenticated
+    ? { href: auth.homeHref, label: t.nav.goToApp }
+    : { href: '/register', label: t.hero.ctaRegister }
   const rootRef = useRef<HTMLElement>(null)
   const reduced = usePrefersReducedMotion()
   const magneticRef = useMagnetic<HTMLAnchorElement>(0.36)
@@ -229,9 +234,9 @@ export function LandingHero() {
                 size="lg"
                 variant="ghost"
                 className="min-h-12 px-5 text-primary-strong hover:bg-background/70"
-                render={<Link href="/register" />}
+                render={<Link href={secondaryCta.href} />}
               >
-                {t.hero.ctaRegister}
+                {secondaryCta.label}
               </Button>
             </div>
           </div>

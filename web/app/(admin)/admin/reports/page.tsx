@@ -19,6 +19,7 @@ import {
   formatYearMonthLabel,
 } from '@/components/ui/month-picker'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/error-message'
@@ -395,9 +396,10 @@ export default function AdminReportsPage() {
         </p>
       </section>
 
+      <ScrollArea className="w-full pb-1">
       <nav
         aria-label="Report sections"
-        className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-1 flex w-max gap-1 px-1"
       >
         {TABS.map((item) => (
           <button
@@ -415,6 +417,7 @@ export default function AdminReportsPage() {
           </button>
         ))}
       </nav>
+      </ScrollArea>
 
       {error ? (
         <div

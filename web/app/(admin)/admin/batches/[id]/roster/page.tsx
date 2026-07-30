@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
 import {
@@ -19,6 +20,7 @@ import {
   getRoster,
   listStudents,
   withdrawEnrollment,
+  reinstateEnrollment,
   type BatchWithSeats,
   type Course,
   type RosterEntry,
@@ -61,6 +63,7 @@ export default function AdminBatchRosterPage() {
   const [withdrawTarget, setWithdrawTarget] = useState<RosterEntry | null>(null)
   const [withdrawBusy, setWithdrawBusy] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
+  const [reinstateBusyId, setReinstateBusyId] = useState<string | null>(null)
 
   async function load(): Promise<void> {
     setBusy(true)
@@ -190,6 +193,23 @@ export default function AdminBatchRosterPage() {
     }
   }
 
+  async function handleReinstate(entry: RosterEntry): Promise<void> {
+    setReinstateBusyId(entry.enrollmentId)
+    try {
+      await reinstateEnrollment(entry.enrollmentId)
+      toast.success(`${entry.fullName} reinstated`)
+      await load()
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? apiErrorMessage(err.body, 'This student could not be reinstated.')
+          : 'This student could not be reinstated.',
+      )
+    } finally {
+      setReinstateBusyId(null)
+    }
+  }
+
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <AdminBatchHero
@@ -259,7 +279,8 @@ export default function AdminBatchRosterPage() {
                 aria-label="Search roster"
               />
             </div>
-            <div className="flex gap-1 overflow-x-auto">
+            <ScrollArea className="max-w-full sm:max-w-none">
+              <div className="flex w-max gap-1 pb-1">
               {(
                 [
                   ['all', 'All'],
@@ -278,7 +299,8 @@ export default function AdminBatchRosterPage() {
                   {label}
                 </Button>
               ))}
-            </div>
+              </div>
+            </ScrollArea>
           </div>
 
           {!roster ? (
@@ -322,6 +344,7 @@ export default function AdminBatchRosterPage() {
                 const canWithdraw =
                   entry.enrollmentStatus === 'active' ||
                   entry.enrollmentStatus === 'pending'
+                const canReinstate = entry.enrollmentStatus === 'withdrawn'
 
                 return (
                   <li
@@ -358,6 +381,20 @@ export default function AdminBatchRosterPage() {
                           }}
                         >
                           Withdraw
+                        </Button>
+                      ) : null}
+                      {canReinstate ? (
+                        <Button
+                          size="sm"
+                          className="min-h-11 shrink-0"
+                          disabled={reinstateBusyId === entry.enrollmentId}
+                          onClick={() => {
+                            void handleReinstate(entry)
+                          }}
+                        >
+                          {reinstateBusyId === entry.enrollmentId
+                            ? 'Reinstating…'
+                            : 'Reinclude'}
                         </Button>
                       ) : null}
                     </div>
@@ -431,29 +468,31 @@ export default function AdminBatchRosterPage() {
         ) : null}
 
         {lateResults && lateResults.length > 0 ? (
-          <ul className="mt-4 flex max-h-64 flex-col gap-2 overflow-y-auto">
-            {lateResults.map((student) => {
-              const selected = selectedStudent?.id === student.id
-              return (
-                <li key={student.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStudent(student)}
-                    className={`w-full rounded-lg px-3 py-3 text-left transition-colors ${
-                      selected
-                        ? 'bg-primary-wash text-primary-strong'
-                        : 'bg-muted/60 hover:bg-muted'
-                    }`}
-                  >
-                    <p className="font-medium">{student.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {student.studentId} · {student.phone}
-                    </p>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+          <ScrollArea className="mt-4 h-64">
+            <ul className="flex flex-col gap-2 pr-3">
+              {lateResults.map((student) => {
+                const selected = selectedStudent?.id === student.id
+                return (
+                  <li key={student.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudent(student)}
+                      className={`w-full rounded-lg px-3 py-3 text-left transition-colors ${
+                        selected
+                          ? 'bg-primary-wash text-primary-strong'
+                          : 'bg-muted/60 hover:bg-muted'
+                      }`}
+                    >
+                      <p className="font-medium">{student.fullName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {student.studentId} · {student.phone}
+                      </p>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </ScrollArea>
         ) : null}
 
         {lateError ? (

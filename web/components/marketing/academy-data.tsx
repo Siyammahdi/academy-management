@@ -20,6 +20,8 @@ import {
 export interface AcademySnapshot {
   status: 'loading' | 'ready' | 'error'
   courses: Course[]
+  /** Active courses marked featured, ordered for the landing stack. */
+  featuredCourses: Course[]
   /** Open batches, newest window first, enriched with live seat counts. */
   openBatches: BatchWithSeats[]
   openBatchByCourseId: Map<string, BatchWithSeats>
@@ -28,6 +30,7 @@ export interface AcademySnapshot {
 const EMPTY: AcademySnapshot = {
   status: 'loading',
   courses: [],
+  featuredCourses: [],
   openBatches: [],
   openBatchByCourseId: new Map(),
 }
@@ -48,9 +51,10 @@ export function AcademyDataProvider({ children }: { children: ReactNode }) {
 
     async function load(): Promise<void> {
       try {
-        const [courseList, batchList] = await Promise.all([
+        const [courseList, featuredList, batchList] = await Promise.all([
           listCourses(1, 24),
-          listBatches({ status: 'enrolling', limit: 24 }),
+          listCourses(1, 12, { featured: true }),
+          listBatches({ open: true, limit: 24 }),
         ])
         if (cancelled) return
 
@@ -74,6 +78,7 @@ export function AcademyDataProvider({ children }: { children: ReactNode }) {
         setSnapshot({
           status: 'ready',
           courses: courseList.data,
+          featuredCourses: featuredList.data,
           openBatches,
           openBatchByCourseId,
         })
@@ -101,7 +106,7 @@ export function useAcademyData(): AcademySnapshot {
   return useContext(AcademyDataContext)
 }
 
-/** Finds the live course matching a flagship program's keywords. */
+/** @deprecated Prefer featuredCourses / course.slug — kept for older keyword matching. */
 export function useCourseByKeywords(keywords: string[]): Course | null {
   const { courses } = useAcademyData()
 

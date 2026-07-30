@@ -1,21 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { MenuIcon, XIcon } from 'lucide-react'
 
 import { LanguageSwitcher } from '@/components/i18n/language-switcher'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import { Container } from './container'
 import { Button } from '@/components/ui/button'
+import { usePublicAuth } from '@/lib/use-public-auth'
 import { cn } from '@/lib/utils'
 
 /**
  * doc 09 §9 — marketing chrome. Sits transparent over the hero wash and
- * settles onto a solid surface once the page scrolls.
+ * settles onto a solid surface once the page scrolls. Auth CTAs swap when
+ * a session cookie is present.
  */
 export function SiteHeader() {
   const t = useMarketingCopy()
+  const auth = usePublicAuth()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -35,6 +38,9 @@ export function SiteHeader() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const showAuth = auth.ready
+  const loggedIn = showAuth && auth.authenticated
 
   return (
     <header
@@ -75,19 +81,31 @@ export function SiteHeader() {
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher className="hidden sm:inline-flex" />
-            <Link
-              href="/login"
-              className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline"
-            >
-              {t.nav.logIn}
-            </Link>
-            <Button
-              size="sm"
-              className="hidden min-h-9 sm:inline-flex"
-              render={<Link href="/register" />}
-            >
-              {t.nav.register}
-            </Button>
+            {loggedIn ? (
+              <Button
+                size="sm"
+                className="hidden min-h-9 sm:inline-flex"
+                render={<Link href={auth.homeHref} />}
+              >
+                {t.nav.goToApp}
+              </Button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline"
+                >
+                  {t.nav.logIn}
+                </Link>
+                <Button
+                  size="sm"
+                  className="hidden min-h-9 sm:inline-flex"
+                  render={<Link href="/register" />}
+                >
+                  {t.nav.register}
+                </Button>
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -122,19 +140,31 @@ export function SiteHeader() {
                 </span>
                 <LanguageSwitcher />
               </div>
-              <Link
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 items-center text-base text-muted-foreground"
-              >
-                {t.nav.logIn}
-              </Link>
-              <Button
-                className="mt-2 mb-4 min-h-11"
-                render={<Link href="/register" />}
-              >
-                {t.nav.register}
-              </Button>
+              {loggedIn ? (
+                <Button
+                  className="mt-2 mb-4 min-h-11"
+                  render={<Link href={auth.homeHref} />}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.nav.goToApp}
+                </Button>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex min-h-11 items-center text-base text-muted-foreground"
+                  >
+                    {t.nav.logIn}
+                  </Link>
+                  <Button
+                    className="mt-2 mb-4 min-h-11"
+                    render={<Link href="/register" />}
+                  >
+                    {t.nav.register}
+                  </Button>
+                </>
+              )}
             </nav>
           </Container>
         </div>

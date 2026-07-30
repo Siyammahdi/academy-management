@@ -230,8 +230,15 @@ export default function AdminCoursesPage() {
                       tone="paid"
                       label={BILLING_TYPE_LABELS[course.billingType]}
                     />
+                    {course.featured ? (
+                      <StatusBadge tone="pending" label="Featured" />
+                    ) : null}
                   </div>
-                  {course.description ? (
+                  {course.tagline ? (
+                    <p className="line-clamp-1 text-sm text-muted-foreground">
+                      {course.tagline}
+                    </p>
+                  ) : course.description ? (
                     <p className="line-clamp-2 text-sm text-muted-foreground">
                       {course.description}
                     </p>
@@ -269,8 +276,21 @@ export default function AdminCoursesPage() {
                     Batches
                   </Button>
                   <Button
+                    variant="outline"
+                    className="min-h-11"
+                    render={
+                      <Link
+                        href={`/courses/${course.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  >
+                    Public page
+                  </Button>
+                  <Button
                     variant="destructive"
-                    className="col-span-2 min-h-11"
+                    className="min-h-11"
                     onClick={() => setArchivingCourse(course)}
                   >
                     <ArchiveIcon />

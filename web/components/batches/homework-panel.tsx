@@ -1,28 +1,54 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { FileTextIcon, Trash2Icon, UploadIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  RichTextEditor,
+  RichTextHtml,
+} from '@/components/ui/rich-text-editor'
 import { ApiError } from '@/lib/api'
 import {
   createHomework,
   deleteHomework,
+  homeworkPdfUrl,
   listBatchHomework,
   updateHomework,
   type Homework,
+  type HomeworkPdfInput,
 } from '@/lib/api-client'
 import { apiErrorMessage } from '@/lib/error-message'
 import { formatDate } from '@/lib/format'
 import { isDueToday, isPastDue } from '@/lib/homework-status'
+import { getAccessToken } from '@/lib/session'
+
+const PDF_MAX_BYTES = 5 * 1024 * 1024
 
 function isoToDateInput(iso: string): string {
   return iso.slice(0, 10)
+}
+
+async function fileToPdf(file: File): Promise<HomeworkPdfInput> {
+  if (file.type !== 'application/pdf') {
+    throw new Error('Attach a PDF file.')
+  }
+  if (file.size > PDF_MAX_BYTES) {
+    throw new Error('PDF must be 5 MB or smaller.')
+  }
+  const buffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]!)
+  }
+  return { mimeType: 'application/pdf', data: btoa(binary) }
 }
 
 interface HomeworkFormState {
@@ -41,6 +67,10 @@ function homeworkToForm(hw: Homework): HomeworkFormState {
     description: hw.description,
     dueDate: isoToDateInput(hw.dueDate),
   }
+}
+
+function descriptionIsEmpty(html: string): boolean {
+  return html.replace(/<[^>]+>/g, '').trim().length === 0
 }
 
 export function HomeworkPanel({ batchId }: { batchId: string }) {
@@ -92,7 +122,8 @@ export function HomeworkPanel({ batchId }: { batchId: string }) {
             Homework
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Assignments for this batch — due dates end of day Asia/Dhaka.
+            Rich-text assignments with an optional PDF worksheet. Due dates end
+            of day Asia/Dhaka.
           </p>
         </div>
         <Button
@@ -129,6 +160,9 @@ export function HomeworkPanel({ batchId }: { batchId: string }) {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium text-foreground">{hw.title}</span>
                   <div className="flex flex-wrap items-center gap-2">
+                    {hw.hasPdf ? (
+                      <StatusBadge tone="neutral" label="PDF" />
+                    ) : null}
                     <StatusBadge
                       tone={pastDue ? 'overdue' : today ? 'pending' : 'neutral'}
                       label={
@@ -140,9 +174,31 @@ export function HomeworkPanel({ batchId }: { batchId: string }) {
                     </span>
                   </div>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {hw.description}
-                </p>
+                <RichTextHtml html={hw.description} className="mt-2" />
+                {hw.hasPdf ? (
+                  <a
+                    href={homeworkPdfUrl(hw.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary-strong"
+                    onClick={(e) => {
+                      const token = getAccessToken()
+                      if (!token) return
+                      e.preventDefault()
+                      void fetch(homeworkPdfUrl(hw.id), {
+                        headers: { Authorization: `Bearer ${token}` },
+                      })
+                        .then((r) => r.blob())
+                        .then((blob) => {
+                          const url = URL.createObjectURL(blob)
+                          window.open(url, '_blank', 'noopener,noreferrer')
+                        })
+                    }}
+                  >
+                    <FileTextIcon className="size-4" />
+                    Open PDF
+                  </a>
+                ) : null}
                 <div className="mt-3 flex gap-2">
                   <Button
                     type="button"
@@ -201,9 +257,14 @@ function HomeworkFormModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const fileInputId = useId()
+  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<HomeworkFormState>(
     homework ? homeworkToForm(homework) : emptyForm(),
   )
+  const [pdf, setPdf] = useState<HomeworkPdfInput | null>(null)
+  const [pdfName, setPdfName] = useState<string | null>(null)
+  const [clearPdf, setClearPdf] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -213,17 +274,30 @@ function HomeworkFormModal({
     event.preventDefault()
     setError(null)
 
-    if (!form.title.trim() || !form.description.trim() || !form.dueDate) {
+    if (
+      !form.title.trim() ||
+      descriptionIsEmpty(form.description) ||
+      !form.dueDate
+    ) {
       setError('Fill in a title, description, and due date.')
       return
     }
 
     setIsSubmitting(true)
     try {
+      const payload = {
+        title: form.title.trim(),
+        description: form.description,
+        dueDate: form.dueDate,
+        ...(pdf ? { pdf } : {}),
+      }
       if (homework) {
-        await updateHomework(homework.id, form)
+        await updateHomework(homework.id, {
+          ...payload,
+          ...(clearPdf && !pdf ? { clearPdf: true } : {}),
+        })
       } else {
-        await createHomework(batchId, form)
+        await createHomework(batchId, payload)
       }
       toast.success(homework ? 'Homework saved' : 'Homework added')
       onSaved()
@@ -251,21 +325,82 @@ function HomeworkFormModal({
           value={form.title}
           onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
         />
-        <Textarea
+        <RichTextEditor
           label="Description"
-          required
           value={form.description}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, description: e.target.value }))
-          }
+          onChange={(description) => setForm((p) => ({ ...p, description }))}
         />
-        <Input
+        <DatePicker
           label="Due date"
-          type="date"
           required
           value={form.dueDate}
-          onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))}
+          onChange={(dueDate) => setForm((p) => ({ ...p, dueDate }))}
         />
+
+        <div className="space-y-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            PDF worksheet (optional)
+          </span>
+          <input
+            ref={fileRef}
+            id={fileInputId}
+            type="file"
+            accept="application/pdf"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              void fileToPdf(file)
+                .then((next) => {
+                  setPdf(next)
+                  setPdfName(file.name)
+                  setClearPdf(false)
+                  setError(null)
+                })
+                .catch((err: unknown) => {
+                  setError(
+                    err instanceof Error ? err.message : 'Could not read PDF.',
+                  )
+                })
+            }}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-11"
+              onClick={() => fileRef.current?.click()}
+            >
+              <UploadIcon />
+              {pdfName || (homework?.hasPdf && !clearPdf)
+                ? 'Replace PDF'
+                : 'Upload PDF'}
+            </Button>
+            {pdfName || (homework?.hasPdf && !clearPdf) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11"
+                onClick={() => {
+                  setPdf(null)
+                  setPdfName(null)
+                  if (homework?.hasPdf) setClearPdf(true)
+                }}
+              >
+                <Trash2Icon />
+                Remove
+              </Button>
+            ) : null}
+          </div>
+          {pdfName ? (
+            <p className="text-xs text-muted-foreground">{pdfName}</p>
+          ) : homework?.hasPdf && !clearPdf ? (
+            <p className="text-xs text-muted-foreground">
+              A PDF is already attached.
+            </p>
+          ) : null}
+        </div>
 
         {error ? (
           <p className="text-sm text-status-overdue" role="alert">

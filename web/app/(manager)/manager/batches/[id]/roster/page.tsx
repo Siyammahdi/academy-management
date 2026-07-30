@@ -8,6 +8,7 @@ import { ManagerBatchHero } from '@/components/manager/manager-batch-hero'
 import { StatusBadge } from '@/components/money/status-badge'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   getBatch,
@@ -249,7 +250,7 @@ export default function ManagerBatchRosterPage() {
               </ul>
 
               {/* Desktop table */}
-              <div className="hidden overflow-x-auto rounded-xl bg-muted/50 md:block">
+              <ScrollArea className="hidden w-full rounded-xl bg-muted/50 md:block">
                 <table className="w-full min-w-[40rem] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-border/60">
@@ -312,7 +313,7 @@ export default function ManagerBatchRosterPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollArea>
             </>
           ) : null}
         </>

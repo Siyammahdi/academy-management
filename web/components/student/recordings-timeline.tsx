@@ -7,6 +7,7 @@ import { PlayIcon, VideoIcon } from 'lucide-react'
 
 import { YoutubeEmbed } from '@/components/media/youtube-embed'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatDate } from '@/lib/format'
 import { groupRecordingsByDhakaDay } from '@/lib/student-dashboard'
 import type { RecordingWithContext } from '@/lib/api-client'
@@ -73,7 +74,7 @@ export function RecordingsTimeline({
       </div>
 
       {/* Day picker — horizontal snap for mobile app feel */}
-      <div className="-mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:snap-none sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ScrollArea className="-mx-3 w-[calc(100%+1.5rem)] sm:mx-0 sm:w-full"><div className="flex w-max snap-x snap-mandatory gap-2 px-3 pb-3 sm:w-full sm:snap-none sm:px-0">
         {groups.map((group) => {
           const selected = group.key === current.key
           return (
@@ -105,6 +106,7 @@ export function RecordingsTimeline({
           )
         })}
       </div>
+      </ScrollArea>
 
       <div className="space-y-3">
         {current.items.map((rec) => {

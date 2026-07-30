@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import { ManagerPageHeader } from '@/components/manager/manager-page-header'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
@@ -343,12 +344,11 @@ function CreateRecordingModal({
           onChange={(e) => setYoutubeVideoId(e.target.value)}
           placeholder="dQw4w9WgXcQ"
         />
-        <Input
+        <DatePicker
           label="Class day"
-          type="date"
           required
           value={recordedFor}
-          onChange={(e) => setRecordedFor(e.target.value)}
+          onChange={setRecordedFor}
         />
         {error ? (
           <p className="text-sm text-status-overdue" role="alert">

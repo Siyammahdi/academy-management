@@ -34,12 +34,22 @@ export interface CoursePart {
 
 export interface Course {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   billingType: BillingType;
   enrollmentFee: string;
   monthlyFee: string;
   parts: CoursePart[] | null;
+  featured: boolean;
+  featuredOrder: number;
+  tagline: string | null;
+  category: string | null;
+  emphasis: string | null;
+  focus: string | null;
+  highlights: string[] | null;
+  audience: string | null;
+  outcomes: string[] | null;
   status: CourseStatus;
   /** True when a cover image is stored on the course row. */
   hasThumbnail: boolean;
@@ -55,11 +65,21 @@ export interface CourseThumbnailInput {
 
 export interface CreateCourseInput {
   title: string;
+  slug?: string;
   description?: string;
   billingType: BillingType;
   enrollmentFee: string;
   monthlyFee: string;
   parts?: CoursePart[];
+  featured?: boolean;
+  featuredOrder?: number;
+  tagline?: string;
+  category?: string;
+  emphasis?: string;
+  focus?: string;
+  highlights?: string[];
+  audience?: string;
+  outcomes?: string[];
   thumbnail?: CourseThumbnailInput;
 }
 
@@ -82,6 +102,8 @@ export interface Batch {
   dueDayEnd: number;
   status: BatchStatus;
   classLink: string | null;
+  classStartsAt: string | null;
+  classEndsAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +111,7 @@ export interface Batch {
 export interface BatchManagerSummary {
   userId: string;
   email: string;
+  fullName?: string | null;
 }
 
 export type BatchWithSeats = Batch & {
@@ -200,6 +223,7 @@ export type PaymentWithContext = PendingPayment;
 export interface UserSummary {
   id: string;
   email: string;
+  fullName?: string | null;
   roles: string[];
   createdAt?: string;
   hasStudentProfile?: boolean;
@@ -225,8 +249,15 @@ function toQueryString(
 export function listCourses(
   page?: number,
   limit?: number,
+  options?: { featured?: boolean },
 ): Promise<Paginated<Course>> {
-  return apiFetch(`/courses${toQueryString({ page, limit })}`);
+  return apiFetch(
+    `/courses${toQueryString({
+      page,
+      limit,
+      featured: options?.featured ? 'true' : undefined,
+    })}`,
+  );
 }
 
 export function createCourse(input: CreateCourseInput): Promise<Course> {
@@ -247,8 +278,13 @@ export function archiveCourse(id: string): Promise<Course> {
   return apiFetch(`/courses/${id}/archive`, { method: 'POST' });
 }
 
-export function getCourse(id: string): Promise<Course> {
-  return apiFetch(`/courses/${id}`);
+/** Course plus currently enrolling batches (fee snapshots; seats via GET /batches/:id). */
+export type CourseDetail = Course & {
+  batches: Batch[];
+};
+
+export function getCourse(idOrSlug: string): Promise<CourseDetail> {
+  return apiFetch(`/courses/${idOrSlug}`);
 }
 
 /** Public binary cover — use in <img src>. Cache-bust with updatedAt. */
@@ -265,10 +301,31 @@ export function courseThumbnailUrl(
 export function listBatches(params: {
   status?: BatchStatus;
   courseId?: string;
+  /** ENR-02 — within enrollment window (includes `running` if still open). */
+  open?: boolean;
   page?: number;
   limit?: number;
 }): Promise<Paginated<Batch>> {
-  return apiFetch(`/batches${toQueryString(params)}`);
+  return apiFetch(
+    `/batches${toQueryString({
+      status: params.status,
+      courseId: params.courseId,
+      open: params.open ? 'true' : undefined,
+      page: params.page,
+      limit: params.limit,
+    })}`,
+  );
+}
+
+/** True when now is inside the batch enrollment window (ENR-02). */
+export function isEnrollmentWindowOpen(
+  batch: { enrollmentOpensAt: string; enrollmentClosesAt: string },
+  now: Date = new Date(),
+): boolean {
+  const opens = new Date(batch.enrollmentOpensAt).getTime();
+  const closes = new Date(batch.enrollmentClosesAt).getTime();
+  const t = now.getTime();
+  return opens <= t && t <= closes;
 }
 
 export function getBatch(id: string): Promise<BatchWithSeats> {
@@ -291,11 +348,16 @@ export function updateBatch(
 
 export function updateClassLink(
   id: string,
-  classLink: string,
+  input: {
+    classLink: string
+    classStartsAt?: string
+    classEndsAt?: string
+    clearSchedule?: boolean
+  },
 ): Promise<Batch> {
   return apiFetch(`/batches/${id}/class-link`, {
     method: 'PATCH',
-    body: JSON.stringify({ classLink }),
+    body: JSON.stringify(input),
   });
 }
 
@@ -343,6 +405,12 @@ export function addLateJoiner(
 /** Admin-only — withdraw an enrollment. */
 export function withdrawEnrollment(enrollmentId: string): Promise<Enrollment> {
   return apiFetch(`/enrollments/${enrollmentId}/withdraw`, {
+    method: 'POST',
+  });
+}
+
+export function reinstateEnrollment(enrollmentId: string): Promise<Enrollment> {
+  return apiFetch(`/enrollments/${enrollmentId}/reinstate`, {
     method: 'POST',
   });
 }
@@ -489,6 +557,17 @@ export function payGateway(
   });
 }
 
+/** Public — confirms SSLCommerz success via Order Validation (ENR-06). */
+export function confirmGatewayPayment(input: {
+  transactionReference: string;
+  valId: string;
+}): Promise<{ status: string; enrollmentActivated: boolean }> {
+  return apiFetch('/payments/gateway/confirm', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export interface PayManualInput {
   amount: string;
   transactionReference: string;
@@ -523,22 +602,32 @@ export interface Homework {
   id: string;
   batchId: string;
   title: string;
+  /** Rich-text HTML. */
   description: string;
   dueDate: string;
+  hasPdf: boolean;
   createdAt: string;
 }
 
 export type HomeworkWithContext = Homework & {
-  batch: Batch & { course: Course };
+  batch: { id: string; name: string; course: { title: string } };
 };
+
+export interface HomeworkPdfInput {
+  mimeType: 'application/pdf' | string;
+  data: string;
+}
 
 export interface CreateHomeworkInput {
   title: string;
   description: string;
   dueDate: string;
+  pdf?: HomeworkPdfInput;
 }
 
-export type UpdateHomeworkInput = Partial<CreateHomeworkInput>;
+export type UpdateHomeworkInput = Partial<CreateHomeworkInput> & {
+  clearPdf?: boolean;
+};
 
 export function listBatchHomework(batchId: string): Promise<Homework[]> {
   return apiFetch(`/batches/${batchId}/homework`);
@@ -566,6 +655,10 @@ export function updateHomework(
 
 export function deleteHomework(id: string): Promise<void> {
   return apiFetch(`/homework/${id}`, { method: 'DELETE' });
+}
+
+export function homeworkPdfUrl(homeworkId: string): string {
+  return `${API_BASE_URL}/homework/${homeworkId}/pdf`;
 }
 
 export function listMyHomework(): Promise<HomeworkWithContext[]> {

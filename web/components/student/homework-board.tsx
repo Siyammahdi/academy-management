@@ -5,6 +5,7 @@ import { ClipboardListIcon } from 'lucide-react'
 
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
+import { RichTextHtml } from '@/components/ui/rich-text-editor'
 import { formatDate } from '@/lib/format'
 import { isDueToday, isPastDue } from '@/lib/homework-status'
 import type { HomeworkWithContext } from '@/lib/api-client'
@@ -131,9 +132,10 @@ export function HomeworkBoard({
                         Due {formatDate(hw.dueDate)}
                       </p>
                       {hw.description ? (
-                        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                          {hw.description}
-                        </p>
+                        <RichTextHtml
+                          html={hw.description}
+                          className="line-clamp-2 text-sm leading-relaxed"
+                        />
                       ) : null}
                     </div>
                   </div>

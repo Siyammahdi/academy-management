@@ -5,6 +5,7 @@ import { AmountCell } from '@/components/money/amount-cell'
 import { StatusBadge } from '@/components/money/status-badge'
 import { CourseCover } from '@/components/student/course-cover'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import type { Course } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
@@ -31,11 +32,11 @@ export function AdminCourseShelf({ courses }: AdminCourseShelfProps) {
   }
 
   return (
+    <ScrollArea className="-mx-3 w-[calc(100%+1.5rem)] md:mx-0 md:w-full">
     <div
       className={cn(
-        '-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1',
-        '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        'md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0',
+        'flex w-max snap-x snap-mandatory gap-3 px-3 pb-3',
+        'md:grid md:w-full md:snap-none md:grid-cols-2 md:gap-4 md:px-0 md:pb-0',
         'xl:grid-cols-3',
       )}
     >
@@ -93,5 +94,6 @@ export function AdminCourseShelf({ courses }: AdminCourseShelfProps) {
         </article>
       ))}
     </div>
+    </ScrollArea>
   )
 }

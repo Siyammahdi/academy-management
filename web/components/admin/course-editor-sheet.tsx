@@ -45,33 +45,72 @@ const MAX_BYTES = 2 * 1024 * 1024
 
 interface CourseFormState {
   title: string
+  slug: string
   description: string
   billingType: BillingType
   enrollmentFee: string
   monthlyFee: string
   parts: CoursePart[]
+  featured: boolean
+  featuredOrder: string
+  tagline: string
+  category: string
+  emphasis: string
+  focus: string
+  highlights: string[]
+  audience: string
+  outcomes: string[]
 }
 
 function emptyForm(): CourseFormState {
   return {
     title: '',
+    slug: '',
     description: '',
     billingType: 'monthly',
     enrollmentFee: '',
     monthlyFee: '',
     parts: [],
+    featured: false,
+    featuredOrder: '0',
+    tagline: '',
+    category: '',
+    emphasis: '',
+    focus: '',
+    highlights: [],
+    audience: '',
+    outcomes: [],
   }
 }
 
 function courseToForm(course: Course): CourseFormState {
   return {
     title: course.title,
+    slug: course.slug,
     description: course.description ?? '',
     billingType: course.billingType,
     enrollmentFee: course.enrollmentFee,
     monthlyFee: course.monthlyFee,
     parts: course.parts ?? [],
+    featured: course.featured,
+    featuredOrder: String(course.featuredOrder),
+    tagline: course.tagline ?? '',
+    category: course.category ?? '',
+    emphasis: course.emphasis ?? '',
+    focus: course.focus ?? '',
+    highlights: course.highlights ?? [],
+    audience: course.audience ?? '',
+    outcomes: course.outcomes ?? [],
   }
+}
+
+function slugifyPreview(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
 }
 
 async function fileToThumbnail(
@@ -119,10 +158,12 @@ export function CourseEditorSheet({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [clearThumbnail, setClearThumbnail] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [slugManual, setSlugManual] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setForm(course && mode === 'edit' ? courseToForm(course) : emptyForm())
+    setSlugManual(mode === 'edit')
     setError(null)
     setThumbnail(null)
     setClearThumbnail(false)
@@ -222,11 +263,21 @@ export function CourseEditorSheet({
 
     const input: CreateCourseInput = {
       title: form.title.trim(),
+      slug: form.slug.trim() || undefined,
       description: form.description.trim() || undefined,
       billingType: form.billingType,
       enrollmentFee: form.enrollmentFee,
       monthlyFee: form.monthlyFee,
       parts: form.parts.length > 0 ? form.parts : undefined,
+      featured: form.featured,
+      featuredOrder: Number.parseInt(form.featuredOrder, 10) || 0,
+      tagline: form.tagline.trim(),
+      category: form.category.trim(),
+      emphasis: form.emphasis.trim(),
+      focus: form.focus.trim(),
+      highlights: form.highlights.map((h) => h.trim()).filter(Boolean),
+      audience: form.audience.trim(),
+      outcomes: form.outcomes.map((o) => o.trim()).filter(Boolean),
       ...(thumbnail ? { thumbnail } : {}),
     }
 
@@ -270,8 +321,8 @@ export function CourseEditorSheet({
           </SheetTitle>
           <SheetDescription>
             {mode === 'create'
-              ? 'Add a cover, pricing, and optional curriculum parts. Fees here are the current price list — batches snapshot them when opened.'
-              : 'Updating fees does not rewrite existing batches — they keep the snapshot from when they were opened.'}
+              ? 'Cover, pricing, curriculum, and public marketing — all in one place. Featured courses appear on the landing page.'
+              : 'Updating fees does not rewrite existing batches. Marketing fields power the public course page and landing feature.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -386,10 +437,35 @@ export function CourseEditorSheet({
                 required
                 value={form.title}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, title: e.target.value }))
+                  setForm((p) => ({
+                    ...p,
+                    title: e.target.value,
+                    slug:
+                      mode === 'create' && !slugManual
+                        ? slugifyPreview(e.target.value)
+                        : p.slug,
+                  }))
                 }
                 placeholder="Learning Arabic Language"
               />
+              <Input
+                label="URL slug"
+                value={form.slug}
+                onChange={(e) => {
+                  setSlugManual(true)
+                  setForm((p) => ({
+                    ...p,
+                    slug: slugifyPreview(e.target.value),
+                  }))
+                }}
+                placeholder={slugifyPreview(form.title) || 'learning-arabic'}
+              />
+              <p className="text-xs text-muted-foreground">
+                Public page:{' '}
+                <span className="tabular-nums">
+                  /courses/{form.slug || slugifyPreview(form.title) || '…'}
+                </span>
+              </p>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-muted-foreground">
                   Description
@@ -494,6 +570,116 @@ export function CourseEditorSheet({
             </section>
 
             <section className="space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-foreground">
+                  Landing & public page
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Marketing copy for the course details page. Featured courses
+                  also appear in the home programs stack.
+                </p>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/50 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={form.featured}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, featured: e.target.checked }))
+                  }
+                  className="mt-1 size-4 accent-primary"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Feature on landing page
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Shows in the marketing programs section — not a plain course
+                    card.
+                  </span>
+                </span>
+              </label>
+
+              {form.featured ? (
+                <Input
+                  label="Featured order"
+                  type="number"
+                  min={0}
+                  value={form.featuredOrder}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, featuredOrder: e.target.value }))
+                  }
+                />
+              ) : null}
+
+              <Input
+                label="Tagline"
+                value={form.tagline}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, tagline: e.target.value }))
+                }
+                placeholder="Read, write, and speak with confidence."
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Category"
+                  value={form.category}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, category: e.target.value }))
+                  }
+                  placeholder="Arabic"
+                />
+                <Input
+                  label="Emphasis phrase"
+                  value={form.emphasis}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, emphasis: e.target.value }))
+                  }
+                  placeholder="from the foundations"
+                />
+              </div>
+              <Input
+                label="Focus line"
+                value={form.focus}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, focus: e.target.value }))
+                }
+                placeholder="A clear path from alphabet to fluency."
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Who it is for
+                </label>
+                <textarea
+                  rows={2}
+                  value={form.audience}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, audience: e.target.value }))
+                  }
+                  placeholder="Beginners and returning students…"
+                  className="w-full rounded-lg border border-transparent bg-input/50 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+                />
+              </div>
+
+              <StringListField
+                label="Highlights"
+                hint="Bullet points on the landing stack and details page."
+                values={form.highlights}
+                onChange={(highlights) =>
+                  setForm((p) => ({ ...p, highlights }))
+                }
+                placeholder="Live classes with recorded catch-up"
+              />
+              <StringListField
+                label="Outcomes"
+                hint="What students gain by the end."
+                values={form.outcomes}
+                onChange={(outcomes) => setForm((p) => ({ ...p, outcomes }))}
+                placeholder="Everyday conversation confidence"
+              />
+            </section>
+
+            <section className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <h3 className="text-sm font-medium text-foreground">
@@ -594,5 +780,59 @@ export function CourseEditorSheet({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  )
+}
+
+function StringListField({
+  label,
+  hint,
+  values,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  hint: string
+  values: string[]
+  onChange: (next: string[]) => void
+  placeholder: string
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      {values.map((value, index) => (
+        <div key={index} className="flex gap-2">
+          <Input
+            value={value}
+            onChange={(e) => {
+              const next = [...values]
+              next[index] = e.target.value
+              onChange(next)
+            }}
+            placeholder={placeholder}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => onChange(values.filter((_, i) => i !== index))}
+          >
+            Remove
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="secondary"
+        className="min-h-11 self-start"
+        onClick={() => onChange([...values, ''])}
+      >
+        <PlusIcon />
+        Add
+      </Button>
+    </div>
   )
 }

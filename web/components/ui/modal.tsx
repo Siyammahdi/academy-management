@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 export interface ModalProps {
@@ -81,7 +82,7 @@ export function Modal({
         onKeyDown={handleKeyDown}
         onClick={(event) => event.stopPropagation()}
         className={cn(
-          'flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-5 sm:rounded-xl sm:p-6',
+          'flex max-h-[92dvh] w-full max-w-lg flex-col gap-4 rounded-t-xl bg-background p-5 sm:rounded-xl sm:p-6',
           className,
         )}
       >
@@ -91,7 +92,9 @@ export function Modal({
         >
           {title}
         </h2>
-        {children}
+        <ScrollArea className="min-h-0 max-h-[min(60dvh,28rem)] pr-1">
+          <div className="pr-2">{children}</div>
+        </ScrollArea>
         {footer ? (
           <div className="flex flex-wrap justify-end gap-2 border-t border-border/60 pt-4">
             {footer}

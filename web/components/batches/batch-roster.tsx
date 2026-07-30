@@ -7,6 +7,7 @@ import { Pill } from '../ui/pill';
 import type { PillStatus } from '../ui/pill';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
 import { HomeworkPanel } from './homework-panel';
 import { RecordingsPanel } from './recordings-panel';
 import { formatDate } from '../../lib/format';
@@ -113,8 +114,19 @@ export function BatchRoster({
     setClassLinkError(null);
     setSavingClassLink(true);
     try {
-      const updated = await updateClassLink(batchId, classLinkInput.trim());
-      setBatch((prev) => (prev ? { ...prev, classLink: updated.classLink } : prev));
+      const updated = await updateClassLink(batchId, {
+        classLink: classLinkInput.trim(),
+      });
+      setBatch((prev) =>
+        prev
+          ? {
+              ...prev,
+              classLink: updated.classLink,
+              classStartsAt: updated.classStartsAt,
+              classEndsAt: updated.classEndsAt,
+            }
+          : prev,
+      );
       setClassLinkInput(updated.classLink ?? '');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -238,8 +250,8 @@ export function BatchRoster({
           </div>
         ) : null}
         {roster && roster.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+          <ScrollArea className="w-full">
+            <table className="w-full min-w-[36rem] border-collapse">
               <thead>
                 <tr className="bg-paper-sunken">
                   <th
@@ -300,7 +312,7 @@ export function BatchRoster({
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollArea>
         ) : null}
         {!roster ? (
           <p className="font-body text-body text-ink-muted">Loading…</p>

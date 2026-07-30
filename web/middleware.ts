@@ -10,7 +10,8 @@ const REQUIRED_ROLE_BY_PREFIX: Array<{ prefix: string; role: string }> = [
   { prefix: '/admin', role: 'admin' },
   { prefix: '/manager', role: 'manager' },
   { prefix: '/dashboard', role: 'student' },
-  { prefix: '/payments', role: 'student' },
+  // /payments/* is public — SSLCommerz redirects students AND guests here
+  // after checkout. The page never settles payment (PAY-03); it only shows status.
 ]
 
 const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/reset-password']
@@ -73,6 +74,5 @@ export const config = {
     '/admin/:path*',
     '/manager/:path*',
     '/dashboard/:path*',
-    '/payments/:path*',
   ],
 }

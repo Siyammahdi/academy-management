@@ -25,12 +25,12 @@
 | Auth | ✅ | Register, login, JWT + refresh rotation (SHA-256 hashed, rotated on use), argon2 passwords, 4 guards |
 | Users / Roles | ✅ | Multi-role per user; role assignment only via Prisma Studio — **no UI or endpoint** |
 | Students | ✅ | Profiles, sequential `ANA-####` IDs generated in-transaction |
-| Courses | ✅ | CRUD, archive, fee definitions, parts (JSON, inert), in-DB cover thumbnail (`Bytes` + mime; served via `GET /courses/:id/thumbnail`) |
+| Courses | ✅ | CRUD, archive, fee definitions, parts (JSON, inert), in-DB cover thumbnail, public `slug`, marketing fields (`featured`, tagline, highlights, …), `GET /courses?featured=true`, resolve by id or slug |
 | Batches | ✅ | CRUD, **fee snapshotting** (FEE-02/03 tested), capacity, windows, multi-manager assignment |
 | Enrollment | ✅ | Self-enroll, late joiners, withdrawal; concurrency-safe capacity with `SELECT FOR UPDATE` + Serializable + bounded P2034 retry |
 | Billing | ✅ | Period generation, amount-derived status, `/me/billing-periods` |
 | Payments | ✅ | Manual + gateway, verify, reject, refund, expiry; period status persisted on write (BIL-09) |
-| Gateway (SSLCommerz) | 🟡 ⚠️ | Session init + signature verification **written from spec, never tested against a live sandbox**. Highest-risk unproven area. |
+| Gateway (SSLCommerz) | 🟡 🌐 | Sandbox credentials configured via env. Session init + IPN signature + Order Validation API. Still needs one live sandbox round-trip with a public IPN URL (H-01). |
 | Guest payments | ✅ | Lookup + pay, sharing the payments write path; GST-05 field-leak discipline enforced |
 | Jobs (BullMQ) | ✅ | Penalty sweep, billing generation, gateway expiry; batched, idempotent, observable; admin manual-trigger endpoints |
 | Audit | ✅ | Append-only, written on every money-affecting and content mutation |
@@ -60,13 +60,14 @@
 | Ledger components (LedgerLine, AmountCell, StatusPill) | 🟡 🌐 The signature component |
 | Auth pages (login, register) | 🌐 Wired to the API, error-envelope mapping |
 | Public: about, contact | 🌐 Editorial rebuild; photography from `lib/marketing/media.ts` |
-| Public: landing page | 🌐 Eight editorial sections, GSAP motion per section, course/batch facts read live from the public API |
-| Public: marketing copy + photography registries (`lib/marketing/`) | 🌐 Single edit point for wording and images. **Images are licensed Unsplash placeholders** pending the client's own photography |
+| Public: landing page | 🌐 Eight editorial sections, GSAP motion; featured courses drive the programs stack (`GET /courses?featured=true`); fees/seats from live API |
+| Public: course details (`/courses/[slug]`) | 🌐 Dynamic from `GET /courses/:slug` — marketing copy, parts, fees, open batches |
+| Public: marketing copy + photography registries (`lib/marketing/`) | 🌐 Section chrome + i18n. Program body copy comes from course marketing fields. **Unsplash placeholders** pending client photography / course covers |
 | Marketing motion utilities (`lib/gsap/`) | 🌐 Mask reveals, parallax, counters, line draw, magnetic CTA; all gated on `prefers-reduced-motion` |
 | Public: guest payment (`/pay`) | 🌐 Three-step flow |
 | Admin: overview, courses, batches, roster, payments | 🌐 |
 | Manager: overview, batches, roster, verification queue | 🌐 |
-| Student: dashboard, dues, payments, browse/enroll, payment modal | 🌐 |
+| Student: dashboard (featured onboarding home), dues, payments, browse/enroll, payment modal | 🌐 |
 | Class features UI (link, homework, recordings) | 🌐 |
 
 **Deliberately absent from the public site:** testimonials, student success stories, and any aggregate statistic the platform cannot evidence. The live figures on the home page are counted from `GET /courses` and `GET /batches` and hide themselves when there is nothing open. Add a testimonials section only when real, attributable quotes exist.

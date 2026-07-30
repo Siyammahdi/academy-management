@@ -45,7 +45,7 @@ Every error returns this envelope. No exceptions.
 
 ### Error codes
 
-`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `THUMBNAIL_INVALID`
+`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `PAYMENT_AMOUNT_INVALID` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `THUMBNAIL_INVALID` · `COURSE_SLUG_TAKEN` · `GATEWAY_SESSION_FAILED` · `GATEWAY_NOT_CONFIGURED`
 
 Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
 
@@ -106,17 +106,18 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET` | `/courses` | Public | Active only. Each course includes `hasThumbnail` (boolean). Image bytes are never inlined. |
-| `GET` | `/courses/:id` | Public | Includes open batches |
-| `GET` | `/courses/:id/thumbnail` | Public | Raw cover image (`Content-Type` from stored mime). `404` when none. |
-| `POST` | `/courses` | Admin | Optional `thumbnail: { mimeType, data }` (base64) stored as Bytes |
+| `GET` | `/courses` | Public | Active only. Optional `?featured=true` (ordered by `featuredOrder`). Each course includes `hasThumbnail` (boolean) and marketing fields. Image bytes are never inlined. |
+| `GET` | `/courses/:idOrSlug` | Public | By cuid **or** slug. Includes batches whose enrollment window is open now (ENR-02), including `running` if the window has not closed. |
+| `GET` | `/courses/:idOrSlug/thumbnail` | Public | Raw cover image (`Content-Type` from stored mime). `404` when none. |
+| `POST` | `/courses` | Admin | Optional slug (auto from title), marketing fields, `thumbnail: { mimeType, data }` (base64) |
 | `PATCH` | `/courses/:id` | Admin | **Never affects existing batches** (FEE-03). Optional thumbnail replace, or `clearThumbnail: true` |
-| `POST` | `/courses/:id/archive` | Admin | |
+| `POST` | `/courses/:id/archive` | Admin | Also clears `featured` |
 
 ```jsonc
 // POST /courses
 {
   "title": "Learning Arabic Language",
+  "slug": "learning-arabic-language", // optional — auto from title
   "description": "...",
   "billingType": "monthly",
   "enrollmentFee": "1000.00",
@@ -126,6 +127,15 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
     { "name": "Intermediate", "durationMonths": 8 },
     { "name": "Advanced", "durationMonths": 8 }
   ],
+  "featured": true,
+  "featuredOrder": 0,
+  "tagline": "Read, write, and speak with confidence.",
+  "category": "Arabic",
+  "emphasis": "from the foundations",
+  "focus": "A clear path from alphabet to fluency.",
+  "highlights": ["Live classes with recorded catch-up"],
+  "audience": "Beginners and returning students…",
+  "outcomes": ["Everyday conversation confidence"],
   // optional — jpeg/png/webp/gif, decoded size ≤ 2 MB, stored as Bytes on the row
   "thumbnail": {
     "mimeType": "image/jpeg",
@@ -134,14 +144,14 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
 }
 ```
 
-Error code `THUMBNAIL_INVALID` (400) when the mime type or decoded size is rejected.
+Error codes: `THUMBNAIL_INVALID` (400) · `COURSE_SLUG_TAKEN` (409).
 ---
 
 ## 4. Batches
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET` | `/batches` | Public | Filter `?status=enrolling&courseId=` |
+| `GET` | `/batches` | Public | Filter `?status=enrolling&courseId=` · `?open=true` = within enrollment window (ENR-02), not only status `enrolling` |
 | `GET` | `/batches/:id` | Public | Includes `seatsRemaining` |
 | `POST` | `/batches` | Admin | **Snapshots course fees** (FEE-02) |
 | `PATCH` | `/batches/:id` | Admin | |
@@ -174,6 +184,7 @@ Error code `THUMBNAIL_INVALID` (400) when the mime type or decoded size is rejec
 | `POST` | `/batches/:id/enroll` | Student | Window + capacity checked (ENR-02, ENR-04) |
 | `POST` | `/batches/:id/late-joiner` | **Admin** | Bypasses the window (ENR-08) |
 | `POST` | `/enrollments/:id/withdraw` | **Admin** | |
+| `POST` | `/enrollments/:id/reinstate` | **Admin** | Reinclude withdrawn student (capacity checked → `active`) |
 | `GET` | `/me/enrollments` | Student | |
 
 ```jsonc
@@ -211,7 +222,7 @@ The two unbuilt rows have no controller, service method, or route today — see 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `POST` | `/billing-periods/:id/pay/gateway` | Student | Returns SSLCommerz redirect URL |
-| `POST` | `/billing-periods/:id/pay/manual` | Student | Requires reference + proof (PAY-06) |
+| `POST` | `/billing-periods/:id/pay/manual` | Student | Requires reference + https `proofUrl` (PAY-06). Amount MUST equal full outstanding (`PAYMENT_AMOUNT_INVALID` otherwise). |
 | `GET` | `/payments/pending` | Manager (own) / Admin | Verification queue |
 | `POST` | `/payments/:id/verify` | Manager (own) / Admin | **Blocked on own enrollment** (RBAC-03) |
 | `POST` | `/payments/:id/reject` | Manager (own) / Admin | Removes penalty protection (PAY-09) |
@@ -292,17 +303,19 @@ No notification fires on decision (REQ-08).
 | Method | Path | Auth |
 |---|---|---|
 | `POST` | `/webhooks/sslcommerz` | **Signature verification only** |
+| `POST` | `/payments/gateway/confirm` | Public | `{ transactionReference, valId }` — Order Validation API, then settle |
 
-**The webhook is the sole source of truth** (PAY-03). The browser redirect updates the UI; it never settles a payment.
+**PAY-03:** the browser is never trusted alone. Settlement requires SSLCommerz **Order Validation** (via IPN or the success-return confirm endpoint).
 
-Flow:
-1. Verify the signature. Invalid → `401 INVALID_WEBHOOK_SIGNATURE`, log, stop.
-2. Look up the payment by `transactionReference`. Already `verified` → return `200` (PAY-04).
-3. On success: settle inside a transaction — payment `verified`, `amountPaid` incremented, period status recomputed, penalty flag re-evaluated, audit written, notification queued.
-4. On failure: mark `rejected`.
-5. Always return `200` for handled callbacks so SSLCommerz stops retrying.
+On success (`VALID` / `VALIDATED` + amount match): payment `verified`, period updated, **enrollment → `active` (ENR-06)** — no manager verification for online pay. Manual pay still needs verify (ENR-07).
 
-Redirect endpoints (`/payments/success`, `/payments/fail`, `/payments/cancel`) are **frontend routes** that display status. They may show "processing" if the webhook has not yet landed.
+IPN flow:
+1. Verify signature. Invalid → `401 INVALID_WEBHOOK_SIGNATURE`.
+2. Look up payment by `transactionReference`. Already `verified` → `200` (PAY-04).
+3. Validate with Order Validation API; settle or leave pending / reject.
+4. Always `200` for handled callbacks.
+
+Success return: SSLCommerz POSTs to `/payments/sslcommerz-return` → redirects to `/payments/success?tran_id&val_id` → client calls confirm. Fail/cancel pages are status-only.
 
 ---
 
@@ -341,11 +354,11 @@ Content that attaches to a batch. All manager-write routes are batch-scoped via 
 
 **Class link**
 
-| Method | Path | Auth |
-|---|---|---|
-| `PATCH` | `/batches/:id/class-link` | Manager (own) / Admin |
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `PATCH` | `/batches/:id/class-link` | Manager (own) / Admin | `{ classLink, classStartsAt?, classEndsAt?, clearSchedule? }` — join opens 5 minutes before start |
 
-The link is returned by `GET /batches/:id` and surfaced to students on `GET /me/enrollments`.
+The link and schedule are returned by `GET /batches/:id` and surfaced to students on `GET /me/enrollments`.
 
 **Homework**
 

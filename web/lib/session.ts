@@ -62,3 +62,10 @@ export function getRoles(): string[] {
 export function isAuthenticated(): boolean {
   return Boolean(getAccessToken())
 }
+
+/** Prefer admin → manager → student dashboard for logged-in marketing CTAs. */
+export function homePathForRoles(roles: string[] = getRoles()): string {
+  if (roles.includes('admin')) return '/admin'
+  if (roles.includes('manager')) return '/manager'
+  return '/dashboard'
+}

@@ -6,11 +6,8 @@ import { ArrowUpRightIcon } from 'lucide-react'
 
 import { Eyebrow } from '@/components/marketing/eyebrow'
 import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
-import { MarketingImage } from '@/components/marketing/marketing-image'
-import {
-  useAcademyData,
-  useCourseByKeywords,
-} from '@/components/marketing/academy-data'
+import { useAcademyData } from '@/components/marketing/academy-data'
+import { CourseCover } from '@/components/student/course-cover'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,26 +17,26 @@ import { blurRise, wordRise } from '@/lib/gsap/motion'
 import { EASE, ScrollTrigger } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
-import type { MarketingCopy, MarketingProgramCopy } from '@/lib/marketing/types'
+import type { MarketingCopy } from '@/lib/marketing/types'
+import { resolveEnrollCta } from '@/lib/marketing/enroll-cta'
+import { usePublicAuth } from '@/lib/use-public-auth'
 import { cn } from '@/lib/utils'
 
 /**
- * Sticky stack of course cards. Each card pins near the top of the viewport
- * while the next slides over it and scales the one beneath — the classic
- * Awwwards stack pattern. Parent must not use overflow:hidden or sticky dies.
+ * Sticky stack of featured courses — editorial marketing layout driven by
+ * admin `featured` + marketing fields, not traditional course cards.
  */
 export function LandingPrograms() {
   const t = useMarketingCopy()
   const rootRef = useRef<HTMLElement>(null)
-  const { status } = useAcademyData()
-  // First three flagship entries drive the stack (Arabic, Qur’an, Path).
-  const cards = t.flagship.slice(0, 3)
+  const { status, featuredCourses } = useAcademyData()
+  const cards = featuredCourses
 
   useEffect(() => {
     if (status !== 'ready') return
     const id = requestAnimationFrame(() => ScrollTrigger.refresh())
     return () => cancelAnimationFrame(id)
-  }, [status])
+  }, [status, cards.length])
 
   useGsapContext(rootRef, (gsap) => {
     const root = rootRef.current
@@ -59,7 +56,6 @@ export function LandingPrograms() {
         const inner = card.querySelector<HTMLElement>('[data-stack-inner]')
         if (!inner) return
 
-        // Scale + dim the card underneath as the next one covers it.
         if (index < stackCards.length - 1) {
           const next = stackCards[index + 1]
           gsap.fromTo(
@@ -148,10 +144,24 @@ export function LandingPrograms() {
         </div>
 
         <div className="relative mt-14 space-y-6 pb-[2vh] sm:mt-20 sm:space-y-8">
-          {cards.map((program, index) => (
+          {status === 'loading' ? (
+            <>
+              <Skeleton className="h-80 w-full rounded-3xl" />
+              <Skeleton className="h-80 w-full rounded-3xl" />
+            </>
+          ) : null}
+
+          {status === 'ready' && cards.length === 0 ? (
+            <p className="rounded-3xl bg-muted/50 px-6 py-10 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Featured programs will appear here when admissions marks a course
+              as featured. In the meantime, ask about the next open batch.
+            </p>
+          ) : null}
+
+          {cards.map((course, index) => (
             <StackCard
-              key={program.slug}
-              program={program}
+              key={course.id}
+              course={course}
               index={index}
               total={cards.length}
             />
@@ -162,10 +172,6 @@ export function LandingPrograms() {
   )
 }
 
-/**
- * Soft three-tone stack — cream, lavender, mint — so every card reads as
- * its own colour while staying on design-system surface tokens (doc 09 §2).
- */
 const CARD_THEMES = [
   {
     surface: 'bg-status-pending-bg border-status-pending/20',
@@ -178,9 +184,7 @@ const CARD_THEMES = [
     dot: 'bg-status-pending',
     imageRing: 'ring-8 ring-background/70',
     button: 'bg-status-pending text-primary-foreground hover:bg-status-pending/90',
-    buttonVariant: 'default' as const,
     iconWrap: 'bg-primary-foreground/20',
-    inverse: false,
   },
   {
     surface: 'bg-primary-wash border-primary/25',
@@ -193,9 +197,7 @@ const CARD_THEMES = [
     dot: 'bg-primary',
     imageRing: 'ring-8 ring-background/70',
     button: '',
-    buttonVariant: 'default' as const,
     iconWrap: 'bg-primary-foreground/20',
-    inverse: false,
   },
   {
     surface: 'bg-status-paid-bg border-status-paid/20',
@@ -208,31 +210,36 @@ const CARD_THEMES = [
     dot: 'bg-status-paid',
     imageRing: 'ring-8 ring-background/70',
     button: 'bg-status-paid text-primary-foreground hover:bg-status-paid/90',
-    buttonVariant: 'default' as const,
     iconWrap: 'bg-primary-foreground/20',
-    inverse: false,
   },
 ] as const
 
 function StackCard({
-  program,
+  course,
   index,
   total,
 }: {
-  program: MarketingProgramCopy
+  course: Course
   index: number
   total: number
 }) {
   const t = useMarketingCopy()
   const ui = t.programs
+  const auth = usePublicAuth()
   const { status, openBatchByCourseId } = useAcademyData()
-  const course = useCourseByKeywords(program.keywords)
-  const batch = course ? (openBatchByCourseId.get(course.id) ?? null) : null
+  const batch = openBatchByCourseId.get(course.id) ?? null
   const canEnroll = Boolean(batch && batch.seatsRemaining > 0)
-  const isPath = program.slug === 'path'
+  const enrollCta = resolveEnrollCta(auth, canEnroll, {
+    register: ui.register,
+    enrollNow: ui.enrollNow,
+    goToApp: t.nav.goToApp,
+    askNext: ui.askNext,
+  })
   const theme = CARD_THEMES[index % CARD_THEMES.length] ?? CARD_THEMES[0]
-
-  // Sticky offset steps slightly so edges of lower cards peek out.
+  const highlights = course.highlights?.length
+    ? course.highlights
+    : []
+  const indexLabel = String(index + 1).padStart(2, '0')
   const top = `calc(5.5rem + ${index * 0.75}rem)`
 
   return (
@@ -249,7 +256,6 @@ function StackCard({
         )}
       >
         <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
-          {/* Left — identity + story */}
           <div className="lg:col-span-4">
             <p
               data-stack-reveal
@@ -258,8 +264,8 @@ function StackCard({
                 theme.label,
               )}
             >
-              {program.index}
-              {program.category ? ` / ${program.category}` : ''}
+              {indexLabel}
+              {course.category ? ` / ${course.category}` : ''}
             </p>
 
             <h3
@@ -269,8 +275,8 @@ function StackCard({
                 theme.title,
               )}
             >
-              {course?.title ?? program.name}
-              {program.emphasis ? (
+              {course.title}
+              {course.emphasis ? (
                 <>
                   {' '}
                   <em
@@ -279,7 +285,7 @@ function StackCard({
                       theme.emphasis,
                     )}
                   >
-                    {program.emphasis}
+                    {course.emphasis}
                   </em>
                 </>
               ) : null}
@@ -292,35 +298,31 @@ function StackCard({
                 theme.body,
               )}
             >
-              {course?.description?.trim() || program.description}
+              {course.tagline?.trim() ||
+                course.description?.trim() ||
+                'Details on the course page.'}
             </p>
 
             <div data-stack-reveal className="mt-6">
-              <BatchState
-                status={status}
-                batch={batch}
-                hasCourse={course !== null}
-                isPath={isPath}
-                labels={ui}
-              />
+              <BatchState status={status} batch={batch} labels={ui} />
             </div>
           </div>
 
-          {/* Center — photograph */}
           <div data-stack-reveal className="lg:col-span-4">
-            <MarketingImage
-              image={program.image}
+            <CourseCover
+              courseId={course.id}
+              title={course.title}
+              hasThumbnail={course.hasThumbnail}
+              updatedAt={course.updatedAt}
               className={cn(
-                'aspect-4/5 w-full sm:aspect-square',
+                'aspect-4/5 w-full rounded-2xl sm:aspect-square',
                 theme.imageRing,
               )}
-              sizes="(min-width: 1024px) 28vw, 100vw"
             />
           </div>
 
-          {/* Right — features + CTA */}
           <div className="lg:col-span-4">
-            {program.focus ? (
+            {course.focus ? (
               <p
                 data-stack-reveal
                 className={cn(
@@ -328,72 +330,52 @@ function StackCard({
                   theme.focus,
                 )}
               >
-                {program.focus}
+                {course.focus}
               </p>
             ) : null}
 
-            <ul data-stack-reveal className="mt-5 space-y-3">
-              {program.includes.map((item) => (
-                <li
-                  key={item}
-                  className={cn(
-                    'flex items-start gap-2.5 text-sm leading-relaxed',
-                    theme.item,
-                  )}
-                >
-                  <span
-                    aria-hidden
+            {highlights.length > 0 ? (
+              <ul data-stack-reveal className="mt-5 space-y-3">
+                {highlights.map((item) => (
+                  <li
+                    key={item}
                     className={cn(
-                      'mt-1.5 size-1.5 shrink-0 rounded-full',
-                      theme.dot,
+                      'flex items-start gap-2.5 text-sm leading-relaxed',
+                      theme.item,
                     )}
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'mt-1.5 size-1.5 shrink-0 rounded-full',
+                        theme.dot,
+                      )}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
 
             <div data-stack-reveal className="mt-8">
               <ProgramTerms
                 status={status}
                 course={course}
                 batch={batch}
-                isPath={isPath}
                 labels={ui}
-                inverse={theme.inverse}
               />
             </div>
 
-            <div data-stack-reveal className="mt-8">
+            <div data-stack-reveal className="mt-8 flex flex-wrap gap-3">
               <Button
                 className={cn(
                   'min-h-11 gap-2 rounded-full px-5',
                   theme.button || undefined,
                 )}
-                variant={
-                  theme.button
-                    ? 'default'
-                    : canEnroll
-                      ? 'default'
-                      : 'outline'
-                }
-                render={
-                  <Link
-                    href={
-                      canEnroll
-                        ? '/register'
-                        : isPath
-                          ? '#enrollment'
-                          : '/contact'
-                    }
-                  />
-                }
+                variant={theme.button ? 'default' : 'default'}
+                render={<Link href={`/courses/${course.slug}`} />}
               >
-                {canEnroll
-                  ? ui.register
-                  : isPath
-                    ? ui.viewProgram
-                    : ui.askNext}
+                {ui.viewProgram}
                 <span
                   className={cn(
                     'flex size-7 items-center justify-center rounded-full',
@@ -403,9 +385,15 @@ function StackCard({
                   <ArrowUpRightIcon className="size-3.5" />
                 </span>
               </Button>
+              <Button
+                variant="outline"
+                className="min-h-11 rounded-full px-5"
+                render={<Link href={enrollCta.href} />}
+              >
+                {enrollCta.label}
+              </Button>
             </div>
 
-            {/* Keep last card from feeling cut off under the sticky stack. */}
             {index === total - 1 ? <span className="sr-only" /> : null}
           </div>
         </div>
@@ -417,23 +405,17 @@ function StackCard({
 function BatchState({
   status,
   batch,
-  hasCourse,
-  isPath,
   labels,
 }: {
   status: 'loading' | 'ready' | 'error'
   batch: BatchWithSeats | null
-  hasCourse: boolean
-  isPath: boolean
   labels: MarketingCopy['programs']
 }) {
-  if (isPath) return null
-
   if (status === 'loading') {
     return <Skeleton className="h-6 w-28 rounded-md" />
   }
 
-  if (status === 'error' || !hasCourse) {
+  if (status === 'error') {
     return (
       <span className="rounded-md bg-status-neutral-bg px-2.5 py-1 text-xs font-medium text-status-neutral">
         {labels.batchOnRequest}
@@ -468,99 +450,49 @@ function ProgramTerms({
   status,
   course,
   batch,
-  isPath,
   labels,
-  inverse = false,
 }: {
   status: 'loading' | 'ready' | 'error'
-  course: Course | null
+  course: Course
   batch: BatchWithSeats | null
-  isPath: boolean
   labels: MarketingCopy['programs']
-  inverse?: boolean
 }) {
-  if (isPath) return null
-
   if (status === 'loading') {
     return <Skeleton className="h-16 w-full rounded-xl" />
   }
 
-  const muted = inverse
-    ? 'text-primary-foreground/60'
-    : 'text-muted-foreground'
-  const strong = inverse ? 'text-primary-foreground' : 'text-foreground'
-  const rule = inverse ? 'border-primary-foreground/20' : 'border-primary/15'
-
-  if (!course) {
-    return (
-      <p className={cn('text-sm leading-relaxed', muted)}>
-        {labels.feesPending}
-      </p>
-    )
-  }
-
   return (
-    <dl className={cn('flex flex-wrap gap-x-8 gap-y-4 border-t pt-5', rule)}>
+    <dl className="flex flex-wrap gap-x-8 gap-y-4 border-t border-primary/15 pt-5">
       <div>
-        <dt
-          className={cn(
-            'text-xs font-medium tracking-wide uppercase',
-            muted,
-          )}
-        >
+        <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
           {labels.entryFee}
         </dt>
-        <dd
-          className={cn(
-            'mt-1 font-heading text-lg font-semibold tabular-nums',
-            strong,
-          )}
-        >
+        <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
           {formatMoney(course.enrollmentFee)}
         </dd>
       </div>
       {course.billingType === 'monthly' ? (
         <div>
-          <dt
-            className={cn(
-              'text-xs font-medium tracking-wide uppercase',
-              muted,
-            )}
-          >
+          <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
             {labels.monthly}
           </dt>
-          <dd
-            className={cn(
-              'mt-1 font-heading text-lg font-semibold tabular-nums',
-              strong,
-            )}
-          >
+          <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
             {formatMoney(course.monthlyFee)}
           </dd>
         </div>
       ) : null}
       {batch ? (
         <div>
-          <dt
-            className={cn(
-              'text-xs font-medium tracking-wide uppercase',
-              muted,
-            )}
-          >
+          <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
             {labels.seatsLeft}
           </dt>
-          <dd
-            className={cn(
-              'mt-1 font-heading text-lg font-semibold tabular-nums',
-              strong,
-            )}
-          >
+          <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
             {batch.seatsRemaining}
           </dd>
         </div>
       ) : null}
       {batch ? (
-        <p className={cn('basis-full text-xs', muted)}>
+        <p className="basis-full text-xs text-muted-foreground">
           {labels.batchMeta(
             batch.name,
             formatDate(batch.courseStartDate),

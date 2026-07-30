@@ -15,11 +15,16 @@ import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMagnetic } from '@/lib/gsap/use-magnetic'
 import { MEDIA } from '@/lib/marketing/media'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
+import { usePublicAuth } from '@/lib/use-public-auth'
 
 /** Closing invitation: full-bleed photograph, one magnetic primary action. */
 export function LandingCta() {
   const t = useMarketingCopy()
+  const auth = usePublicAuth()
   const closing = t.closing
+  const primary = auth.authenticated
+    ? { href: auth.homeHref, label: t.nav.goToApp }
+    : { href: '/register', label: closing.createAccount }
   const rootRef = useRef<HTMLElement>(null)
   const magneticRef = useMagnetic<HTMLAnchorElement>(0.28)
 
@@ -137,9 +142,9 @@ export function LandingCta() {
             <Button
               size="lg"
               className="min-h-12 bg-primary-foreground px-6 text-primary-strong hover:bg-primary-foreground/90"
-              render={<Link ref={magneticRef} href="/register" />}
+              render={<Link ref={magneticRef} href={primary.href} />}
             >
-              {closing.createAccount}
+              {primary.label}
               <span data-cta-arrow className="inline-flex">
                 <ArrowRightIcon />
               </span>

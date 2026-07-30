@@ -2,23 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import {
-  CheckIcon,
-  CopyIcon,
-  ExternalLinkIcon,
-  RefreshCwIcon,
-} from 'lucide-react'
-import { toast } from 'sonner'
+import { RefreshCwIcon } from 'lucide-react'
 
 import { ClassroomSpotlight } from '@/components/student/classroom-spotlight'
+import { ClassJoinControls } from '@/components/student/class-join-controls'
 import { CourseCover } from '@/components/student/course-cover'
 import { StudentPageHeader } from '@/components/student/student-page-header'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  activeClassrooms,
-} from '@/lib/student-dashboard'
+import { activeClassrooms } from '@/lib/student-dashboard'
 import {
   listMyEnrollments,
   type EnrollmentWithBatch,
@@ -26,14 +19,13 @@ import {
 
 /**
  * Student — Class Links
- * Join URLs from active enrollments (batch.classLink on GET /me/enrollments).
+ * Join URLs from active enrollments; join unlocks 5 minutes before schedule.
  */
 export default function StudentClassroomPage() {
   const [enrollments, setEnrollments] = useState<EnrollmentWithBatch[] | null>(
     null,
   )
   const [error, setError] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   async function reload(): Promise<void> {
     try {
@@ -61,23 +53,12 @@ export default function StudentClassroomPage() {
       (e) => e.status === 'active' && !e.batch.classLink,
     ) ?? []
 
-  async function copyLink(id: string, url: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Class link copied')
-      setCopiedId(id)
-      window.setTimeout(() => setCopiedId(null), 2000)
-    } catch {
-      toast.error('Could not copy the link.')
-    }
-  }
-
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <StudentPageHeader
         eyebrow="Learning"
         title="Class Links"
-        description="Join live class for each active enrollment. Teaching happens off-platform — open the link or copy it for another device."
+        description="Join live class for each active enrollment. The join button unlocks five minutes before the scheduled start and locks again at the end time."
         actions={
           <Button
             variant="outline"
@@ -135,16 +116,13 @@ export default function StudentClassroomPage() {
           ) : (
             <ul className="flex flex-col gap-2">
               {enrollments.map((enrollment) => {
-                const link =
-                  enrollment.status === 'active'
-                    ? enrollment.batch.classLink
-                    : null
+                const isActive = enrollment.status === 'active'
                 return (
                   <li
                     key={enrollment.id}
                     className="overflow-hidden rounded-xl bg-muted/50"
                   >
-                    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                    <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start">
                       <CourseCover
                         courseId={enrollment.batch.course.id}
                         title={enrollment.batch.course.title}
@@ -153,68 +131,35 @@ export default function StudentClassroomPage() {
                         compact
                         className="size-16 shrink-0 rounded-xl sm:size-20"
                       />
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="font-heading text-base font-semibold text-foreground">
-                            {enrollment.batch.course.title}
-                          </h2>
-                          <StatusBadge
-                            tone={
-                              enrollment.status === 'active'
-                                ? 'paid'
-                                : enrollment.status === 'pending'
-                                  ? 'pending'
-                                  : 'neutral'
-                            }
-                            label={enrollment.status}
-                          />
-                          {enrollment.status === 'active' ? (
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-heading text-base font-semibold text-foreground">
+                              {enrollment.batch.course.title}
+                            </h2>
                             <StatusBadge
-                              tone={link ? 'paid' : 'pending'}
-                              label={link ? 'Link ready' : 'No link'}
+                              tone={
+                                enrollment.status === 'active'
+                                  ? 'paid'
+                                  : enrollment.status === 'pending'
+                                    ? 'pending'
+                                    : 'neutral'
+                              }
+                              label={enrollment.status}
                             />
-                          ) : null}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {enrollment.batch.name}
-                        </p>
-                        {link ? (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {link}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {enrollment.batch.name}
                           </p>
-                        ) : null}
-                      </div>
-                      {link ? (
-                        <div className="flex shrink-0 flex-wrap gap-2">
-                          <Button
-                            className="min-h-11"
-                            render={
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              />
-                            }
-                          >
-                            <ExternalLinkIcon />
-                            Join class
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            className="min-h-11"
-                            onClick={() => {
-                              void copyLink(enrollment.id, link)
-                            }}
-                          >
-                            {copiedId === enrollment.id ? (
-                              <CheckIcon />
-                            ) : (
-                              <CopyIcon />
-                            )}
-                            {copiedId === enrollment.id ? 'Copied' : 'Copy'}
-                          </Button>
                         </div>
-                      ) : null}
+                        {isActive ? (
+                          <ClassJoinControls batch={enrollment.batch} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Class join unlocks after your enrollment is active.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </li>
                 )

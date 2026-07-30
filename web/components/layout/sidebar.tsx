@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 
 import { UserMenu } from '@/components/layout/user-menu'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AuthUser } from '@/lib/auth'
 import {
@@ -131,46 +132,48 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-3">
-        {navSections.map((section, sectionIndex) => (
-          <div
-            key={section.label ?? `section-${sectionIndex}`}
-            className="space-y-1"
-          >
-            {section.label ? (
-              <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {section.label}
-              </p>
-            ) : null}
-            {section.items.map((item) => {
-              const isRoot = item.href === rootHref
-              const isActive = isRoot
-                ? pathname === item.href
-                : pathname.startsWith(item.href)
-              const Icon = ICONS[item.href]
+      <ScrollArea className="min-h-0 flex-1 px-3">
+        <div className="flex flex-col gap-5 py-1">
+          {navSections.map((section, sectionIndex) => (
+            <div
+              key={section.label ?? `section-${sectionIndex}`}
+              className="space-y-1"
+            >
+              {section.label ? (
+                <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  {section.label}
+                </p>
+              ) : null}
+              {section.items.map((item) => {
+                const isRoot = item.href === rootHref
+                const isActive = isRoot
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href)
+                const Icon = ICONS[item.href]
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary-wash text-primary-strong'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  {Icon ? (
-                    <Icon className="size-4 shrink-0 opacity-80" />
-                  ) : null}
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-      </div>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary-wash text-primary-strong'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    {Icon ? (
+                      <Icon className="size-4 shrink-0 opacity-80" />
+                    ) : null}
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
 
       <div className="border-t border-border/40 p-2">
         {userLoading ? (

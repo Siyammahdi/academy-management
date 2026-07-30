@@ -12,26 +12,25 @@ import {
 import { toast } from 'sonner'
 
 import { AdminBatchHero } from '@/components/admin/admin-batch-hero'
+import { AssignManagersPanel } from '@/components/admin/assign-managers-panel'
 import { AmountCell } from '@/components/money/amount-cell'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
+import { DateTimePicker } from '@/components/ui/datetime-picker'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
 import {
-  assignManager,
   changeBatchStatus,
   getBatch,
   getCourse,
-  listUsers,
-  removeManager,
   updateBatch,
   type BatchStatus,
   type BatchWithSeats,
   type Course,
   type UpdateBatchInput,
-  type UserSummary,
 } from '@/lib/api-client'
 import { apiErrorMessage } from '@/lib/error-message'
 import { formatDate } from '@/lib/format'
@@ -115,10 +114,6 @@ export default function AdminBatchOverviewPage() {
   const [statusSaving, setStatusSaving] = useState(false)
 
   const [managersOpen, setManagersOpen] = useState(false)
-  const [managerUsers, setManagerUsers] = useState<UserSummary[] | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [managersError, setManagersError] = useState<string | null>(null)
-  const [managersBusy, setManagersBusy] = useState(false)
 
   async function load(): Promise<void> {
     setBusy(true)
@@ -219,58 +214,9 @@ export default function AdminBatchOverviewPage() {
     }
   }
 
-  async function openManagers(): Promise<void> {
-    setManagersError(null)
-    setSelectedUserId('')
+  function openManagers(): void {
     setManagersOpen(true)
-    try {
-      setManagerUsers(await listUsers('manager'))
-    } catch {
-      setManagersError('Managers could not be loaded.')
-    }
   }
-
-  async function handleAssign(): Promise<void> {
-    if (!selectedUserId) return
-    setManagersBusy(true)
-    setManagersError(null)
-    try {
-      await assignManager(batchId, selectedUserId)
-      setSelectedUserId('')
-      toast.success('Manager assigned')
-      await load()
-    } catch (err) {
-      setManagersError(
-        err instanceof ApiError
-          ? apiErrorMessage(err.body, 'This manager could not be assigned.')
-          : 'This manager could not be assigned.',
-      )
-    } finally {
-      setManagersBusy(false)
-    }
-  }
-
-  async function handleRemoveManager(userId: string): Promise<void> {
-    setManagersBusy(true)
-    setManagersError(null)
-    try {
-      await removeManager(batchId, userId)
-      toast.success('Manager removed')
-      await load()
-    } catch (err) {
-      setManagersError(
-        err instanceof ApiError
-          ? apiErrorMessage(err.body, 'This manager could not be removed.')
-          : 'This manager could not be removed.',
-      )
-    } finally {
-      setManagersBusy(false)
-    }
-  }
-
-  const assignableUsers = (managerUsers ?? []).filter(
-    (u) => !(batch?.managers.some((m) => m.userId === u.id) ?? false),
-  )
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -304,7 +250,7 @@ export default function AdminBatchOverviewPage() {
                 variant="outline"
                 className="min-h-11 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10"
                 onClick={() => {
-                  void openManagers()
+                  openManagers()
                 }}
               >
                 <UsersIcon />
@@ -383,7 +329,7 @@ export default function AdminBatchOverviewPage() {
                 className="mt-4 min-h-11"
                 variant="secondary"
                 onClick={() => {
-                  void openManagers()
+                  openManagers()
                 }}
               >
                 <UserPlusIcon />
@@ -491,38 +437,29 @@ export default function AdminBatchOverviewPage() {
                 }
               />
             </div>
-            <Input
+            <DatePicker
               label="Course start date"
-              type="date"
               required
               value={editForm.courseStartDate}
-              onChange={(e) =>
-                setEditForm((p) =>
-                  p ? { ...p, courseStartDate: e.target.value } : p,
-                )
+              onChange={(courseStartDate) =>
+                setEditForm((p) => (p ? { ...p, courseStartDate } : p))
               }
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
+              <DateTimePicker
                 label="Enrollment opens"
-                type="datetime-local"
                 required
                 value={editForm.enrollmentOpensAt}
-                onChange={(e) =>
-                  setEditForm((p) =>
-                    p ? { ...p, enrollmentOpensAt: e.target.value } : p,
-                  )
+                onChange={(enrollmentOpensAt) =>
+                  setEditForm((p) => (p ? { ...p, enrollmentOpensAt } : p))
                 }
               />
-              <Input
+              <DateTimePicker
                 label="Enrollment closes"
-                type="datetime-local"
                 required
                 value={editForm.enrollmentClosesAt}
-                onChange={(e) =>
-                  setEditForm((p) =>
-                    p ? { ...p, enrollmentClosesAt: e.target.value } : p,
-                  )
+                onChange={(enrollmentClosesAt) =>
+                  setEditForm((p) => (p ? { ...p, enrollmentClosesAt } : p))
                 }
               />
             </div>
@@ -625,70 +562,15 @@ export default function AdminBatchOverviewPage() {
         onClose={() => setManagersOpen(false)}
         title={`Managers · ${batch?.name ?? ''}`}
       >
-        <div className="flex flex-col gap-4">
-          {batch && batch.managers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No managers assigned yet.
-            </p>
-          ) : null}
-          {batch && batch.managers.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {batch.managers.map((m) => (
-                <li
-                  key={m.userId}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-muted/60 px-3 py-2"
-                >
-                  <span className="min-w-0 truncate text-sm">{m.email}</span>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="min-h-11 shrink-0"
-                    disabled={managersBusy}
-                    onClick={() => {
-                      void handleRemoveManager(m.userId)
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-end">
-            <FilterDropdown
-              label="Assign a manager"
-              value={selectedUserId || '__none__'}
-              placeholder="Select a manager"
-              options={[
-                { value: '__none__', label: 'Select a manager' },
-                ...assignableUsers.map((u) => ({
-                  value: u.id,
-                  label: u.email,
-                })),
-              ]}
-              onChange={(value) =>
-                setSelectedUserId(value === '__none__' ? '' : value)
-              }
-              className="flex-1"
-              contentClassName="min-w-72"
-            />
-            <Button
-              className="min-h-11"
-              disabled={managersBusy || !selectedUserId}
-              onClick={() => {
-                void handleAssign()
-              }}
-            >
-              Assign
-            </Button>
-          </div>
-          {managersError ? (
-            <p className="text-sm text-status-overdue" role="alert">
-              {managersError}
-            </p>
-          ) : null}
-        </div>
+        {batch ? (
+          <AssignManagersPanel
+            batchId={batchId}
+            managers={batch.managers}
+            onChanged={async () => {
+              await load()
+            }}
+          />
+        ) : null}
       </Modal>
     </div>
   )

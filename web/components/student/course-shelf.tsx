@@ -13,6 +13,7 @@ import { AmountCell } from '@/components/money/amount-cell'
 import { StatusBadge } from '@/components/money/status-badge'
 import { CourseCover } from '@/components/student/course-cover'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatDate } from '@/lib/format'
 import { periodAttention } from '@/lib/period-status'
 import type {
@@ -70,7 +71,8 @@ export function CourseShelf({
   }
 
   return (
-    <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <ScrollArea className="-mx-3 w-[calc(100%+1.5rem)] sm:mx-0 sm:w-full">
+    <div className="flex w-max snap-x snap-mandatory gap-3 px-3 pb-3 sm:grid sm:w-full sm:snap-none sm:grid-cols-2 sm:px-0 sm:pb-0 xl:grid-cols-3">
       {enrollments.map((enrollment) => {
         const period = periodFor(enrollment.id)
         const attention = period
@@ -227,5 +229,6 @@ export function CourseShelf({
         )
       })}
     </div>
+    </ScrollArea>
   )
 }

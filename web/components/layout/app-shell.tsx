@@ -115,7 +115,7 @@ function AppShellChrome({
                 aria-label="Close menu"
                 onClick={() => setIsDrawerOpen(false)}
               />
-              <div className="relative z-10 h-full w-80 max-w-[85vw] overflow-y-auto bg-background">
+              <div className="relative z-10 h-full w-80 max-w-[85vw] overflow-hidden bg-background">
                 <Sidebar
                   title={title}
                   items={items}

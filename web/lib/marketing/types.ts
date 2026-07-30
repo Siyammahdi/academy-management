@@ -36,6 +36,8 @@ export interface MarketingCopy {
     payFees: string
     logIn: string
     register: string
+    /** Logged-in CTA — opens role home (dashboard / manager / admin). */
+    goToApp: string
     openMenu: string
     closeMenu: string
     primaryNav: string
@@ -84,6 +86,7 @@ export interface MarketingCopy {
     openSuffix: string
     perMonth: string
     register: string
+    enrollNow: string
     askNext: string
     viewProgram: string
     batchOnRequest: string

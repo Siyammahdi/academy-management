@@ -1,16 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  CheckIcon,
-  CopyIcon,
-  ExternalLinkIcon,
-  RadioIcon,
-} from 'lucide-react'
-import { toast } from 'sonner'
+import { RadioIcon } from 'lucide-react'
 
 import { CourseCover } from '@/components/student/course-cover'
-import { Button } from '@/components/ui/button'
+import { ClassJoinControls } from '@/components/student/class-join-controls'
 import type { EnrollmentWithBatch } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
@@ -18,19 +12,9 @@ interface ClassroomSpotlightProps {
   classrooms: EnrollmentWithBatch[]
 }
 
-async function copyLink(url: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(url)
-    toast.success('Class link copied')
-  } catch {
-    toast.error('Could not copy the link. Copy it from the browser bar after joining.')
-  }
-}
-
 export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
   const [index, setIndex] = useState(0)
   const current = classrooms[index]
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   if (classrooms.length === 0) {
     return (
@@ -44,16 +28,14 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
               Classroom
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-              When a manager posts a class link for an active enrollment, Join
-              and Copy appear here — ready for live sessions.
+              When a manager posts a class link and schedule for an active
+              enrollment, Join unlocks here five minutes before class.
             </p>
           </div>
         </div>
       </section>
     )
   }
-
-  const link = current!.batch.classLink!
 
   return (
     <section className="overflow-hidden rounded-xl bg-primary-strong text-primary-foreground">
@@ -81,37 +63,7 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
         </div>
 
         <div className="flex flex-col justify-between gap-4 p-4 sm:gap-5 sm:p-6">
-          <p className="hidden text-sm leading-relaxed text-primary-foreground/80 sm:block">
-            Jump into class when it is live, or copy the link to share with a
-            parent / open in another app.
-          </p>
-
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <Button
-              size="lg"
-              className="h-12 w-full flex-1 bg-primary text-primary-foreground hover:bg-primary/90 sm:h-11 py-3"
-              render={
-                <a href={link} target="_blank" rel="noopener noreferrer" />
-              }
-            >
-              Join class
-              <ExternalLinkIcon />
-            </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="h-12 w-full flex-1 bg-white/15 text-primary-foreground hover:bg-white/25 sm:h-11 py-3"
-              onClick={() => {
-                void copyLink(link).then(() => {
-                  setCopiedId(current!.id)
-                  window.setTimeout(() => setCopiedId(null), 2000)
-                })
-              }}
-            >
-              {copiedId === current!.id ? <CheckIcon /> : <CopyIcon />}
-              {copiedId === current!.id ? 'Copied' : 'Copy link'}
-            </Button>
-          </div>
+          <ClassJoinControls batch={current!.batch} tone="on-dark" />
 
           {classrooms.length > 1 ? (
             <div className="flex items-center justify-between gap-3">

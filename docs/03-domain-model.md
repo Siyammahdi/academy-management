@@ -96,6 +96,7 @@ The **template** — what a program is and what it *currently* costs. Not enroll
 | Field | Notes |
 |---|---|
 | `id` | cuid |
+| `slug` | Unique public URL segment (`/courses/[slug]`) |
 | `title` | |
 | `description` | |
 | `billingType` | `monthly` \| `one_time` |
@@ -103,6 +104,8 @@ The **template** — what a program is and what it *currently* costs. Not enroll
 | `monthlyFee` | Decimal. Unused when `one_time`. |
 | `parts` | Ordered list of `{ name, durationMonths }` — **descriptive only** |
 | `thumbnail` / `thumbnailMimeType` | Optional cover image stored as bytes in Postgres — **not** a URL. Never returned in JSON; clients use `GET /courses/:id/thumbnail` and the `hasThumbnail` flag. |
+| `featured` / `featuredOrder` | Landing-page marketing flag + sort order (lower first). Cleared on archive. |
+| `tagline`, `category`, `emphasis`, `focus`, `highlights`, `audience`, `outcomes` | Marketing copy for landing + public course page. Inert for billing. |
 | `status` | `active` \| `archived` |
 | `createdAt` | |
 
@@ -134,7 +137,7 @@ A concrete offering — one cohort with its own roster, managers, dates, and **f
 | `status` | `upcoming` \| `enrolling` \| `running` \| `completed` |
 | `createdAt` | |
 
-**Status is flipped manually by an admin** — no date-driven automation. `completed` stops billing-period generation (BIL-11).
+**Status is flipped manually by an admin** — no date-driven automation. `completed` stops billing-period generation (BIL-11). Status is **not** what gates self-enrollment: ENR-02 uses `enrollmentOpensAt`/`enrollmentClosesAt`. A batch may be `running` (classes started) while its enrollment window is still open.
 
 **Worked example.** Course: enrollment fee 1000, monthly 500. Batch opened with a 100% entry discount:
 - Student pays at enrollment: `0 (entry) + 500 (first month) = 500`
@@ -339,6 +342,9 @@ Students read homework across their **active** enrollments via `/me/homework`. M
 
 ### `Batch.classLink`
 A nullable field on `Batch`, not a separate entity — a single live-class link, manager-editable, shown to students on their active enrollments.
+
+### `Batch.classStartsAt` / `Batch.classEndsAt`
+Optional next-session window. Students may join from **5 minutes before** `classStartsAt` until `classEndsAt`. If either is unset, the join control stays locked with “schedule is not set yet.”
 
 ---
 

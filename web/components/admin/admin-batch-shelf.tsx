@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { BatchCard } from '@/components/batches/batch-card'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import type { Batch, Course } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
@@ -30,45 +31,52 @@ export function AdminBatchShelf({
     )
   }
 
+  const cards = batches.map((batch) => {
+    const course = courseById.get(batch.courseId)
+    return (
+      <BatchCard
+        key={batch.id}
+        courseId={batch.courseId}
+        name={batch.name}
+        status={batch.status}
+        capacity={batch.capacity}
+        courseStartDate={batch.courseStartDate}
+        course={{
+          title: course?.title ?? 'Course',
+          hasThumbnail: course?.hasThumbnail,
+          updatedAt: course?.updatedAt,
+        }}
+        workspaceHref={`/admin/batches/${batch.id}`}
+        secondaryActions={[
+          {
+            label: 'All batches',
+            href: '/admin/batches',
+          },
+          {
+            label: 'Roster',
+            href: `/admin/batches/${batch.id}/roster`,
+          },
+        ]}
+        className="w-72 max-w-full shrink-0 snap-center md:w-auto md:max-w-none"
+      />
+    )
+  })
+
   return (
-    <div
-      className={cn(
-        '-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1',
-        '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        'md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0',
-        'xl:grid-cols-3',
-      )}
-    >
-      {batches.map((batch) => {
-        const course = courseById.get(batch.courseId)
-        return (
-          <BatchCard
-            key={batch.id}
-            courseId={batch.courseId}
-            name={batch.name}
-            status={batch.status}
-            capacity={batch.capacity}
-            courseStartDate={batch.courseStartDate}
-            course={{
-              title: course?.title ?? 'Course',
-              hasThumbnail: course?.hasThumbnail,
-              updatedAt: course?.updatedAt,
-            }}
-            workspaceHref={`/admin/batches/${batch.id}`}
-            secondaryActions={[
-              {
-                label: 'All batches',
-                href: '/admin/batches',
-              },
-              {
-                label: 'Roster',
-                href: `/admin/batches/${batch.id}/roster`,
-              },
-            ]}
-            className="w-72 max-w-full shrink-0 snap-center md:w-auto md:max-w-none"
-          />
-        )
-      })}
-    </div>
+    <>
+      <ScrollArea className="-mx-3 w-[calc(100%+1.5rem)] md:hidden">
+        <div className="flex snap-x snap-mandatory gap-3 px-3 pb-3">
+          {cards}
+        </div>
+      </ScrollArea>
+      <div
+        className={cn(
+          'hidden md:grid md:grid-cols-2 md:gap-4',
+          'xl:grid-cols-3',
+        )}
+      >
+        {cards}
+      </div>
+    </>
   )
 }

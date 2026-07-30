@@ -16,6 +16,22 @@ export function apiErrorMessage(body: ApiErrorBody, fallback: string): string {
   if (body.error === 'THUMBNAIL_INVALID' && body.message) {
     return body.message;
   }
+  if (body.error === 'COURSE_SLUG_TAKEN') {
+    return 'That course URL is already in use. Choose a different slug.';
+  }
+  if (body.error === 'HOMEWORK_PDF_INVALID' && body.message) {
+    return body.message;
+  }
+  if (body.error === 'PAYMENT_AMOUNT_INVALID' && body.message) {
+    return body.message;
+  }
+  if (
+    (body.error === 'GATEWAY_SESSION_FAILED' ||
+      body.error === 'GATEWAY_NOT_CONFIGURED') &&
+    body.message
+  ) {
+    return body.message;
+  }
   return fallback;
 }
 

@@ -9,11 +9,12 @@ import { toast } from 'sonner'
 import { ManagerPageHeader } from '@/components/manager/manager-page-header'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { ApiError } from '@/lib/api'
 import {
   createHomework,
@@ -321,7 +322,12 @@ function CreateHomeworkModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (!batchId || !title.trim() || !description.trim() || !dueDate) {
+    if (
+      !batchId ||
+      !title.trim() ||
+      description.replace(/<[^>]+>/g, '').trim().length === 0 ||
+      !dueDate
+    ) {
       setError('Choose a batch and fill in title, description, and due date.')
       return
     }
@@ -330,7 +336,7 @@ function CreateHomeworkModal({
     try {
       await createHomework(batchId, {
         title: title.trim(),
-        description: description.trim(),
+        description,
         dueDate,
       })
       toast.success('Homework added')
@@ -361,18 +367,19 @@ function CreateHomeworkModal({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <Textarea
+        <RichTextEditor
           label="Description"
-          required
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={setDescription}
         />
-        <Input
+        <p className="text-xs text-muted-foreground">
+          For a PDF worksheet, open the batch classroom homework panel.
+        </p>
+        <DatePicker
           label="Due date"
-          type="date"
           required
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={setDueDate}
         />
         {error ? (
           <p className="text-sm text-status-overdue" role="alert">

@@ -6,9 +6,12 @@ import { RefreshCwIcon } from 'lucide-react'
 
 import { AmountCell } from '@/components/money/amount-cell'
 import { StatusBadge } from '@/components/money/status-badge'
+import { PaymentReceipt } from '@/components/payments/payment-receipt'
 import { StudentPageHeader } from '@/components/student/student-page-header'
 import { Button } from '@/components/ui/button'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
+import { Modal } from '@/components/ui/modal'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   listMyPayments,
@@ -35,6 +38,7 @@ export default function StudentPaymentsPage() {
   const [payments, setPayments] = useState<PaymentWithContext[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [receipt, setReceipt] = useState<PaymentWithContext | null>(null)
 
   async function reload(): Promise<void> {
     try {
@@ -182,12 +186,22 @@ export default function StudentPaymentsPage() {
                       {formatDate(payment.createdAt)}
                     </p>
                   </div>
+                  {(payment.status === 'verified' ||
+                    payment.status === 'pending') && (
+                    <Button
+                      variant="outline"
+                      className="mt-3 min-h-11 w-full"
+                      onClick={() => setReceipt(payment)}
+                    >
+                      View receipt
+                    </Button>
+                  )}
                 </li>
               )
             })}
           </ul>
 
-          <div className="hidden overflow-x-auto rounded-xl bg-muted/50 md:block">
+          <ScrollArea className="hidden w-full rounded-xl bg-muted/50 md:block">
             <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead>
                 <tr className="border-b border-border/60">
@@ -205,6 +219,9 @@ export default function StudentPaymentsPage() {
                   </th>
                   <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
                     Status
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+                    Receipt
                   </th>
                 </tr>
               </thead>
@@ -235,13 +252,38 @@ export default function StudentPaymentsPage() {
                           label={status.label}
                         />
                       </td>
+                      <td className="px-4 py-3">
+                        {payment.status === 'verified' ||
+                        payment.status === 'pending' ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="min-h-11"
+                            onClick={() => setReceipt(payment)}
+                          >
+                            Receipt
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollArea>
         </>
+      ) : null}
+
+      {receipt ? (
+        <Modal
+          isOpen
+          onClose={() => setReceipt(null)}
+          title="Payment receipt"
+        >
+          <PaymentReceipt payment={receipt} />
+        </Modal>
       ) : null}
     </div>
   )

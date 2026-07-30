@@ -234,6 +234,8 @@ model StudentIdSequence {
 /// Editing them never affects existing batches (FEE-03).
 model Course {
   id            String       @id @default(cuid())
+  /// Public URL segment for /courses/[slug]. Unique.
+  slug          String       @unique
   title         String
   description   String?
   billingType   BillingType  @map("billing_type")
@@ -244,6 +246,16 @@ model Course {
   // clients use GET /courses/:id/thumbnail and the hasThumbnail flag.
   thumbnail         Bytes?
   thumbnailMimeType String?  @map("thumbnail_mime_type")
+  // Marketing — inert for billing. Featured courses drive the landing stack.
+  featured      Boolean @default(false)
+  featuredOrder Int     @default(0) @map("featured_order")
+  tagline       String?
+  category      String?
+  emphasis      String?
+  focus         String?
+  highlights    Json?   // string[]
+  audience      String?
+  outcomes      Json?   // string[]
   status        CourseStatus @default(active)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
@@ -251,6 +263,7 @@ model Course {
   batches Batch[]
 
   @@index([status])
+  @@index([featured, featuredOrder])
   @@map("courses")
 }
 
@@ -273,6 +286,8 @@ model Batch {
   dueDayEnd         Int         @default(5) @map("due_day_end")
   status            BatchStatus @default(upcoming)
   classLink         String?     @map("class_link")   // Telegram/Zoom link — teaching happens off-platform
+  classStartsAt     DateTime?   @map("class_starts_at")
+  classEndsAt       DateTime?   @map("class_ends_at")
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 

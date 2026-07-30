@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
 import Link from 'next/link'
 import {
   ExternalLinkIcon,
@@ -12,21 +11,20 @@ import {
 import { toast } from 'sonner'
 
 import { ManagerPageHeader } from '@/components/manager/manager-page-header'
+import { ClassLinkForm } from '@/components/batches/class-link-form'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Button } from '@/components/ui/button'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ApiError } from '@/lib/api'
 import {
   getManagedBatches,
   listCourses,
-  updateClassLink,
+  type Batch,
   type BatchStatus,
   type BatchWithSeats,
 } from '@/lib/api-client'
-import { apiErrorMessage } from '@/lib/error-message'
 import { formatDate } from '@/lib/format'
 
 const STATUS_TONE: Record<BatchStatus, 'neutral' | 'pending' | 'paid'> = {
@@ -262,7 +260,13 @@ export default function ManagerClassLinksPage() {
               prev
                 ? prev.map((b) =>
                     b.id === updated.id
-                      ? { ...b, classLink: updated.classLink, updatedAt: updated.updatedAt }
+                      ? {
+                          ...b,
+                          classLink: updated.classLink,
+                          classStartsAt: updated.classStartsAt,
+                          classEndsAt: updated.classEndsAt,
+                          updatedAt: updated.updatedAt,
+                        }
                       : b,
                   )
                 : prev,
@@ -295,59 +299,25 @@ function ClassLinkModal({
   onClose: () => void
   onSaved: (batch: BatchWithSeats) => void
 }) {
-  const [value, setValue] = useState(batch.classLink ?? '')
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    const trimmed = value.trim()
-    if (!trimmed) {
-      setError('Enter a class link URL.')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      const updated = await updateClassLink(batch.id, trimmed)
-      toast.success('Class link saved')
-      onSaved({ ...batch, ...updated })
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? apiErrorMessage(err.body, 'Class link could not be saved.')
-          : 'Class link could not be saved.',
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <Modal isOpen onClose={onClose} title={`Class link · ${batch.name}`}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <Input
-          label="Join URL"
-          required
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="https://…"
-          error={error ?? undefined}
-        />
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-11"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" className="min-h-11" loading={saving}>
-            {saving ? 'Saving…' : 'Save link'}
-          </Button>
-        </div>
-      </form>
+      <ClassLinkForm
+        batchId={batch.id}
+        initialLink={batch.classLink}
+        initialStartsAt={batch.classStartsAt}
+        initialEndsAt={batch.classEndsAt}
+        onCancel={onClose}
+        onSaved={(updated: Batch) => {
+          toast.success('Class link saved')
+          onSaved({
+            ...batch,
+            classLink: updated.classLink,
+            classStartsAt: updated.classStartsAt,
+            classEndsAt: updated.classEndsAt,
+            updatedAt: updated.updatedAt,
+          })
+        }}
+      />
     </Modal>
   )
 }

@@ -12,23 +12,23 @@ import {
 import { toast } from 'sonner'
 
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AssignManagersPanel } from '@/components/admin/assign-managers-panel'
 import { BatchCard } from '@/components/batches/batch-card'
 import { AmountCell } from '@/components/money/amount-cell'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
+import { DateTimePicker } from '@/components/ui/datetime-picker'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api'
 import {
-  assignManager,
   changeBatchStatus,
   createBatch,
   getBatch,
   listBatches,
   listCourses,
-  listUsers,
-  removeManager,
   updateBatch,
   type Batch,
   type BatchStatus,
@@ -36,7 +36,6 @@ import {
   type Course,
   type CreateBatchInput,
   type UpdateBatchInput,
-  type UserSummary,
 } from '@/lib/api-client'
 import { apiErrorMessage } from '@/lib/error-message'
 
@@ -251,32 +250,29 @@ function BatchForm({
           }
         />
       </div>
-      <Input
+      <DatePicker
         label="Course start date"
-        type="date"
         required
         value={form.courseStartDate}
-        onChange={(e) =>
-          setForm((p) => ({ ...p, courseStartDate: e.target.value }))
+        onChange={(courseStartDate) =>
+          setForm((p) => ({ ...p, courseStartDate }))
         }
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
+        <DateTimePicker
           label="Enrollment opens"
-          type="datetime-local"
           required
           value={form.enrollmentOpensAt}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, enrollmentOpensAt: e.target.value }))
+          onChange={(enrollmentOpensAt) =>
+            setForm((p) => ({ ...p, enrollmentOpensAt }))
           }
         />
-        <Input
+        <DateTimePicker
           label="Enrollment closes"
-          type="datetime-local"
           required
           value={form.enrollmentClosesAt}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, enrollmentClosesAt: e.target.value }))
+          onChange={(enrollmentClosesAt) =>
+            setForm((p) => ({ ...p, enrollmentClosesAt }))
           }
         />
       </div>
@@ -337,132 +333,15 @@ function ManagersModal({
   onClose: () => void
   onChanged: (batch: BatchWithSeats) => void
 }) {
-  const [managerUsers, setManagerUsers] = useState<UserSummary[] | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isBusy, setIsBusy] = useState(false)
-
-  useEffect(() => {
-    listUsers('manager')
-      .then(setManagerUsers)
-      .catch(() => setError('Managers could not be loaded.'))
-  }, [])
-
-  async function refresh(): Promise<void> {
-    onChanged(await getBatch(batch.id))
-  }
-
-  async function handleAssign(): Promise<void> {
-    if (!selectedUserId) return
-    setError(null)
-    setIsBusy(true)
-    try {
-      await assignManager(batch.id, selectedUserId)
-      setSelectedUserId('')
-      await refresh()
-      toast.success('Manager assigned')
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? apiErrorMessage(err.body, 'This manager could not be assigned.')
-          : 'This manager could not be assigned.',
-      )
-    } finally {
-      setIsBusy(false)
-    }
-  }
-
-  async function handleRemove(userId: string): Promise<void> {
-    setError(null)
-    setIsBusy(true)
-    try {
-      await removeManager(batch.id, userId)
-      await refresh()
-      toast.success('Manager removed')
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? apiErrorMessage(err.body, 'This manager could not be removed.')
-          : 'This manager could not be removed.',
-      )
-    } finally {
-      setIsBusy(false)
-    }
-  }
-
-  const assignableUsers = (managerUsers ?? []).filter(
-    (u) => !batch.managers.some((m) => m.userId === u.id),
-  )
-
   return (
     <Modal isOpen onClose={onClose} title={`Managers · ${batch.name}`}>
-      <div className="flex flex-col gap-4">
-        {batch.managers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No managers assigned yet.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {batch.managers.map((m) => (
-              <li
-                key={m.userId}
-                className="flex items-center justify-between gap-3 rounded-lg bg-muted/60 px-3 py-2"
-              >
-                <span className="min-w-0 truncate text-sm text-foreground">
-                  {m.email}
-                </span>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="min-h-11 shrink-0"
-                  disabled={isBusy}
-                  onClick={() => {
-                    void handleRemove(m.userId)
-                  }}
-                >
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-end">
-          <FilterDropdown
-            label="Assign a manager"
-            value={selectedUserId || '__none__'}
-            placeholder="Select a manager"
-            options={[
-              { value: '__none__', label: 'Select a manager' },
-              ...assignableUsers.map((u) => ({
-                value: u.id,
-                label: u.email,
-              })),
-            ]}
-            onChange={(value) =>
-              setSelectedUserId(value === '__none__' ? '' : value)
-            }
-            className="flex-1"
-            contentClassName="min-w-72"
-          />
-          <Button
-            type="button"
-            className="min-h-11"
-            disabled={isBusy || !selectedUserId}
-            onClick={() => {
-              void handleAssign()
-            }}
-          >
-            Assign
-          </Button>
-        </div>
-
-        {error ? (
-          <p className="text-sm text-status-overdue" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
+      <AssignManagersPanel
+        batchId={batch.id}
+        managers={batch.managers}
+        onChanged={async () => {
+          onChanged(await getBatch(batch.id))
+        }}
+      />
     </Modal>
   )
 }

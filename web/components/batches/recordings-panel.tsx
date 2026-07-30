@@ -5,6 +5,7 @@ import type { FormEvent } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { ApiError } from '@/lib/api'
@@ -249,13 +250,12 @@ function RecordingFormModal({
             setForm((p) => ({ ...p, youtubeVideoId: e.target.value }))
           }
         />
-        <Input
+        <DatePicker
           label="Class date"
-          type="date"
           required
           value={form.recordedFor}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, recordedFor: e.target.value }))
+          onChange={(recordedFor) =>
+            setForm((p) => ({ ...p, recordedFor }))
           }
         />
 

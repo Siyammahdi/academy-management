@@ -3,17 +3,24 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
+  ChevronDownIcon,
   LockIcon,
   ShieldCheckIcon,
   WalletIcon,
 } from 'lucide-react'
 
+import { PolicyAcceptance } from '@/components/payments/policy-acceptance'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { payErrorMessage } from '@/lib/error-message'
 import { formatMoney } from '@/lib/format'
-import { payGateway, payManual } from '@/lib/api-client'
+import { en } from '@/lib/marketing/en'
+import {
+  payGateway,
+  payManual,
+  type GatewayProvider,
+} from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 const DECIMAL_PATTERN = /^\d+(\.\d{1,2})?$/
@@ -32,10 +39,12 @@ export interface PaymentModalProps {
 }
 
 type Mode = 'choose' | 'manual' | 'submitted'
+type OnlineChoice = 'paystation' | 'sslcommerz'
 
 /**
  * PAY-03 — creates a pending payment or starts a gateway session only.
- * Gateway webhook / manager verify is the sole settlement path.
+ * Gateway webhook / confirm is the sole settlement path.
+ * PayStation is the primary online option; SSLCommerz + manual are secondary.
  */
 export function PaymentModal({
   isOpen,
@@ -47,16 +56,22 @@ export function PaymentModal({
   purpose = 'due',
 }: PaymentModalProps) {
   const [mode, setMode] = useState<Mode>('choose')
+  const [onlineChoice, setOnlineChoice] = useState<OnlineChoice>('paystation')
+  const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [transactionReference, setTransactionReference] = useState('')
   const [proofUrl, setProofUrl] = useState('')
+  const [policiesAccepted, setPoliciesAccepted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
     setMode('choose')
+    setOnlineChoice('paystation')
+    setShowOtherOptions(false)
     setTransactionReference('')
     setProofUrl('')
+    setPoliciesAccepted(false)
     setError(null)
     setIsSubmitting(false)
   }, [isOpen, billingPeriodId, outstanding])
@@ -65,11 +80,18 @@ export function PaymentModal({
     onClose()
   }
 
-  async function handlePayOnline(): Promise<void> {
+  function requirePolicies(): boolean {
+    if (policiesAccepted) return true
+    setError(en.checkoutAcceptance.required)
+    return false
+  }
+
+  async function startOnline(provider: GatewayProvider): Promise<void> {
+    if (!requirePolicies()) return
     setError(null)
     setIsSubmitting(true)
     try {
-      const { redirectUrl } = await payGateway(billingPeriodId)
+      const { redirectUrl } = await payGateway(billingPeriodId, provider)
       window.location.href = redirectUrl
     } catch (err) {
       setError(
@@ -87,6 +109,8 @@ export function PaymentModal({
   ): Promise<void> {
     event.preventDefault()
     setError(null)
+
+    if (!requirePolicies()) return
 
     if (!DECIMAL_PATTERN.test(outstanding)) {
       setError('This due amount looks invalid. Refresh and try again.')
@@ -151,50 +175,114 @@ export function PaymentModal({
           </p>
         ) : null}
 
+        {mode !== 'submitted' ? (
+          <PolicyAcceptance
+            checked={policiesAccepted}
+            onCheckedChange={(next) => {
+              setPoliciesAccepted(next)
+              if (next) setError(null)
+            }}
+            copy={en.checkoutAcceptance}
+            invalid={Boolean(error && !policiesAccepted)}
+          />
+        ) : null}
+
         {mode === 'choose' ? (
           <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={() => {
-                void handlePayOnline()
+                setOnlineChoice('paystation')
+                void startOnline('paystation')
               }}
               disabled={isSubmitting}
               className={cn(
-                'flex min-h-14 items-start gap-3 rounded-xl bg-primary px-4 py-3 text-left text-primary-foreground transition-opacity',
-                isSubmitting && 'opacity-70',
+                'flex min-h-16 items-start gap-3 rounded-xl bg-primary px-4 py-3.5 text-left text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background transition-opacity',
+                isSubmitting && onlineChoice === 'paystation' && 'opacity-70',
               )}
             >
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15">
-                <ShieldCheckIcon className="size-4" />
+              <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15">
+                <ShieldCheckIcon className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">
-                  {isSubmitting ? 'Opening secure checkout…' : 'Pay online'}
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="block text-sm font-semibold">
+                    {isSubmitting && onlineChoice === 'paystation'
+                      ? 'Opening PayStation…'
+                      : 'Pay with PayStation'}
+                  </span>
+                  <span className="rounded-md bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                    Recommended
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-xs text-primary-foreground/80">
-                  SSLCommerz · card / mobile banking · unlocks after bank confirm
+                <span className="mt-1 block text-xs text-primary-foreground/80">
+                  Card &amp; mobile banking · unlocks after bank confirm
                 </span>
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setMode('manual')}
-              disabled={isSubmitting}
-              className="flex min-h-14 items-start gap-3 rounded-xl bg-muted/70 px-4 py-3 text-left transition-colors hover:bg-muted"
-            >
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-status-pending/15 text-status-pending">
-                <WalletIcon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-foreground">
-                  Pay manually
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  bKash / bank transfer · needs reference + https proof link
-                </span>
-              </span>
-            </button>
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowOtherOptions((open) => !open)}
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-1 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>Other payment options</span>
+                <ChevronDownIcon
+                  className={cn(
+                    'size-4 transition-transform',
+                    showOtherOptions && 'rotate-180',
+                  )}
+                />
+              </button>
+
+              {showOtherOptions ? (
+                <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOnlineChoice('sslcommerz')
+                      void startOnline('sslcommerz')
+                    }}
+                    disabled={isSubmitting}
+                    className="flex min-h-12 items-start gap-3 rounded-xl bg-muted/60 px-3.5 py-2.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-primary-strong">
+                      <ShieldCheckIcon className="size-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-foreground">
+                        {isSubmitting && onlineChoice === 'sslcommerz'
+                          ? 'Opening SSLCommerz…'
+                          : 'Pay with SSLCommerz'}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Alternate online checkout
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMode('manual')}
+                    disabled={isSubmitting}
+                    className="flex min-h-12 items-start gap-3 rounded-xl bg-muted/60 px-3.5 py-2.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-status-pending/15 text-status-pending">
+                      <WalletIcon className="size-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-foreground">
+                        Pay manually
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        bKash / bank transfer · needs reference + proof
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

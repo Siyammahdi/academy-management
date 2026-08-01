@@ -25,6 +25,8 @@ export type CourseStatus = 'active' | 'archived';
 export type BatchStatus = 'upcoming' | 'enrolling' | 'running' | 'completed';
 export type PeriodStatus = 'unpaid' | 'pending' | 'partially_paid' | 'paid';
 export type PaymentMethod = 'gateway' | 'manual';
+export type PaymentProvider = 'paystation' | 'sslcommerz' | 'manual';
+export type GatewayProvider = 'paystation' | 'sslcommerz';
 export type PaymentStatus = 'pending' | 'verified' | 'rejected' | 'expired';
 
 export interface CoursePart {
@@ -196,6 +198,7 @@ export interface Payment {
   billingPeriodId: string;
   amount: string;
   method: PaymentMethod;
+  provider?: PaymentProvider;
   status: PaymentStatus;
   paidBy: 'student' | 'guest';
   transactionReference: string | null;
@@ -551,20 +554,34 @@ export function listMyPayments(
 
 export function payGateway(
   billingPeriodId: string,
-): Promise<{ redirectUrl: string }> {
+  provider: GatewayProvider = 'paystation',
+): Promise<{ redirectUrl: string; provider: GatewayProvider }> {
   return apiFetch(`/billing-periods/${billingPeriodId}/pay/gateway`, {
     method: 'POST',
+    body: JSON.stringify({ provider }),
   });
 }
 
-/** Public — confirms SSLCommerz success via Order Validation (ENR-06). */
+/** Public — confirms gateway success via provider status API (ENR-06). */
 export function confirmGatewayPayment(input: {
   transactionReference: string;
-  valId: string;
+  provider?: GatewayProvider;
+  valId?: string;
+  trxId?: string;
 }): Promise<{ status: string; enrollmentActivated: boolean }> {
   return apiFetch('/payments/gateway/confirm', {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+}
+
+/** Public — mark a cancelled/failed gateway attempt so payment can be retried. */
+export function abandonGatewayPayment(
+  transactionReference: string,
+): Promise<{ status: string }> {
+  return apiFetch('/payments/gateway/abandon', {
+    method: 'POST',
+    body: JSON.stringify({ transactionReference }),
   });
 }
 

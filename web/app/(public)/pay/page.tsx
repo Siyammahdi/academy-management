@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   ArrowLeftIcon,
+  ChevronDownIcon,
   LockIcon,
   SearchIcon,
   ShieldCheckIcon,
@@ -11,6 +12,8 @@ import {
 } from 'lucide-react'
 
 import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
+import { PolicyAcceptance } from '@/components/payments/policy-acceptance'
+import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import { Container } from '@/components/layout/container'
 import { AmountCell } from '@/components/money/amount-cell'
 import { Button } from '@/components/ui/button'
@@ -30,6 +33,7 @@ import type {
 
 type Step = 'identifier' | 'dues' | 'pay'
 type PayMode = 'choose' | 'manual' | 'submitted'
+type OnlineChoice = 'paystation' | 'sslcommerz'
 
 function lookupErrorMessage(err: unknown): string {
   if (err instanceof ApiError && err.body.error === 'STUDENT_NOT_FOUND') {
@@ -39,6 +43,7 @@ function lookupErrorMessage(err: unknown): string {
 }
 
 export default function GuestPayPage() {
+  const t = useMarketingCopy()
   const [step, setStep] = useState<Step>('identifier')
   const [identifier, setIdentifier] = useState('')
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -48,10 +53,13 @@ export default function GuestPayPage() {
     null,
   )
   const [payMode, setPayMode] = useState<PayMode>('choose')
+  const [onlineChoice, setOnlineChoice] = useState<OnlineChoice>('paystation')
+  const [showOtherOptions, setShowOtherOptions] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
   const [transactionReference, setTransactionReference] = useState('')
   const [proofUrl, setProofUrl] = useState('')
+  const [policiesAccepted, setPoliciesAccepted] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -80,17 +88,30 @@ export default function GuestPayPage() {
     setGuestPhone('')
     setTransactionReference('')
     setProofUrl('')
+    setPoliciesAccepted(false)
+    setOnlineChoice('paystation')
+    setShowOtherOptions(false)
     setPayMode('choose')
     setPayError(null)
     setStep('pay')
   }
 
-  async function handlePayOnline(): Promise<void> {
+  function requirePolicies(): boolean {
+    if (policiesAccepted) return true
+    setPayError(t.checkoutAcceptance.required)
+    return false
+  }
+
+  async function handlePayOnline(
+    provider: OnlineChoice = 'paystation',
+  ): Promise<void> {
     if (!selectedDue) return
     if (!guestName.trim() || !guestPhone.trim()) {
       setPayError('Enter your name and phone number.')
       return
     }
+    if (!requirePolicies()) return
+    setOnlineChoice(provider)
     setPayError(null)
     setIsSubmitting(true)
     try {
@@ -98,6 +119,7 @@ export default function GuestPayPage() {
         billingPeriodId: selectedDue.billingPeriodId,
         guestName: guestName.trim(),
         guestPhone: guestPhone.trim(),
+        provider,
       })
       window.location.href = redirectUrl
     } catch (err) {
@@ -118,6 +140,7 @@ export default function GuestPayPage() {
       setPayError('Enter your name and phone number.')
       return
     }
+    if (!requirePolicies()) return
     if (!transactionReference.trim()) {
       setPayError('Enter the transaction reference from your payment.')
       return
@@ -298,48 +321,105 @@ export default function GuestPayPage() {
                   </div>
                 ) : null}
 
+                {payMode !== 'submitted' ? (
+                  <PolicyAcceptance
+                    checked={policiesAccepted}
+                    onCheckedChange={(next) => {
+                      setPoliciesAccepted(next)
+                      if (next) setPayError(null)
+                    }}
+                    copy={t.checkoutAcceptance}
+                    invalid={Boolean(payError && !policiesAccepted)}
+                  />
+                ) : null}
+
                 {payMode === 'choose' ? (
                   <div className="flex flex-col gap-3">
                     <button
                       type="button"
                       onClick={() => {
-                        void handlePayOnline()
+                        void handlePayOnline('paystation')
                       }}
                       disabled={isSubmitting}
-                      className="flex min-h-14 items-start gap-3 rounded-xl bg-primary px-4 py-3 text-left text-primary-foreground"
+                      className="flex min-h-16 items-start gap-3 rounded-xl bg-primary px-4 py-3.5 text-left text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background"
                     >
-                      <span className="mt-0.5 flex size-9 items-center justify-center rounded-lg bg-primary-foreground/15">
-                        <ShieldCheckIcon className="size-4" />
+                      <span className="mt-0.5 flex size-10 items-center justify-center rounded-lg bg-primary-foreground/15">
+                        <ShieldCheckIcon className="size-5" />
                       </span>
                       <span>
-                        <span className="block text-sm font-medium">
-                          {isSubmitting
-                            ? 'Opening checkout…'
-                            : 'Pay online'}
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="block text-sm font-semibold">
+                            {isSubmitting && onlineChoice === 'paystation'
+                              ? 'Opening PayStation…'
+                              : 'Pay with PayStation'}
+                          </span>
+                          <span className="rounded-md bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                            Recommended
+                          </span>
                         </span>
-                        <span className="mt-0.5 block text-xs text-primary-foreground/80">
-                          SSLCommerz · unlocks after bank confirm
+                        <span className="mt-1 block text-xs text-primary-foreground/80">
+                          Card &amp; mobile banking · unlocks after bank confirm
                         </span>
                       </span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setPayMode('manual')}
-                      disabled={isSubmitting}
-                      className="flex min-h-14 items-start gap-3 rounded-xl bg-background/80 px-4 py-3 text-left"
-                    >
-                      <span className="mt-0.5 flex size-9 items-center justify-center rounded-lg bg-status-pending/15 text-status-pending">
-                        <WalletIcon className="size-4" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-medium text-foreground">
-                          Pay manually
-                        </span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          Reference + https proof · manager verifies
-                        </span>
-                      </span>
-                    </button>
+
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowOtherOptions((open) => !open)}
+                        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-1 text-left text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        <span>Other payment options</span>
+                        <ChevronDownIcon
+                          className={`size-4 transition-transform ${showOtherOptions ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                      {showOtherOptions ? (
+                        <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handlePayOnline('sslcommerz')
+                            }}
+                            disabled={isSubmitting}
+                            className="flex min-h-12 items-start gap-3 rounded-xl bg-background/80 px-3.5 py-2.5 text-left"
+                          >
+                            <span className="mt-0.5 flex size-8 items-center justify-center rounded-lg bg-muted text-primary-strong">
+                              <ShieldCheckIcon className="size-3.5" />
+                            </span>
+                            <span>
+                              <span className="block text-sm font-medium text-foreground">
+                                {isSubmitting && onlineChoice === 'sslcommerz'
+                                  ? 'Opening SSLCommerz…'
+                                  : 'Pay with SSLCommerz'}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                Alternate online checkout
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPayMode('manual')}
+                            disabled={isSubmitting}
+                            className="flex min-h-12 items-start gap-3 rounded-xl bg-background/80 px-3.5 py-2.5 text-left"
+                          >
+                            <span className="mt-0.5 flex size-8 items-center justify-center rounded-lg bg-status-pending/15 text-status-pending">
+                              <WalletIcon className="size-3.5" />
+                            </span>
+                            <span>
+                              <span className="block text-sm font-medium text-foreground">
+                                Pay manually
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                Reference + https proof · manager verifies
+                              </span>
+                            </span>
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+
                     <Button
                       variant="ghost"
                       className="min-h-11 self-start"

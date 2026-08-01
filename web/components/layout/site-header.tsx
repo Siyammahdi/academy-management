@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { MenuIcon, XIcon } from 'lucide-react'
 
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { LanguageSwitcher } from '@/components/i18n/language-switcher'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import { Container } from './container'
@@ -57,9 +58,7 @@ export function SiteHeader() {
             href="/"
             className="inline-flex items-center gap-2.5 font-heading text-base font-semibold tracking-tight text-foreground"
           >
-            <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-              AN
-            </span>
+            <AcademyLogo size={36} decorative priority />
             <span className="hidden sm:inline">{t.academy.name}</span>
             <span className="sm:hidden">{t.academy.shortName}</span>
           </Link>

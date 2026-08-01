@@ -4,7 +4,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import {
   Batch,
   BillingPeriod,
@@ -28,8 +27,12 @@ import {
   type CoursePublicRow,
 } from '../courses/course.presentation';
 import { derivePeriodStatus } from '../../common/utils/period';
-import { GatewayService } from '../gateway/gateway.service';
-import type { SslcommerzWebhookPayload } from '../gateway/gateway.service';
+import { GatewayRegistry } from '../gateway/gateway.registry';
+import type { SslcommerzWebhookPayload } from '../gateway/sslcommerz.gateway';
+import {
+  generateGatewayInvoiceNumber,
+  type GatewayProviderId,
+} from '../gateway/payment-gateway';
 import { PayManualDto } from './dto/pay-manual.dto';
 import { ConfirmGatewayPaymentDto } from './dto/confirm-gateway-payment.dto';
 import { RefundDto } from './dto/refund.dto';
@@ -78,39 +81,45 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly gateway: GatewayService,
+    private readonly gateways: GatewayRegistry,
   ) {}
 
   async payGateway(
     billingPeriodId: string,
     actor: AuthUser,
-  ): Promise<{ redirectUrl: string }> {
+    provider?: string | null,
+  ): Promise<{ redirectUrl: string; provider: GatewayProviderId }> {
     const studentId = this.requireStudentId(actor);
     const period = await this.loadPeriodForPayment(billingPeriodId, studentId);
     const student = await this.prisma.student.findUniqueOrThrow({
       where: { id: studentId },
     });
     const outstanding = period.amountOwed.minus(period.amountPaid);
+    const gatewayProvider = this.gateways.resolveId(provider);
 
     const { redirectUrl, transactionReference } =
       await this.startGatewaySession(
+        gatewayProvider,
         outstanding,
         student.fullName,
         student.phone,
+        billingPeriodId,
       );
 
-    await this.prisma.$transaction((tx) =>
-      this.createPendingPayment(tx, {
+    await this.prisma.$transaction(async (tx) => {
+      await this.supersedePendingGatewayPayments(tx, billingPeriodId);
+      await this.createPendingPayment(tx, {
         billingPeriodId,
         amount: outstanding,
         method: 'gateway',
+        provider: gatewayProvider,
         paidBy: 'student',
         transactionReference,
         actorUserId: actor.id,
-      }),
-    );
+      });
+    });
 
-    return { redirectUrl };
+    return { redirectUrl, provider: gatewayProvider };
   }
 
   async payManual(
@@ -127,6 +136,7 @@ export class PaymentsService {
         billingPeriodId,
         amount,
         method: 'manual',
+        provider: 'manual',
         paidBy: 'student',
         transactionReference: dto.transactionReference,
         proofUrl: dto.proofUrl,
@@ -143,31 +153,36 @@ export class PaymentsService {
   async guestPayGateway(
     billingPeriodId: string,
     dto: GuestPayGatewayDto,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; provider: GatewayProviderId }> {
     const period = await this.loadPeriodForPayment(billingPeriodId);
     const outstanding = period.amountOwed.minus(period.amountPaid);
+    const gatewayProvider = this.gateways.resolveId(dto.provider);
 
     const { redirectUrl, transactionReference } =
       await this.startGatewaySession(
+        gatewayProvider,
         outstanding,
         dto.guestName,
         dto.guestPhone,
+        billingPeriodId,
       );
 
-    await this.prisma.$transaction((tx) =>
-      this.createPendingPayment(tx, {
+    await this.prisma.$transaction(async (tx) => {
+      await this.supersedePendingGatewayPayments(tx, billingPeriodId);
+      await this.createPendingPayment(tx, {
         billingPeriodId,
         amount: outstanding,
         method: 'gateway',
+        provider: gatewayProvider,
         paidBy: 'guest',
         transactionReference,
         guestName: dto.guestName,
         guestPhone: dto.guestPhone,
         actorUserId: null,
-      }),
-    );
+      });
+    });
 
-    return { redirectUrl };
+    return { redirectUrl, provider: gatewayProvider };
   }
 
   async guestPayManual(
@@ -182,6 +197,7 @@ export class PaymentsService {
         billingPeriodId,
         amount,
         method: 'manual',
+        provider: 'manual',
         paidBy: 'guest',
         transactionReference: dto.transactionReference,
         proofUrl: dto.proofUrl,
@@ -195,18 +211,79 @@ export class PaymentsService {
   // PAY-02 — the Payment row is created only once the gateway session
   // actually succeeds; if it fails, the payer was never redirected.
   private async startGatewaySession(
+    provider: GatewayProviderId,
     outstanding: Prisma.Decimal,
     customerName: string,
     customerPhone: string,
+    billingPeriodId: string,
   ): Promise<{ redirectUrl: string; transactionReference: string }> {
-    const transactionReference = `GW-${randomUUID()}`;
-    const { redirectUrl } = await this.gateway.initiateSession({
+    const gateway = this.gateways.get(provider);
+    const transactionReference = generateGatewayInvoiceNumber(provider);
+    const { redirectUrl } = await gateway.initiateSession({
       transactionReference,
       amount: formatMoney(outstanding),
       customerName,
       customerPhone,
+      reference: billingPeriodId,
+      checkoutItems: 'Course fee',
     });
     return { redirectUrl, transactionReference };
+  }
+
+  /**
+   * A cancelled/abandoned gateway attempt leaves a pending row that would
+   * otherwise block retries and keep the period in "pending". Expire those
+   * before starting a fresh session on the same period.
+   */
+  private async supersedePendingGatewayPayments(
+    tx: Prisma.TransactionClient,
+    billingPeriodId: string,
+  ): Promise<void> {
+    const result = await tx.payment.updateMany({
+      where: {
+        billingPeriodId,
+        method: 'gateway',
+        status: 'pending',
+      },
+      data: { status: 'expired' },
+    });
+    if (result.count > 0) {
+      await this.recomputePeriodStatus(tx, billingPeriodId);
+    }
+  }
+
+  /**
+   * Payer returned from gateway cancel/fail. Mark the pending gateway
+   * payment rejected so the enrollment can be paid again.
+   */
+  async abandonGatewayPayment(
+    transactionReference: string,
+  ): Promise<{ status: string }> {
+    const ref = transactionReference.trim();
+    const existing = await this.prisma.payment.findUnique({
+      where: { transactionReference: ref },
+    });
+    if (!existing || existing.method !== 'gateway') {
+      throw new NotFoundException('Not found');
+    }
+    if (
+      existing.status === 'verified' ||
+      existing.status === 'rejected' ||
+      existing.status === 'expired'
+    ) {
+      return { status: existing.status };
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await this.settleRejectedPayment(tx, existing.id, null);
+      });
+    } catch (error) {
+      if (!(error instanceof PaymentAlreadySettledException)) {
+        throw error;
+      }
+    }
+    return { status: 'rejected' };
   }
 
   // BIL-09/PEN-05 — a pending payment must flip the period's persisted
@@ -219,6 +296,7 @@ export class PaymentsService {
       billingPeriodId: string;
       amount: Prisma.Decimal;
       method: 'gateway' | 'manual';
+      provider: 'paystation' | 'sslcommerz' | 'manual';
       paidBy: 'student' | 'guest';
       transactionReference: string;
       proofUrl?: string;
@@ -232,6 +310,7 @@ export class PaymentsService {
         billingPeriodId: params.billingPeriodId,
         amount: params.amount,
         method: params.method,
+        provider: params.provider,
         status: 'pending',
         paidBy: params.paidBy,
         transactionReference: params.transactionReference,
@@ -249,6 +328,7 @@ export class PaymentsService {
         targetId: payment.id,
         details: {
           method: params.method,
+          provider: params.provider,
           paidBy: params.paidBy,
           amount: formatMoney(params.amount),
           billingPeriodId: params.billingPeriodId,
@@ -421,23 +501,26 @@ export class PaymentsService {
   async handleWebhook(
     payload: SslcommerzWebhookPayload,
   ): Promise<{ ok: true }> {
-    if (!this.gateway.verifyWebhookSignature(payload)) {
+    const sslGateway = this.gateways.get(
+      'sslcommerz',
+    ) as import('../gateway/sslcommerz.gateway').SslcommerzGatewayService;
+    if (!sslGateway.verifyWebhookSignature(payload)) {
       throw new InvalidWebhookSignatureException();
     }
 
     const tranId = payload.tran_id;
     if (typeof tranId !== 'string' || tranId.length === 0) {
-      return { ok: true }; // nothing to act on; ack so it isn't retried forever
+      return { ok: true };
     }
 
     const existing = await this.prisma.payment.findUnique({
       where: { transactionReference: tranId },
     });
     if (!existing) {
-      return { ok: true }; // unmatched reference — nothing to settle
+      return { ok: true };
     }
     if (existing.status === 'verified' || existing.status === 'rejected') {
-      return { ok: true }; // PAY-04 — already handled
+      return { ok: true };
     }
 
     const ipnLooksSuccessful =
@@ -452,9 +535,10 @@ export class PaymentsService {
         );
       } else {
         try {
-          await this.settleGatewayIfValidated(existing, valId);
+          await this.settleGatewayFromProvider(existing, {
+            providerRef: valId,
+          });
         } catch (error) {
-          // Leave pending on validation failure so a later IPN/confirm can retry.
           if (
             !(error instanceof PaymentAlreadySettledException) &&
             !(error instanceof BadRequestException)
@@ -480,9 +564,9 @@ export class PaymentsService {
   }
 
   /**
-   * Success-URL confirm (PAY-03 safe): still validates with SSLCommerz Order
-   * Validation API — never trusts the browser alone. Needed when IPN cannot
-   * reach the API (local/dev). Settling activates enrollment (ENR-06).
+   * Success-URL confirm (PAY-03 safe): validates with the provider's
+   * status API — never trusts the browser alone. Settling activates
+   * enrollment (ENR-06).
    */
   async confirmGatewayPayment(
     dto: ConfirmGatewayPaymentDto,
@@ -509,7 +593,34 @@ export class PaymentsService {
       return { status: existing.status, enrollmentActivated: false };
     }
 
-    await this.settleGatewayIfValidated(existing, dto.valId.trim());
+    const provider =
+      existing.provider === 'paystation' || existing.provider === 'sslcommerz'
+        ? existing.provider
+        : this.gateways.resolveId(dto.provider);
+
+    const outcome =
+      provider === 'sslcommerz'
+        ? await this.settleGatewayFromProvider(existing, {
+            providerRef: (() => {
+              const valId = dto.valId?.trim();
+              if (!valId) {
+                throw new BadRequestException(
+                  'Payment confirmation is missing the bank validation id.',
+                );
+              }
+              return valId;
+            })(),
+          })
+        : await this.settleGatewayFromProvider(existing, {
+            providerRef: dto.trxId?.trim(),
+          });
+
+    if (outcome === 'pending') {
+      return { status: 'pending', enrollmentActivated: false };
+    }
+    if (outcome === 'rejected') {
+      return { status: 'rejected', enrollmentActivated: false };
+    }
 
     const enrollment = await this.prisma.enrollment.findUnique({
       where: { id: existing.billingPeriod.enrollmentId },
@@ -523,39 +634,91 @@ export class PaymentsService {
   }
 
   /**
-   * Shared by IPN and success-return confirm. Validates amount/status at
-   * SSLCommerz, then settles (payment verified + enrollment active).
+   * Shared by IPN and success-return confirm. Asks the concrete gateway
+   * to check status, then maps onto verified / rejected / leave pending.
    */
-  private async settleGatewayIfValidated(
+  private async settleGatewayFromProvider(
     payment: Payment,
-    valId: string,
-  ): Promise<void> {
-    const validated = await this.gateway.validateTransaction(valId);
-    if (
-      !validated ||
-      validated.tran_id !== payment.transactionReference ||
-      (validated.status !== 'VALID' && validated.status !== 'VALIDATED') ||
-      formatMoney(payment.amount) !==
-        formatMoney(new Prisma.Decimal(validated.amount))
-    ) {
+    opts: { providerRef?: string },
+  ): Promise<'verified' | 'rejected' | 'pending'> {
+    const provider =
+      payment.provider === 'paystation' || payment.provider === 'sslcommerz'
+        ? payment.provider
+        : 'sslcommerz';
+    const gateway = this.gateways.get(provider);
+    const invoice = payment.transactionReference;
+    if (!invoice) {
+      throw new BadRequestException('Payment is missing a transaction reference.');
+    }
+
+    const status = await gateway.checkStatus({
+      invoiceNumber: invoice,
+      providerRef: opts.providerRef,
+    });
+
+    if (!status) {
       this.logger.warn(
-        `SSLCommerz validation failed or amount mismatch for ${payment.transactionReference}`,
+        `Gateway status check returned nothing for ${invoice} (${provider})`,
       );
       throw new BadRequestException(
         'Payment could not be confirmed with the bank yet. Wait a moment and try again.',
       );
     }
 
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        await this.settleVerifiedPayment(tx, payment.id, null);
-      });
-    } catch (error) {
-      if (error instanceof PaymentAlreadySettledException) {
-        return;
-      }
-      throw error;
+    if (status.invoiceNumber !== invoice) {
+      this.logger.warn(
+        `Gateway invoice mismatch for ${invoice}: got ${status.invoiceNumber}`,
+      );
+      throw new BadRequestException(
+        'Payment could not be confirmed with the bank yet. Wait a moment and try again.',
+      );
     }
+
+    if (status.amount) {
+      const expected = formatMoney(payment.amount);
+      const reported = formatMoney(new Prisma.Decimal(status.amount));
+      if (expected !== reported) {
+        this.logger.warn(
+          `Gateway amount mismatch for ${invoice}: expected ${expected}, got ${reported}`,
+        );
+        throw new BadRequestException(
+          'Payment could not be confirmed with the bank yet. Wait a moment and try again.',
+        );
+      }
+    }
+
+    if (status.trxStatus === 'success') {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await this.settleVerifiedPayment(tx, payment.id, null);
+        });
+      } catch (error) {
+        if (error instanceof PaymentAlreadySettledException) {
+          return 'verified';
+        }
+        throw error;
+      }
+      return 'verified';
+    }
+
+    if (status.trxStatus === 'failed' || status.trxStatus === 'canceled') {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await this.settleRejectedPayment(tx, payment.id, null);
+        });
+      } catch (error) {
+        if (error instanceof PaymentAlreadySettledException) {
+          return 'rejected';
+        }
+        throw error;
+      }
+      return 'rejected';
+    }
+
+    this.logger.log(
+      `Gateway status ${status.trxStatus} for ${invoice} — leaving payment pending`,
+    );
+    return 'pending';
   }
 
   // PAY-05 — a gateway payment still pending past 60 minutes expires.

@@ -23,8 +23,8 @@ import { usePublicAuth } from '@/lib/use-public-auth'
 import { cn } from '@/lib/utils'
 
 /**
- * Sticky stack of featured courses — editorial marketing layout driven by
- * admin `featured` + marketing fields, not traditional course cards.
+ * Sticky program stack — split-panel cards (cover + copy). Same anatomy on
+ * every card so the stack reads as one deliberate composition.
  */
 export function LandingPrograms() {
   const t = useMarketingCopy()
@@ -43,10 +43,10 @@ export function LandingPrograms() {
     if (!root) return
 
     const headline = root.querySelector<HTMLElement>('[data-programs-headline]')
-    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 3 })
+    if (headline) wordRise(gsap, headline, { stagger: 0.04, rotate: 2 })
 
     const lead = root.querySelector('[data-programs-lead]')
-    if (lead) blurRise(gsap, lead, { y: 20, blur: 8 })
+    if (lead) blurRise(gsap, lead, { y: 18, blur: 6 })
 
     const stackCards = root.querySelectorAll<HTMLElement>('[data-stack-card]')
     const mm = gsap.matchMedia()
@@ -62,8 +62,8 @@ export function LandingPrograms() {
             inner,
             { scale: 1, filter: 'brightness(1)' },
             {
-              scale: 0.94,
-              filter: 'brightness(0.92)',
+              scale: 0.96,
+              filter: 'brightness(0.93)',
               ease: 'none',
               transformOrigin: 'center top',
               scrollTrigger: {
@@ -76,25 +76,21 @@ export function LandingPrograms() {
           )
         }
 
-        const pieces = inner.querySelectorAll('[data-stack-reveal]')
-        if (pieces.length) {
-          gsap.fromTo(
-            pieces,
-            { opacity: 0, y: 28 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.85,
-              stagger: 0.08,
-              ease: EASE.expo,
-              scrollTrigger: {
-                trigger: card,
-                start: 'top 78%',
-                once: true,
-              },
+        gsap.fromTo(
+          inner,
+          { opacity: 0, y: 36 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.9,
+            ease: EASE.expo,
+            scrollTrigger: {
+              trigger: card,
+              start: 'top 82%',
+              once: true,
             },
-          )
-        }
+          },
+        )
       })
     })
 
@@ -104,13 +100,13 @@ export function LandingPrograms() {
         if (!inner) return
         gsap.fromTo(
           inner,
-          { opacity: 0, y: 36 },
+          { opacity: 0, y: 28 },
           {
             opacity: 1,
             y: 0,
-            duration: 0.85,
+            duration: 0.8,
             ease: EASE.expo,
-            scrollTrigger: { trigger: card, start: 'top 88%', once: true },
+            scrollTrigger: { trigger: card, start: 'top 90%', once: true },
           },
         )
       })
@@ -126,7 +122,7 @@ export function LandingPrograms() {
     >
       <LandingAtmosphere tone="wash" density="rich" />
       <Container width="marketing" className="relative z-10">
-        <div className="max-w-3xl">
+        <div className="max-w-2xl">
           <Eyebrow>{t.programs.eyebrow}</Eyebrow>
           <h2
             id="programs-heading"
@@ -137,34 +133,29 @@ export function LandingPrograms() {
           </h2>
           <p
             data-programs-lead
-            className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+            className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
             {t.programs.lead}
           </p>
         </div>
 
-        <div className="relative mt-14 space-y-6 pb-[2vh] sm:mt-20 sm:space-y-8">
+        <div className="relative mt-14 space-y-4 pb-[4vh] sm:mt-20 sm:space-y-5">
           {status === 'loading' ? (
             <>
-              <Skeleton className="h-80 w-full rounded-3xl" />
-              <Skeleton className="h-80 w-full rounded-3xl" />
+              <Skeleton className="aspect-video w-full rounded-xl sm:aspect-auto sm:h-80" />
+              <Skeleton className="aspect-video w-full rounded-xl sm:aspect-auto sm:h-80" />
             </>
           ) : null}
 
           {status === 'ready' && cards.length === 0 ? (
-            <p className="rounded-3xl bg-muted/50 px-6 py-10 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="rounded-xl bg-primary-wash px-6 py-12 text-sm leading-relaxed text-muted-foreground sm:text-base">
               Featured programs will appear here when admissions marks a course
               as featured. In the meantime, ask about the next open batch.
             </p>
           ) : null}
 
           {cards.map((course, index) => (
-            <StackCard
-              key={course.id}
-              course={course}
-              index={index}
-              total={cards.length}
-            />
+            <StackCard key={course.id} course={course} index={index} />
           ))}
         </div>
       </Container>
@@ -172,57 +163,7 @@ export function LandingPrograms() {
   )
 }
 
-const CARD_THEMES = [
-  {
-    surface: 'bg-status-pending-bg border-status-pending/20',
-    label: 'text-status-pending',
-    title: 'text-foreground',
-    emphasis: 'text-status-pending',
-    body: 'text-muted-foreground',
-    focus: 'text-foreground',
-    item: 'text-foreground',
-    dot: 'bg-status-pending',
-    imageRing: 'ring-8 ring-background/70',
-    button: 'bg-status-pending text-primary-foreground hover:bg-status-pending/90',
-    iconWrap: 'bg-primary-foreground/20',
-  },
-  {
-    surface: 'bg-primary-wash border-primary/25',
-    label: 'text-primary-strong',
-    title: 'text-primary-strong',
-    emphasis: 'text-primary',
-    body: 'text-primary-strong/70',
-    focus: 'text-primary-strong',
-    item: 'text-primary-strong',
-    dot: 'bg-primary',
-    imageRing: 'ring-8 ring-background/70',
-    button: '',
-    iconWrap: 'bg-primary-foreground/20',
-  },
-  {
-    surface: 'bg-status-paid-bg border-status-paid/20',
-    label: 'text-status-paid',
-    title: 'text-foreground',
-    emphasis: 'text-status-paid',
-    body: 'text-muted-foreground',
-    focus: 'text-foreground',
-    item: 'text-foreground',
-    dot: 'bg-status-paid',
-    imageRing: 'ring-8 ring-background/70',
-    button: 'bg-status-paid text-primary-foreground hover:bg-status-paid/90',
-    iconWrap: 'bg-primary-foreground/20',
-  },
-] as const
-
-function StackCard({
-  course,
-  index,
-  total,
-}: {
-  course: Course
-  index: number
-  total: number
-}) {
+function StackCard({ course, index }: { course: Course; index: number }) {
   const t = useMarketingCopy()
   const ui = t.programs
   const auth = usePublicAuth()
@@ -235,12 +176,12 @@ function StackCard({
     goToApp: t.nav.goToApp,
     askNext: ui.askNext,
   })
-  const theme = CARD_THEMES[index % CARD_THEMES.length] ?? CARD_THEMES[0]
-  const highlights = course.highlights?.length
-    ? course.highlights
-    : []
+
   const indexLabel = String(index + 1).padStart(2, '0')
-  const top = `calc(5.5rem + ${index * 0.75}rem)`
+  const top = `calc(5.25rem + ${index * 0.7}rem)`
+  const tagline = course.tagline?.trim() || course.description?.trim() || null
+  const monthly =
+    course.billingType === 'monthly' ? formatMoney(course.monthlyFee) : null
 
   return (
     <article
@@ -250,151 +191,91 @@ function StackCard({
     >
       <div
         data-stack-inner
-        className={cn(
-          'will-change-transform rounded-3xl border p-6 sm:p-8 lg:p-10',
-          theme.surface,
-        )}
+        className="will-change-transform overflow-hidden rounded-xl bg-card ring-1 ring-foreground/5"
       >
-        <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-4">
-            <p
-              data-stack-reveal
-              className={cn(
-                'text-xs font-medium tracking-wide uppercase',
-                theme.label,
-              )}
-            >
-              {indexLabel}
-              {course.category ? ` / ${course.category}` : ''}
-            </p>
-
-            <h3
-              data-stack-reveal
-              className={cn(
-                'mt-5 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl lg:text-4xl',
-                theme.title,
-              )}
-            >
-              {course.title}
-              {course.emphasis ? (
-                <>
-                  {' '}
-                  <em
-                    className={cn(
-                      'font-heading font-medium italic',
-                      theme.emphasis,
-                    )}
-                  >
-                    {course.emphasis}
-                  </em>
-                </>
-              ) : null}
-            </h3>
-
-            <p
-              data-stack-reveal
-              className={cn(
-                'mt-5 max-w-sm text-sm leading-relaxed text-pretty sm:text-base',
-                theme.body,
-              )}
-            >
-              {course.tagline?.trim() ||
-                course.description?.trim() ||
-                'Details on the course page.'}
-            </p>
-
-            <div data-stack-reveal className="mt-6">
-              <BatchState status={status} batch={batch} labels={ui} />
-            </div>
-          </div>
-
-          <div data-stack-reveal className="lg:col-span-4">
+        <div className="grid md:grid-cols-12 md:items-stretch">
+          {/* Cover — visual anchor */}
+          <div className="relative md:col-span-5 lg:col-span-5">
             <CourseCover
               courseId={course.id}
               title={course.title}
               hasThumbnail={course.hasThumbnail}
               updatedAt={course.updatedAt}
-              className={cn(
-                'aspect-4/5 w-full rounded-2xl sm:aspect-square',
-                theme.imageRing,
-              )}
+              className="aspect-4/3 w-full md:absolute md:inset-0 md:aspect-auto md:h-full md:min-h-80"
             />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute bottom-3 left-4 font-heading text-5xl font-semibold tracking-tight text-primary-foreground/25 md:bottom-5 md:left-6 md:text-6xl"
+            >
+              {indexLabel}
+            </span>
           </div>
 
-          <div className="lg:col-span-4">
-            {course.focus ? (
-              <p
-                data-stack-reveal
-                className={cn(
-                  'font-heading text-lg font-semibold tracking-tight sm:text-xl',
-                  theme.focus,
-                )}
-              >
-                {course.focus}
-              </p>
-            ) : null}
+          {/* Copy — calm hierarchy */}
+          <div className="flex flex-col justify-between gap-8 p-6 sm:p-8 md:col-span-7 lg:p-10">
+            <div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
+                  {course.category?.trim() || ui.eyebrow}
+                </p>
+                <span
+                  aria-hidden
+                  className="hidden size-1 rounded-full bg-border sm:inline-block"
+                />
+                <EnrollmentCue status={status} batch={batch} labels={ui} />
+              </div>
 
-            {highlights.length > 0 ? (
-              <ul data-stack-reveal className="mt-5 space-y-3">
-                {highlights.map((item) => (
-                  <li
-                    key={item}
-                    className={cn(
-                      'flex items-start gap-2.5 text-sm leading-relaxed',
-                      theme.item,
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'mt-1.5 size-1.5 shrink-0 rounded-full',
-                        theme.dot,
-                      )}
-                    />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+              <h3 className="mt-5 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-3xl lg:text-4xl">
+                {course.title}
+                {course.emphasis ? (
+                  <span className="mt-1 block font-heading text-xl font-medium tracking-tight text-primary-strong/75 italic sm:text-2xl">
+                    {course.emphasis}
+                  </span>
+                ) : null}
+              </h3>
 
-            <div data-stack-reveal className="mt-8">
-              <ProgramTerms
+              {tagline ? (
+                <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {tagline}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-6">
+              <FeeStrip
                 status={status}
                 course={course}
-                batch={batch}
+                monthly={monthly}
                 labels={ui}
               />
-            </div>
 
-            <div data-stack-reveal className="mt-8 flex flex-wrap gap-3">
-              <Button
-                className={cn(
-                  'min-h-11 gap-2 rounded-full px-5',
-                  theme.button || undefined,
-                )}
-                variant={theme.button ? 'default' : 'default'}
-                render={<Link href={`/courses/${course.slug}`} />}
-              >
-                {ui.viewProgram}
-                <span
-                  className={cn(
-                    'flex size-7 items-center justify-center rounded-full',
-                    theme.iconWrap,
+              {batch ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {ui.batchMeta(
+                    batch.name,
+                    formatDate(batch.courseStartDate),
+                    formatDate(batch.enrollmentClosesAt),
                   )}
-                >
-                  <ArrowUpRightIcon className="size-3.5" />
-                </span>
-              </Button>
-              <Button
-                variant="outline"
-                className="min-h-11 rounded-full px-5"
-                render={<Link href={enrollCta.href} />}
-              >
-                {enrollCta.label}
-              </Button>
-            </div>
+                </p>
+              ) : null}
 
-            {index === total - 1 ? <span className="sr-only" /> : null}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  className="min-h-11 gap-2"
+                  render={<Link href={`/courses/${course.slug}`} />}
+                >
+                  {ui.viewProgram}
+                  <ArrowUpRightIcon className="size-4 opacity-80" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="min-h-11 text-primary-strong"
+                  render={<Link href={enrollCta.href} />}
+                >
+                  {enrollCta.label}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -402,7 +283,7 @@ function StackCard({
   )
 }
 
-function BatchState({
+function EnrollmentCue({
   status,
   batch,
   labels,
@@ -412,94 +293,69 @@ function BatchState({
   labels: MarketingCopy['programs']
 }) {
   if (status === 'loading') {
-    return <Skeleton className="h-6 w-28 rounded-md" />
+    return <Skeleton className="h-4 w-24 rounded" />
   }
 
-  if (status === 'error') {
+  if (status === 'error' || !batch) {
     return (
-      <span className="rounded-md bg-status-neutral-bg px-2.5 py-1 text-xs font-medium text-status-neutral">
-        {labels.batchOnRequest}
-      </span>
-    )
-  }
-
-  if (!batch) {
-    return (
-      <span className="rounded-md bg-status-neutral-bg px-2.5 py-1 text-xs font-medium text-status-neutral">
-        {labels.enrollmentClosed}
+      <span className="text-xs font-medium text-muted-foreground">
+        {status === 'error' ? labels.batchOnRequest : labels.enrollmentClosed}
       </span>
     )
   }
 
   if (batch.seatsRemaining <= 0) {
     return (
-      <span className="rounded-md bg-status-pending-bg px-2.5 py-1 text-xs font-medium text-status-pending">
+      <span className="text-xs font-medium text-status-pending">
         {labels.fullNext}
       </span>
     )
   }
 
   return (
-    <span className="rounded-md bg-status-paid-bg px-2.5 py-1 text-xs font-medium text-status-paid">
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-status-paid">
+      <span aria-hidden className="size-1.5 rounded-full bg-status-paid" />
       {labels.enrollmentOpen}
+      {batch.seatsRemaining > 0 ? (
+        <span className="font-normal text-muted-foreground">
+          · {batch.seatsRemaining} {labels.seatsLeft.toLowerCase()}
+        </span>
+      ) : null}
     </span>
   )
 }
 
-function ProgramTerms({
+function FeeStrip({
   status,
   course,
-  batch,
+  monthly,
   labels,
 }: {
   status: 'loading' | 'ready' | 'error'
   course: Course
-  batch: BatchWithSeats | null
+  monthly: string | null
   labels: MarketingCopy['programs']
 }) {
   if (status === 'loading') {
-    return <Skeleton className="h-16 w-full rounded-xl" />
+    return <Skeleton className="h-14 w-full max-w-sm rounded-xl" />
   }
 
   return (
-    <dl className="flex flex-wrap gap-x-8 gap-y-4 border-t border-primary/15 pt-5">
+    <dl className="flex flex-wrap gap-x-8 gap-y-4">
       <div>
-        <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-          {labels.entryFee}
-        </dt>
-        <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
+        <dt className="text-xs text-muted-foreground">{labels.entryFee}</dt>
+        <dd className="mt-0.5 font-heading text-xl font-semibold tabular-nums tracking-tight text-foreground">
           {formatMoney(course.enrollmentFee)}
         </dd>
       </div>
-      {course.billingType === 'monthly' ? (
-        <div>
-          <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-            {labels.monthly}
-          </dt>
-          <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
-            {formatMoney(course.monthlyFee)}
-          </dd>
-        </div>
-      ) : null}
-      {batch ? (
-        <div>
-          <dt className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-            {labels.seatsLeft}
-          </dt>
-          <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
-            {batch.seatsRemaining}
-          </dd>
-        </div>
-      ) : null}
-      {batch ? (
-        <p className="basis-full text-xs text-muted-foreground">
-          {labels.batchMeta(
-            batch.name,
-            formatDate(batch.courseStartDate),
-            formatDate(batch.enrollmentClosesAt),
-          )}
-        </p>
-      ) : null}
+      <div>
+        <dt className="text-xs text-muted-foreground">
+          {monthly ? labels.monthly : labels.billing}
+        </dt>
+        <dd className="mt-0.5 font-heading text-xl font-semibold tabular-nums tracking-tight text-foreground">
+          {monthly ?? labels.onePayment}
+        </dd>
+      </div>
     </dl>
   )
 }

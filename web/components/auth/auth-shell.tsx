@@ -6,6 +6,7 @@ import {
   WalletIcon,
 } from 'lucide-react'
 
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { cn } from '@/lib/utils'
 
 interface AuthShellProps {
@@ -79,9 +80,7 @@ export function AuthShell({
           href="/"
           className="inline-flex items-center gap-2.5 font-heading text-base font-semibold tracking-tight text-foreground"
         >
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            AN
-          </span>
+          <AcademyLogo size={36} decorative priority />
           <span className="hidden sm:inline">An Nahda Academy</span>
           <span className="sm:hidden">An Nahda</span>
         </Link>

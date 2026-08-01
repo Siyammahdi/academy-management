@@ -30,7 +30,7 @@ export class GuestController {
   @Post('pay/gateway')
   payGateway(
     @Body() dto: GuestPayGatewayDto,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; provider: string }> {
     return this.paymentsService.guestPayGateway(dto.billingPeriodId, dto);
   }
 

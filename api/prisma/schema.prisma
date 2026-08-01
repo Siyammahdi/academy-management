@@ -61,6 +61,14 @@ enum PaymentMethod {
   manual
 }
 
+/// Which rail collected the payment. Gateway rows use paystation|sslcommerz;
+/// manual rows use manual.
+enum PaymentProvider {
+  paystation
+  sslcommerz
+  manual
+}
+
 enum PaymentStatus {
   pending
   verified
@@ -382,18 +390,19 @@ model BillingPeriod {
 model Payment {
   id                   String        @id @default(cuid())
   billingPeriodId      String        @map("billing_period_id")
-  amount               Decimal       @db.Decimal(10, 2)
+  amount               Decimal         @db.Decimal(10, 2)
   method               PaymentMethod
-  status               PaymentStatus @default(pending)
-  paidBy               PaidBy        @map("paid_by")
-  guestName            String?       @map("guest_name")
-  guestPhone           String?       @map("guest_phone")
-  transactionReference String?       @unique @map("transaction_reference")   // idempotency anchor for webhooks (PAY-04)
-  proofUrl             String?       @map("proof_url")                 // manual only
-  verifiedById         String?       @map("verified_by_id")
-  verifiedAt           DateTime?     @map("verified_at")
-  createdAt            DateTime      @default(now()) @map("created_at")
-  updatedAt            DateTime      @updatedAt @map("updated_at")
+  provider             PaymentProvider @default(manual)
+  status               PaymentStatus   @default(pending)
+  paidBy               PaidBy          @map("paid_by")
+  guestName            String?         @map("guest_name")
+  guestPhone           String?         @map("guest_phone")
+  transactionReference String?         @unique @map("transaction_reference")   // idempotency anchor for webhooks (PAY-04)
+  proofUrl             String?         @map("proof_url")                 // manual only
+  verifiedById         String?         @map("verified_by_id")
+  verifiedAt           DateTime?       @map("verified_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
 
   billingPeriod BillingPeriod @relation(fields: [billingPeriodId], references: [id], onDelete: Restrict)
   verifiedBy    User?         @relation("PaymentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
@@ -402,6 +411,7 @@ model Payment {
   @@index([billingPeriodId])
   @@index([status, method])        // "pending manual payments" queue
   @@index([status, createdAt])     // gateway expiry sweep (PAY-05)
+  @@index([provider])
   @@map("payments")
 }
 

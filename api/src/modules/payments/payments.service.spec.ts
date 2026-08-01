@@ -2,7 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { AuditService } from '../audit/audit.service';
-import { GatewayService } from '../gateway/gateway.service';
+import { GatewayRegistry } from '../gateway/gateway.registry';
+import type { GatewayService } from '../gateway/gateway.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from '../../common/decorators/current-user.decorator';
 import { ArrearsExistException } from '../../common/exceptions/arrears-exist.exception';
@@ -32,11 +33,25 @@ function staffActor(
 
 function createGatewayMock(): GatewayService {
   return {
+    provider: 'sslcommerz',
     initiateSession: jest.fn().mockResolvedValue({
       redirectUrl: 'https://sandbox.sslcommerz.com/pay/abc',
     }),
+    checkStatus: jest.fn().mockResolvedValue({
+      invoiceNumber: 'GW-1',
+      trxStatus: 'success',
+      amount: '500.00',
+    }),
     verifyWebhookSignature: jest.fn().mockReturnValue(true),
   } as unknown as GatewayService;
+}
+
+function createGatewayRegistryMock(gateway: GatewayService): GatewayRegistry {
+  return {
+    get: jest.fn().mockReturnValue(gateway),
+    resolveId: jest.fn((provider?: string | null) => provider ?? 'paystation'),
+    requireConfigured: jest.fn().mockReturnValue(gateway),
+  } as unknown as GatewayRegistry;
 }
 
 function createAuditMock(): { record: jest.Mock } {
@@ -91,6 +106,7 @@ function createService(
 } {
   const audit = createAuditMock();
   const gateway = createGatewayMock();
+  const gateways = createGatewayRegistryMock(gateway);
   const prisma = {
     $transaction: jest
       .fn()
@@ -104,7 +120,7 @@ function createService(
   const service = new PaymentsService(
     prisma,
     audit as unknown as AuditService,
-    gateway,
+    gateways,
   );
   return { service, audit, gateway };
 }

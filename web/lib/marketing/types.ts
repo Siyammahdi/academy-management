@@ -47,6 +47,7 @@ export interface MarketingCopy {
     blurb: string
     academyColumn: string
     studentsColumn: string
+    legalColumn: string
     programs: string
     howEnrollment: string
     about: string
@@ -55,6 +56,10 @@ export interface MarketingCopy {
     logIn: string
     payGuest: string
     contact: string
+    terms: string
+    privacy: string
+    refund: string
+    tradeLicenseLabel: string
     classesNote: string
   }
   hero: {
@@ -158,12 +163,27 @@ export interface MarketingCopy {
     lead: string
     seePrograms: string
     contactAdmissions: string
+    registrationHeading: string
+    registrationBody: string
+    tradeLicenseLabel: string
     sections: Array<{
       index: string
       heading: string
       body: string[]
       image: MarketingImage
     }>
+  }
+  legal: {
+    terms: LegalDocumentCopy
+    privacy: LegalDocumentCopy
+    refund: LegalDocumentCopy
+  }
+  checkoutAcceptance: {
+    agreePrefix: string
+    terms: string
+    privacy: string
+    refund: string
+    required: string
   }
   contactPage: {
     eyebrow: string
@@ -187,5 +207,18 @@ export interface MarketingCopy {
   contact: {
     email: string
     phone: string
+    /** Public trade licence number shown in footer and about. */
+    tradeLicense: string
   }
+}
+
+export interface LegalDocumentCopy {
+  eyebrow: string
+  title: string
+  lead: string
+  updated: string
+  sections: Array<{
+    heading: string
+    paragraphs: string[]
+  }>
 }

@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { PrinterIcon } from 'lucide-react'
 
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { Button } from '@/components/ui/button'
 import type { PaymentWithContext } from '@/lib/api-client'
 import { formatDate, formatMoney } from '@/lib/format'
@@ -50,10 +51,13 @@ export function PaymentReceipt({
         className="rounded-xl bg-background px-6 py-8 text-foreground sm:px-10 print:rounded-none print:px-0 print:py-0"
       >
         <header className="border-b border-primary/20 pb-6">
-          <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
-            An Nahda Academy
-          </p>
-          <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
+          <div className="flex items-center gap-3">
+            <AcademyLogo size={48} decorative />
+            <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
+              An Nahda Academy
+            </p>
+          </div>
+          <h1 className="mt-4 font-heading text-2xl font-semibold tracking-tight">
             Payment receipt
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">

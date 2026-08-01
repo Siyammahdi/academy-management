@@ -7,7 +7,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import {
   computeVerifySign,
-  GatewayService,
+  SslcommerzGatewayService,
   type SslcommerzWebhookPayload,
 } from '../src/modules/gateway/gateway.service';
 
@@ -167,6 +167,7 @@ describe('Payments (real Postgres)', () => {
           billingPeriodId: firstPeriod.id,
           amount: firstPeriod.amountOwed,
           method: 'gateway',
+          provider: 'sslcommerz',
           status: 'pending',
           paidBy: 'student',
           transactionReference,
@@ -178,11 +179,12 @@ describe('Payments (real Postgres)', () => {
         throw new Error('SSLCOMMERZ_STORE_PASSWORD must be set for this test');
       }
 
-      const gateway = app.get(GatewayService);
-      jest.spyOn(gateway, 'validateTransaction').mockResolvedValue({
-        status: 'VALID',
-        tran_id: transactionReference,
+      const gateway = app.get(SslcommerzGatewayService);
+      jest.spyOn(gateway, 'checkStatus').mockResolvedValue({
+        invoiceNumber: transactionReference,
+        trxStatus: 'success',
         amount: firstPeriod.amountOwed,
+        trxId: `val-${transactionReference}`,
       });
 
       const payload: SslcommerzWebhookPayload = {

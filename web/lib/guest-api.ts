@@ -29,14 +29,18 @@ export interface GuestPayGatewayInput {
   billingPeriodId: string;
   guestName: string;
   guestPhone: string;
+  provider?: 'paystation' | 'sslcommerz';
 }
 
 export function guestPayGateway(
   input: GuestPayGatewayInput,
-): Promise<{ redirectUrl: string }> {
+): Promise<{ redirectUrl: string; provider: string }> {
   return apiFetch('/guest/pay/gateway', {
     method: 'POST',
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      provider: input.provider ?? 'paystation',
+    }),
   });
 }
 

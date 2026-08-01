@@ -9,6 +9,7 @@ import {
   CurrentUserProvider,
   useCurrentUser,
 } from '@/components/auth/current-user-provider'
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { MobileTabBar } from './mobile-tab-bar'
 import { Sidebar } from './sidebar'
 import type { NavItem, NavSection } from './sidebar'
@@ -62,9 +63,7 @@ function AppShellChrome({
           )}
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-wash text-[10px] font-bold text-primary-strong">
-              AN
-            </span>
+            <AcademyLogo size={32} className="shrink-0" decorative />
             <div className="min-w-0">
               <span className="block truncate font-heading text-base font-semibold tracking-tight text-foreground">
                 {title ?? 'An Nahda'}

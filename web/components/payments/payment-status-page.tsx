@@ -8,6 +8,7 @@ import { PaymentReceipt } from '@/components/payments/payment-receipt'
 import { Modal } from '@/components/ui/modal'
 import {
   confirmGatewayPayment,
+  abandonGatewayPayment,
   listMyPayments,
   type PaymentWithContext,
 } from '@/lib/api-client'
@@ -27,15 +28,23 @@ interface PaymentStatusContentProps {
  */
 function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   const searchParams = useSearchParams()
+  const providerParam = searchParams.get('provider')
+  const provider =
+    providerParam === 'paystation' || providerParam === 'sslcommerz'
+      ? providerParam
+      : searchParams.get('val_id')
+        ? 'sslcommerz'
+        : 'paystation'
   const tranId = searchParams.get('tran_id')
   const valId = searchParams.get('val_id')
+  const trxId = searchParams.get('trx_id')
   const signedIn = Boolean(getAccessToken())
   const { reload: reloadEnrollment } = useStudentEnrollment()
   const [payment, setPayment] = useState<
     PaymentWithContext | null | undefined
   >(signedIn ? undefined : null)
   const [confirmStatus, setConfirmStatus] = useState<
-    'idle' | 'confirming' | 'verified' | 'failed'
+    'idle' | 'confirming' | 'verified' | 'failed' | 'pending'
   >('idle')
   const [enrollmentActivated, setEnrollmentActivated] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +52,8 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   const [showReceipt, setShowReceipt] = useState(false)
 
   useEffect(() => {
-    if (intent !== 'success' || !tranId || !valId) return
+    if (intent !== 'success' || !tranId) return
+    if (provider === 'sslcommerz' && !valId) return
     let cancelled = false
 
     async function confirm(): Promise<void> {
@@ -51,7 +61,10 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
       try {
         const result = await confirmGatewayPayment({
           transactionReference: tranId!,
-          valId: valId!,
+          provider,
+          ...(provider === 'sslcommerz'
+            ? { valId: valId! }
+            : { trxId: trxId ?? undefined }),
         })
         if (cancelled) return
         if (result.status === 'verified') {
@@ -60,6 +73,8 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
           if (signedIn) {
             await reloadEnrollment()
           }
+        } else if (result.status === 'pending') {
+          setConfirmStatus('pending')
         } else {
           setConfirmStatus('failed')
         }
@@ -74,7 +89,28 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
     return () => {
       cancelled = true
     }
-  }, [intent, tranId, valId, signedIn, reloadEnrollment])
+  }, [intent, tranId, valId, trxId, provider, signedIn, reloadEnrollment])
+
+  useEffect(() => {
+    if ((intent !== 'cancel' && intent !== 'fail') || !tranId) return
+    let cancelled = false
+
+    async function abandon(): Promise<void> {
+      try {
+        await abandonGatewayPayment(tranId!)
+        if (!cancelled && signedIn) {
+          await reloadEnrollment()
+        }
+      } catch {
+        // Best-effort — PAY-05 expiry still cleans up if this fails.
+      }
+    }
+
+    void abandon()
+    return () => {
+      cancelled = true
+    }
+  }, [intent, tranId, signedIn, reloadEnrollment])
 
   useEffect(() => {
     if (!signedIn) return
@@ -109,11 +145,12 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
 
   if (intent === 'cancel') {
     heading = 'Payment cancelled'
-    body = 'You cancelled before completing the payment. No charge was made.'
+    body =
+      'You cancelled before completing the payment. No charge was made — you can enroll again and pay when ready.'
   } else if (intent === 'fail') {
     heading = 'Payment did not complete'
     body = signedIn
-      ? 'The online payment was not completed. Try again from your dues or applications.'
+      ? 'The online payment was not completed. Go back to enroll or applications and try again.'
       : 'The online payment was not completed. Try again from the guest pay page.'
   } else if (!signedIn && confirmStatus === 'confirming') {
     heading = 'Confirming payment…'
@@ -129,10 +166,17 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   } else if (error) {
     heading = 'Could not check payment status'
     body = error
+  } else if (confirmStatus === 'pending') {
+    heading = 'Payment is processing'
+    body =
+      'The bank has not finished confirming yet. Wait a moment, then refresh — or check your dues shortly.'
+    showRefresh = true
   } else if (
     payment === undefined ||
     confirmStatus === 'confirming' ||
-    (confirmStatus === 'idle' && tranId && valId)
+    (confirmStatus === 'idle' &&
+      tranId &&
+      (provider === 'paystation' || Boolean(valId)))
   ) {
     heading = 'Confirming your payment…'
     body =

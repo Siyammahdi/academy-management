@@ -25,6 +25,7 @@ export const en: MarketingCopy = {
       'Arabic and Qur’an taught live to small batches. Enrollment, fees, homework and recordings kept in one clear place for students and the families who pay for them.',
     academyColumn: 'Academy',
     studentsColumn: 'Students & families',
+    legalColumn: 'Policies',
     programs: 'Programs',
     howEnrollment: 'How enrollment works',
     about: 'About',
@@ -33,6 +34,10 @@ export const en: MarketingCopy = {
     logIn: 'Log in',
     payGuest: 'Pay as a guest',
     contact: 'Contact admissions',
+    terms: 'Terms & conditions',
+    privacy: 'Privacy policy',
+    refund: 'Return & refund policy',
+    tradeLicenseLabel: 'Trade licence',
     classesNote: 'Classes are taught on Zoom and Telegram, in Asia/Dhaka time.',
   },
   hero: {
@@ -305,6 +310,10 @@ export const en: MarketingCopy = {
     lead: 'An Nahda teaches Arabic and the Qur’an with structure, patience, and clear expectations — for students, and for the families paying their fees.',
     seePrograms: 'See the programs',
     contactAdmissions: 'Contact admissions',
+    registrationHeading: 'Registered academy',
+    registrationBody:
+      'An Nahda Academy operates as a registered educational service in Bangladesh. Our trade licence number is published on this page and in the site footer.',
+    tradeLicenseLabel: 'Trade licence number',
     sections: [
       {
         index: '01',
@@ -335,6 +344,189 @@ export const en: MarketingCopy = {
       },
     ],
   },
+  legal: {
+    terms: {
+      eyebrow: 'Legal',
+      title: 'Terms & conditions',
+      lead: 'These terms govern use of An Nahda Academy’s website, student portal, and paid programs. By creating an account, enrolling, or paying fees, you agree to them.',
+      updated: 'Last updated 1 August 2026',
+      sections: [
+        {
+          heading: '1. Who we are',
+          paragraphs: [
+            'An Nahda Academy (“we”, “us”) provides live online Arabic and Qur’an instruction in limited batches, together with enrollment, fee, homework, and recording tools on this website.',
+            'Questions about these terms: admissions@annahda.academy.',
+          ],
+        },
+        {
+          heading: '2. Accounts and eligibility',
+          paragraphs: [
+            'You must provide accurate registration details and keep login credentials private. You are responsible for activity under your account.',
+            'Parents or guardians who pay for a student remain bound by these terms for that payment and for information they submit on the student’s behalf.',
+          ],
+        },
+        {
+          heading: '3. Programs, batches, and enrollment',
+          paragraphs: [
+            'Each course runs as a batch with its own seats, fees, and enrollment window. Enrollment is available only while the window is open and seats remain.',
+            'Submitting an enrollment request does not by itself activate classroom access. Access follows the academy’s payment and activation rules shown at checkout and in the student portal.',
+            'Batch schedules, class links, and teaching platforms (for example Zoom or Telegram) may change with reasonable notice when operationally required.',
+          ],
+        },
+        {
+          heading: '4. Fees and payments',
+          paragraphs: [
+            'Fees for a batch are fixed when that batch is created. Amounts shown at checkout are calculated by the academy and cannot be edited by the payer.',
+            'Online payments are processed by our payment partner. Manual payments require a transaction reference and proof link and stay pending until verified.',
+            'Monthly dues, due dates, and any late penalties follow the rules published in the student portal for each enrollment.',
+          ],
+        },
+        {
+          heading: '5. Acceptable use',
+          paragraphs: [
+            'Class links, homework, recordings, and portal content are for enrolled students only. Do not share access credentials or recorded class material outside the permitted batch.',
+            'You must not misuse the site, attempt unauthorised access, or submit false payment proof.',
+          ],
+        },
+        {
+          heading: '6. Intellectual property',
+          paragraphs: [
+            'Course materials, branding, and site content belong to An Nahda Academy or its licensors. Enrollment grants a limited, non-transferable licence to use materials for personal study during the enrollment.',
+          ],
+        },
+        {
+          heading: '7. Limitation of liability',
+          paragraphs: [
+            'Live online classes depend on third-party platforms and each student’s internet connection. We take reasonable care to deliver scheduled teaching but are not liable for outages or disruptions outside our control.',
+            'Nothing in these terms limits rights that cannot be excluded under applicable Bangladesh law.',
+          ],
+        },
+        {
+          heading: '8. Changes',
+          paragraphs: [
+            'We may update these terms. The “Last updated” date at the top of this page will change when we do. Continued use of the site or portal after an update constitutes acceptance of the revised terms.',
+          ],
+        },
+      ],
+    },
+    privacy: {
+      eyebrow: 'Legal',
+      title: 'Privacy policy',
+      lead: 'This policy explains what personal information An Nahda Academy collects, why we use it, and the choices available to students and payers.',
+      updated: 'Last updated 1 August 2026',
+      sections: [
+        {
+          heading: '1. Information we collect',
+          paragraphs: [
+            'Account and profile data such as name, email, phone number, and student identifiers.',
+            'Enrollment and billing data including course and batch choices, amounts owed, payment references, and proof links you submit.',
+            'Technical data such as login session details and basic device or browser information needed to keep the portal secure.',
+          ],
+        },
+        {
+          heading: '2. How we use information',
+          paragraphs: [
+            'To create and manage student accounts, enrollments, class access, homework, and recordings.',
+            'To calculate dues, process payments, verify manual payments, issue receipts, and handle refunds where applicable.',
+            'To contact you about enrollment windows, dues, payment status, and operational updates for your batches.',
+            'To keep audit records of money-affecting actions and protect the integrity of the academy’s systems.',
+          ],
+        },
+        {
+          heading: '3. Who we share with',
+          paragraphs: [
+            'Payment gateways and banks process online payments on our behalf. They receive only what is required to complete the transaction.',
+            'Batch managers and administrators see student and payment information needed to teach, verify payments, and run the academy.',
+            'We do not sell personal information.',
+          ],
+        },
+        {
+          heading: '4. Retention and security',
+          paragraphs: [
+            'We retain enrollment, payment, and audit records for as long as needed for teaching operations, financial accountability, and legal obligations.',
+            'We use access controls and industry-standard practices to protect data. No method of transmission or storage is perfectly secure; please keep your password private.',
+          ],
+        },
+        {
+          heading: '5. Your choices',
+          paragraphs: [
+            'You may request access to or correction of the personal data we hold about you by writing to admissions@annahda.academy.',
+            'Some records cannot be deleted while an enrollment or payment dispute is active, or where we must keep them for audit or legal reasons.',
+          ],
+        },
+        {
+          heading: '6. Children and family payers',
+          paragraphs: [
+            'Where a parent or guardian creates an account or pays on behalf of a student, they should only provide information they are authorised to share.',
+            'Guest payers supply name and phone solely to complete and track a specific payment.',
+          ],
+        },
+        {
+          heading: '7. Contact',
+          paragraphs: [
+            'Privacy questions: admissions@annahda.academy. We aim to respond within one working day.',
+          ],
+        },
+      ],
+    },
+    refund: {
+      eyebrow: 'Legal',
+      title: 'Return & refund policy',
+      lead: 'An Nahda Academy sells live educational services and digital portal access, not physical goods. This policy explains when fees may be refunded.',
+      updated: 'Last updated 1 August 2026',
+      sections: [
+        {
+          heading: '1. Nature of our services',
+          paragraphs: [
+            'Fees cover enrollment in a live teaching batch and related portal services (class access tools, homework, and recordings where provided). There is no physical product to return.',
+          ],
+        },
+        {
+          heading: '2. When a refund may be issued',
+          paragraphs: [
+            'Refunds are discretionary and issued only by academy administrators, typically where a payment was made in error, duplicated, or where the academy cancels a batch before teaching begins.',
+            'A verified payment may be refunded in full or in part. Partial refunds reopen the linked billing balance by the refunded amount.',
+            'Requesting a refund does not guarantee approval. Each case is reviewed against enrollment status, classes already delivered, and payment records.',
+          ],
+        },
+        {
+          heading: '3. What is generally not refundable',
+          paragraphs: [
+            'Fees for months or periods in which the student had access to scheduled classes, whether or not every session was attended.',
+            'Convenience fees or charges added by the payment gateway or bank, if any, which are outside the academy’s fee amount.',
+            'Change of mind after a batch has started and classroom access has been granted, except where the academy agrees in writing.',
+          ],
+        },
+        {
+          heading: '4. How to request a refund',
+          paragraphs: [
+            'Email admissions@annahda.academy with the student name or ID, payment reference or receipt, amount, and reason.',
+            'We may ask for additional proof. Approved refunds are returned via the original payment method where possible, or another method we confirm with you.',
+          ],
+        },
+        {
+          heading: '5. Pending and rejected payments',
+          paragraphs: [
+            'Manual payments that are rejected or expire are not charged as verified fees. Online payments that fail at the gateway do not create a completed academy payment.',
+            'If money left your account but the portal still shows a failed or cancelled payment, contact us promptly with the bank or gateway reference so we can investigate.',
+          ],
+        },
+        {
+          heading: '6. Contact',
+          paragraphs: [
+            'Refund questions: admissions@annahda.academy or the phone number published on the Contact page.',
+          ],
+        },
+      ],
+    },
+  },
+  checkoutAcceptance: {
+    agreePrefix: 'I have read and agree to the',
+    terms: 'Terms & Conditions',
+    privacy: 'Privacy Policy',
+    refund: 'Return & Refund Policy',
+    required: 'Accept the Terms, Privacy Policy, and Return & Refund Policy to continue.',
+  },
   contactPage: {
     eyebrow: 'Contact',
     title: 'Talk to admissions.',
@@ -361,5 +553,7 @@ export const en: MarketingCopy = {
   contact: {
     email: 'admissions@annahda.academy',
     phone: '+880 1700-000000',
+    /** Replace with the academy’s official trade licence number. */
+    tradeLicense: 'TRAD/DNCC/XXXXXX/2024',
   },
 }

@@ -18,7 +18,9 @@ import { BatchScopeGuard } from '../../common/guards/batch-scope.guard';
 import { SelfApprovalGuard } from '../../common/guards/self-approval.guard';
 import { PaymentsService, PaymentWithBillingPeriod } from './payments.service';
 import { PayManualDto } from './dto/pay-manual.dto';
+import { PayGatewayDto } from './dto/pay-gateway.dto';
 import { ConfirmGatewayPaymentDto } from './dto/confirm-gateway-payment.dto';
+import { AbandonGatewayPaymentDto } from './dto/abandon-gateway-payment.dto';
 import { RefundDto } from './dto/refund.dto';
 import type { Paginated, PaginationQuery } from '../../common/utils/pagination';
 
@@ -29,7 +31,7 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   /**
-   * Public — SSLCommerz success redirect confirms via Order Validation API
+   * Public — gateway success redirect confirms via provider status API
    * (not the browser alone). Activates enrollment on success (ENR-06).
    */
   @Public()
@@ -40,14 +42,33 @@ export class PaymentsController {
     return this.paymentsService.confirmGatewayPayment(dto);
   }
 
+  /**
+   * Public — payer cancelled or failed at the hosted checkout and returned.
+   * Rejects the pending gateway payment so enrollment payment can be retried.
+   */
+  @Public()
+  @Post('payments/gateway/abandon')
+  abandonGateway(
+    @Body() dto: AbandonGatewayPaymentDto,
+  ): Promise<{ status: string }> {
+    return this.paymentsService.abandonGatewayPayment(
+      dto.transactionReference,
+    );
+  }
+
   @Roles('student')
   @UseGuards(RolesGuard)
   @Post('billing-periods/:id/pay/gateway')
   payGateway(
     @Param('id') billingPeriodId: string,
+    @Body() dto: PayGatewayDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ redirectUrl: string }> {
-    return this.paymentsService.payGateway(billingPeriodId, user);
+  ): Promise<{ redirectUrl: string; provider: string }> {
+    return this.paymentsService.payGateway(
+      billingPeriodId,
+      user,
+      dto?.provider,
+    );
   }
 
   @Roles('student')

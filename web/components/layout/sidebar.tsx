@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { UserMenu } from '@/components/layout/user-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -119,9 +120,7 @@ export function Sidebar({
   return (
     <nav className={cn('flex h-full flex-col', className)}>
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-primary-wash text-xs font-bold text-primary-strong">
-          AN
-        </span>
+        <AcademyLogo size={36} decorative />
         <div className="min-w-0">
           <p className="truncate font-heading text-sm font-semibold tracking-tight text-foreground">
             {title}

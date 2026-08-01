@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 
+import { AcademyLogo } from '@/components/brand/academy-logo'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
 import { Container } from './container'
 
@@ -27,20 +28,26 @@ export function SiteFooter() {
         { href: '/contact', label: t.footer.contact },
       ],
     },
+    {
+      title: t.footer.legalColumn,
+      links: [
+        { href: '/terms', label: t.footer.terms },
+        { href: '/privacy', label: t.footer.privacy },
+        { href: '/refund-policy', label: t.footer.refund },
+      ],
+    },
   ] as const
 
   return (
     <footer className="border-t border-border bg-background">
       <Container width="marketing">
         <div className="grid gap-12 py-14 lg:grid-cols-12">
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-3">
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 font-heading text-base font-semibold tracking-tight text-foreground"
             >
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">
-                AN
-              </span>
+              <AcademyLogo size={32} decorative />
               {t.academy.name}
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -59,13 +66,19 @@ export function SiteFooter() {
               >
                 {t.contact.phone}
               </a>
+              <p className="pt-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {t.footer.tradeLicenseLabel}:
+                </span>{' '}
+                <span className="tabular-nums">{t.contact.tradeLicense}</span>
+              </p>
             </div>
           </div>
 
           {columns.map((column) => (
             <nav
               key={column.title}
-              className="lg:col-span-3 lg:col-start-auto"
+              className="lg:col-span-3"
               aria-label={column.title}
             >
               <h2 className="text-xs font-medium tracking-wide text-primary-strong uppercase">

@@ -34,6 +34,10 @@ export const metadata: Metadata = {
   },
   description:
     'Enrollment and subscription billing for An Nahda Academy.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

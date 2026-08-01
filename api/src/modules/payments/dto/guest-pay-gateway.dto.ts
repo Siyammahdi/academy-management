@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { GATEWAY_PROVIDERS } from '../../gateway/payment-gateway';
 
 // PAY-11 — a guest payment must record guestName and guestPhone. There is
 // no token to derive the billing period's owner from, so the period is
@@ -16,4 +17,8 @@ export class GuestPayGatewayDto {
   @IsString()
   @IsNotEmpty()
   guestPhone: string;
+
+  @IsOptional()
+  @IsIn([...GATEWAY_PROVIDERS])
+  provider?: 'paystation' | 'sslcommerz';
 }

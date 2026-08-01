@@ -273,6 +273,55 @@ export class EnrollmentService {
             throw new BatchFullException();
           }
 
+          const existing = await tx.enrollment.findUnique({
+            where: {
+              studentId_batchId: {
+                studentId: params.studentId,
+                batchId: params.batchId,
+              },
+            },
+            include: {
+              billingPeriods: {
+                orderBy: { periodMonth: 'asc' },
+                take: 1,
+              },
+            },
+          });
+
+          if (existing) {
+            // ENR-10 — active seat already held. Pending means they enrolled
+            // but never finished paying (e.g. cancelled gateway) — resume
+            // that seat so they can pay again instead of a dead-end error.
+            if (existing.status === 'active') {
+              throw new AlreadyEnrolledException();
+            }
+            if (existing.status === 'pending') {
+              const firstPeriod = existing.billingPeriods[0];
+              if (!firstPeriod) {
+                throw new BadRequestException(
+                  'Enrollment is incomplete. Contact admissions.',
+                );
+              }
+              return {
+                enrollment: {
+                  id: existing.id,
+                  status: existing.status,
+                },
+                firstPeriod: {
+                  id: firstPeriod.id,
+                  periodMonth: firstPeriod.periodMonth
+                    .toISOString()
+                    .slice(0, 7),
+                  amountOwed: firstPeriod.amountOwed.minus(
+                    firstPeriod.amountPaid,
+                  ),
+                  dueDate: firstPeriod.dueDate,
+                },
+              };
+            }
+            throw new AlreadyEnrolledException();
+          }
+
           let enrollment: Enrollment;
           try {
             enrollment = await tx.enrollment.create({
@@ -285,7 +334,7 @@ export class EnrollmentService {
           } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
               if (error.code === 'P2002') {
-                throw new AlreadyEnrolledException(); // ENR-10
+                throw new AlreadyEnrolledException(); // ENR-10 race
               }
               if (error.code === 'P2003') {
                 throw new StudentNotFoundException();

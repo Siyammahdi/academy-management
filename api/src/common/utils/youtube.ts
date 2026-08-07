@@ -1,5 +1,5 @@
 // YouTube video ids are exactly 11 characters from the URL-safe base64
-// alphabet. A manager may paste the bare id or a full link in any of
+// alphabet. A teacher may paste the bare id or a full link in any of
 // YouTube's common forms — this extracts the id either way; the frontend
 // builds the embed from the id alone, never a stored URL.
 const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;

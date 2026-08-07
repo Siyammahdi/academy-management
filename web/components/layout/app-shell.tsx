@@ -31,7 +31,7 @@ export interface AppShellProps {
   /** Grouped sidebar sections. When set, overrides flat `items` in the sidebar. */
   sections?: NavSection[]
   /**
-   * `tabs` — fixed bottom nav (student / manager).
+   * `tabs` — fixed bottom nav (student / teacher).
    * `drawer` — hamburger + slide-over (admin owner console).
    */
   mobileNav?: 'drawer' | 'tabs'

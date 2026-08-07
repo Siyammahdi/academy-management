@@ -170,8 +170,8 @@ export function PaymentModal({
         {purpose === 'enrollment' && mode === 'choose' ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
             Pay now to activate your seat. Online payment unlocks class as soon
-            as the bank confirms — no manager verification. Manual payment stays
-            pending until a manager verifies your proof.
+            as the bank confirms — no teacher verification. Manual payment stays
+            pending until a teacher verifies your proof.
           </p>
         ) : null}
 
@@ -319,7 +319,7 @@ export function PaymentModal({
             />
             <p className="text-xs leading-relaxed text-muted-foreground">
               Upload your receipt to Drive, Dropbox, or similar and paste the
-              share link. Only https links are accepted. A manager verifies
+              share link. Only https links are accepted. A teacher verifies
               before your enrollment or period updates.
             </p>
             <div className="flex flex-wrap justify-end gap-2">
@@ -354,8 +354,8 @@ export function PaymentModal({
               </p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 {purpose === 'enrollment'
-                  ? 'Your seat is reserved. Classroom tools unlock after a manager verifies this payment — or pay online next time for instant activation.'
-                  : 'This due stays pending until a manager verifies your proof.'}
+                  ? 'Your seat is reserved. Classroom tools unlock after a teacher verifies this payment — or pay online next time for instant activation.'
+                  : 'This due stays pending until a teacher verifies your proof.'}
               </p>
             </div>
             <Button className="min-h-11 self-start" onClick={handleDone}>

@@ -9,7 +9,7 @@ import { fadeRise, imageReveal } from '@/lib/gsap/motion'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { cn } from '@/lib/utils'
 
-/** The academy explained in three spreads, alternating side to side. */
+/** The academy explained in alternating editorial spreads. */
 export function AboutSections() {
   const t = useMarketingCopy()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -30,7 +30,7 @@ export function AboutSections() {
   return (
     <div ref={rootRef} className="bg-background">
       <Container width="marketing">
-        <div className="flex flex-col gap-20 py-24 sm:gap-28 sm:py-32">
+        <div className="flex flex-col gap-24 py-24 sm:gap-32 sm:py-32">
           {t.about.sections.map((section, index) => {
             const reversed = index % 2 === 1
             return (
@@ -85,6 +85,27 @@ export function AboutSections() {
                       </p>
                     ))}
                   </div>
+
+                  {section.facts?.length ? (
+                    <dl
+                      data-about-copy
+                      className="mt-8 divide-y divide-border border-t border-border"
+                    >
+                      {section.facts.map((fact) => (
+                        <div
+                          key={fact.label}
+                          className="flex items-baseline justify-between gap-6 py-4"
+                        >
+                          <dt className="text-sm text-muted-foreground">
+                            {fact.label}
+                          </dt>
+                          <dd className="font-heading text-base font-semibold tracking-tight text-foreground tabular-nums">
+                            {fact.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
                 </div>
               </section>
             )

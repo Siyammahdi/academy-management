@@ -26,7 +26,7 @@ import type {
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 import { ChangeBatchStatusDto } from './dto/change-batch-status.dto';
-import { AssignManagerDto } from './dto/assign-manager.dto';
+import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { UpdateClassLinkDto } from './dto/update-class-link.dto';
 import type { Paginated } from '../../common/utils/pagination';
 
@@ -76,25 +76,25 @@ export class BatchesController {
 
   @Roles('admin')
   @UseGuards(RolesGuard)
-  @Post(':id/managers')
-  assignManager(
+  @Post(':id/teachers')
+  assignTeacher(
     @Param('id') id: string,
-    @Body() dto: AssignManagerDto,
+    @Body() dto: AssignTeacherDto,
   ): Promise<void> {
-    return this.batchesService.assignManager(id, dto);
+    return this.batchesService.assignTeacher(id, dto);
   }
 
   @Roles('admin')
   @UseGuards(RolesGuard)
-  @Delete(':id/managers/:userId')
-  removeManager(
+  @Delete(':id/teachers/:userId')
+  removeTeacher(
     @Param('id') id: string,
     @Param('userId') userId: string,
   ): Promise<void> {
-    return this.batchesService.removeManager(id, userId);
+    return this.batchesService.removeTeacher(id, userId);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Get(':id/roster')
@@ -102,7 +102,7 @@ export class BatchesController {
     return this.batchesService.getRoster(id);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Patch(':id/class-link')

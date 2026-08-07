@@ -15,7 +15,7 @@ Violating any of these is a bug, regardless of whether tests pass.
 5. **Every money-affecting action writes an `AuditLog` entry.**
 6. **Every rule in `02-business-rules.md` has a test naming its ID.**
 7. **Fees are never accepted from the client.** Batches copy them server-side from the course.
-8. **A manager may never approve anything on their own enrollment.**
+8. **A teacher may never approve anything on their own enrollment.**
 
 ---
 
@@ -101,7 +101,7 @@ async verifyPayment(paymentId: string, actor: AuthUser): Promise<void> {
       throw new PaymentAlreadySettledException();
     }
 
-    // RBAC-03 — a manager may never verify their own enrollment
+    // RBAC-03 — a teacher may never verify their own enrollment
     this.assertNotSelfApproval(actor, payment.billingPeriod.enrollment);
 
     await tx.payment.update({ ... });
@@ -138,8 +138,8 @@ describe('PEN-06: penalty must not stack', () => {
 });
 
 describe('RBAC-03: self-approval prohibition', () => {
-  it('rejects a manager verifying a payment on their own enrollment', async () => { ... });
-  it('rejects even when the manager is assigned to that batch', async () => { ... });
+  it('rejects a teacher verifying a payment on their own enrollment', async () => { ... });
+  it('rejects even when the teacher is assigned to that batch', async () => { ... });
 });
 ```
 
@@ -202,7 +202,7 @@ This project has a complete specification. **The specification is the source of 
 **Do not:**
 - Add fields, tables, or endpoints not in the specification.
 - Add features "for future extensibility" — the deferral list in `07-architecture.md` is deliberate.
-- Substitute a common pattern for a specified rule. This system has deliberately unusual rules (the penalty adds a fee without removing the student; a shortfall never rolls forward; a manager cannot self-approve). Standard implementations of these are wrong here.
+- Substitute a common pattern for a specified rule. This system has deliberately unusual rules (the penalty adds a fee without removing the student; a shortfall never rolls forward; a teacher cannot self-approve). Standard implementations of these are wrong here.
 - Use `number` for money, anywhere, for any reason.
 - Silently "fix" a rule you disagree with. Flag it.
 
@@ -217,7 +217,7 @@ This project has a complete specification. **The specification is the source of 
 | FEE-03 | Editing a course fee **never** touches an existing batch. |
 | FEE-06 | The entry discount **never** reduces the penalty amount. |
 | PAY-03 | The **webhook** settles a payment, never the browser redirect. |
-| RBAC-03 | Self-approval is blocked **even inside a batch the manager owns**. |
+| RBAC-03 | Self-approval is blocked **even inside a batch the teacher owns**. |
 
 ---
 

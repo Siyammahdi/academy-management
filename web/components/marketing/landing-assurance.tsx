@@ -8,7 +8,13 @@ import { LandingAtmosphere } from '@/components/marketing/landing-atmosphere'
 import { MarketingImage } from '@/components/marketing/marketing-image'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
-import { blurRise, imageReveal, scrubScale, wordRise } from '@/lib/gsap/motion'
+import {
+  blurRise,
+  imageReveal,
+  scrubScale,
+  scrubY,
+  wordRise,
+} from '@/lib/gsap/motion'
 import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { MEDIA } from '@/lib/marketing/media'
@@ -87,7 +93,33 @@ export function LandingAssurance() {
         '-=0.4',
       )
 
+      // Soft opacity scrub while the row travels the viewport.
+      gsap.fromTo(
+        row,
+        { opacity: 0.55 },
+        {
+          opacity: 1,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: row,
+            start: 'top 90%',
+            end: 'top 45%',
+            scrub: true,
+          },
+        },
+      )
     })
+
+    const sticky = root.querySelector('[data-assurance-sticky]')
+    if (sticky) {
+      scrubY(gsap, sticky, {
+        from: 28,
+        to: -12,
+        trigger: root,
+        start: 'top bottom',
+        end: 'bottom top',
+      })
+    }
   }, [])
 
   return (
@@ -100,7 +132,7 @@ export function LandingAssurance() {
       <Container width="marketing" className="relative z-10">
         <div className="grid gap-14 lg:grid-cols-12 lg:gap-12">
           <div className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28">
+            <div data-assurance-sticky className="lg:sticky lg:top-28">
               <Eyebrow tone="inverse">{assurances.eyebrow}</Eyebrow>
               <h2
                 id="assurance-heading"
@@ -139,7 +171,7 @@ export function LandingAssurance() {
               <li
                 key={item.title}
                 data-assurance-row
-                className="relative pt-8 pb-8 first:pt-0"
+                className="group/row relative pt-8 pb-8 transition-transform duration-500 first:pt-0 hover:translate-x-1"
               >
                 <span
                   aria-hidden
@@ -149,7 +181,7 @@ export function LandingAssurance() {
                 <div className="flex gap-6">
                   <span
                     data-assurance-index
-                    className="font-heading text-sm font-semibold tabular-nums text-primary-foreground/50"
+                    className="font-heading text-sm font-semibold tabular-nums text-primary-foreground/50 transition-colors duration-300 group-hover/row:text-primary-foreground"
                   >
                     {String(index + 1).padStart(2, '0')}
                   </span>

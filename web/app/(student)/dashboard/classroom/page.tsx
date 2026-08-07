@@ -94,7 +94,7 @@ export default function StudentClassroomPage() {
             <aside className="rounded-xl bg-status-pending-bg px-4 py-3 text-sm text-muted-foreground">
               {activeWithoutLink.length} active course
               {activeWithoutLink.length === 1 ? '' : 's'} still waiting for a
-              class link from your manager.
+              class link from your teacher.
             </aside>
           ) : null}
 

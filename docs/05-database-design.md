@@ -45,7 +45,7 @@ datasource db {
 
 enum RoleName {
   admin
-  manager
+  teacher
   student
 }
 
@@ -57,6 +57,13 @@ enum UserStatus {
 enum StudentStatus {
   active
   inactive
+}
+
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
 }
 
 enum BillingType {
@@ -132,14 +139,34 @@ model User {
   email        String     @unique
   passwordHash String     @map("password_hash")
   status       UserStatus @default(active)
+  /// Set after `POST /auth/verify-email`. Login rejects unverified users.
+  isEmailVerified Boolean @default(false) @map("is_email_verified")
+  /// Shared profile fields for all roles (`GET/PATCH /me/profile`).
+  fullName     String?    @map("full_name")
+  phone        String?
+  gender       Gender?
+  dateOfBirth  DateTime?  @map("date_of_birth") @db.Date
+  bloodGroup   String?    @map("blood_group")
+  nationality  String?
+  nationalId   String?    @map("national_id")
+  addressLine  String?    @map("address_line")
+  city         String?
+  district     String?
+  postalCode   String?    @map("postal_code")
+  country      String?    @default("Bangladesh")
+  avatar         Bytes?
+  avatarMimeType String?  @map("avatar_mime_type")
+  lastLoginAt    DateTime? @map("last_login_at")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  roles         UserRole[]
-  student       Student?
-  managedBatches BatchManager[]
-  refreshTokens RefreshToken[]
+  roles          UserRole[]
+  student        Student?
+  teacherProfile TeacherProfile?
+  taughtBatches  BatchTeacher[]
+  refreshTokens  RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  otpCodes       OtpCode[]
 
   // Actions this user has taken
   verifiedPayments Payment[]  @relation("PaymentVerifier")
@@ -149,10 +176,34 @@ model User {
   notifications    Notification[]
 
   @@index([status])
+  @@index([phone])
   @@map("users")
 }
 
-/// A user holds a SET of roles — one person may be both manager and student (RBAC-01).
+enum OtpType {
+  EMAIL
+  // PASSWORD_RESET / PHONE — reserved for future OTP channels
+}
+
+/// Hashed one-time codes (email verification today). Plain codes are never
+/// stored — only SHA-256 `codeHash`. One active row per (userId, type).
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      OtpType
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
+
+/// A user holds a SET of roles — one person may be both teacher and student (RBAC-01).
 model UserRole {
   id     String   @id @default(cuid())
   userId String   @map("user_id")
@@ -201,21 +252,43 @@ model PasswordResetToken {
 
 /// Academic/financial profile. userId is OPTIONAL — a student may have no login.
 model Student {
-  id        String        @id @default(cuid())
-  studentId String        @unique @map("student_id")              // ANA-0001, sequential, guest-facing
-  userId    String?       @unique @map("user_id")
-  fullName  String        @map("full_name")
-  phone     String
-  status    StudentStatus @default(active)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id               String        @id @default(cuid())
+  studentId        String        @unique @map("student_id") // ANA-0001, sequential, guest-facing
+  userId           String?       @unique @map("user_id")
+  fullName         String        @map("full_name")
+  phone            String
+  status           StudentStatus @default(active)
+  guardianName     String?       @map("guardian_name")
+  guardianPhone    String?       @map("guardian_phone")
+  emergencyContact String?       @map("emergency_contact")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   enrollments Enrollment[]
 
-  @@index([phone])        // guest lookup by phone
+  @@index([phone]) // guest lookup by phone
   @@index([status])
   @@map("students")
+}
+
+/// Optional staff extras for users with the teacher role.
+model TeacherProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
+  employeeId     String?   @map("employee_id")
+  designation    String?
+  department     String?
+  bio            String?
+  qualifications String?
+  experience     String?
+  joiningDate    DateTime? @map("joining_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("teacher_profiles")
 }
 
 /// Backs sequential studentId generation. Single row, incremented in a transaction.
@@ -292,7 +365,7 @@ model Batch {
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
   course      Course         @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  managers    BatchManager[]
+  teachers    BatchTeacher[]
   enrollments Enrollment[]
   homework    Homework[]
   recordings  RecordedClass[]
@@ -303,8 +376,8 @@ model Batch {
   @@map("batches")
 }
 
-/// A batch may have SEVERAL managers; a manager may hold several batches.
-model BatchManager {
+/// A batch may have SEVERAL teachers; a teacher may hold several batches.
+model BatchTeacher {
   id         String   @id @default(cuid())
   batchId    String   @map("batch_id")
   userId     String   @map("user_id")
@@ -314,8 +387,8 @@ model BatchManager {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([batchId, userId])
-  @@index([userId])          // "which batches does this manager have?" — hot path for BatchScopeGuard
-  @@map("batch_managers")
+  @@index([userId])          // "which batches does this teacher have?" — hot path for BatchScopeGuard
+  @@map("batch_teachers")
 }
 
 /// A deferred course-management feature (doc 07 §12): attaches to Batch,
@@ -737,12 +810,12 @@ Every index answers a specific hot query. Do not add others speculatively.
 |---|---|
 | `billing_periods (status, dueDate)` | The penalty job's monthly scan for unpaid overdue periods |
 | `billing_periods (enrollmentId, periodMonth)` unique | Idempotent generation; "this student's March" |
-| `payments (status, method)` | The manager's pending-manual-payment queue |
+| `payments (status, method)` | The teacher's pending-manual-payment queue |
 | `payments (status, createdAt)` | The 60-minute gateway expiry sweep |
 | `payments (transactionReference)` unique | Webhook idempotency |
 | `enrollments (batchId, status)` | Batch roster and capacity counting |
 | `enrollments (studentId, batchId)` unique | Prevents double enrollment |
-| `batch_managers (userId)` | `BatchScopeGuard` — runs on nearly every manager request |
+| `batch_teachers (userId)` | `BatchScopeGuard` — runs on nearly every teacher request |
 | `students (phone)` | Guest lookup by phone |
 | `requests (status, type)` | Pending queues split by approver authority |
 | `notifications (recipientUserId, readAt)` | Unread badge |

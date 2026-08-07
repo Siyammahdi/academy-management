@@ -48,7 +48,7 @@ A 100% discount yields an entry amount of `0.00`.
 
 **ENR-06** — A gateway payment MUST set enrollment status to `active` immediately upon webhook confirmation.
 
-**ENR-07** — A manual payment MUST leave enrollment status `pending` until a manager verifies the payment.
+**ENR-07** — A manual payment MUST leave enrollment status `pending` until a teacher verifies the payment.
 
 **ENR-08** — Only an **admin** MAY add a late joiner (enrolling a student after `enrollmentClosesAt`). Students MUST NOT be able to self-enroll late.
 
@@ -108,7 +108,7 @@ A 100% discount yields an entry amount of `0.00`.
 
 **PAY-06** — A manual payment MUST require a `transactionReference` and a `proofUrl`, and MUST be created `pending`.
 
-**PAY-07** — Only an assigned manager of the payment's batch, or an admin, MAY verify or reject a manual payment.
+**PAY-07** — Only an assigned teacher of the payment's batch, or an admin, MAY verify or reject a manual payment.
 
 **PAY-08** — Verifying a payment MUST increase the period's `amountPaid` by the payment amount, atomically.
 
@@ -165,7 +165,7 @@ A 100% discount yields an entry amount of `0.00`.
 
 **REQ-01** — Two request types exist: `grace` (extends a deadline) and `partial_payment` (accepts less than owed).
 
-**REQ-02** — A `grace` request MAY be decided by a **manager or an admin**.
+**REQ-02** — A `grace` request MAY be decided by a **teacher or an admin**.
 
 **REQ-03** — A `partial_payment` request MUST be decided by an **admin only**.
 
@@ -185,15 +185,15 @@ A 100% discount yields an entry amount of `0.00`.
 
 > Full matrix in `04-rbac.md`. These are the invariants that MUST be enforced regardless of route.
 
-**RBAC-01** — A user MAY hold multiple roles simultaneously (`admin`, `manager`, `student`).
+**RBAC-01** — A user MAY hold multiple roles simultaneously (`admin`, `teacher`, `student`).
 
-**RBAC-02** — A manager's authority is scoped to batches they are assigned to. Access to any other batch MUST be denied.
+**RBAC-02** — A teacher's authority is scoped to batches they are assigned to. Access to any other batch MUST be denied.
 
-**RBAC-03** — **A manager MUST NOT verify a payment, reject a payment, or decide a request on their own enrollment.** Such actions MUST be refused and escalated to an admin. This applies even when the manager is legitimately assigned to that batch.
+**RBAC-03** — **A teacher MUST NOT verify a payment, reject a payment, or decide a request on their own enrollment.** Such actions MUST be refused and escalated to an admin. This applies even when the teacher is legitimately assigned to that batch.
 
 **RBAC-04** — All money-affecting actions — waivers, refunds, penalty reversal, marking a period paid without money, partial-payment approval — are **admin only**.
 
-**RBAC-05** — A manager MUST NOT create or edit courses or batches, add late joiners, or remove students.
+**RBAC-05** — A teacher MUST NOT create or edit courses or batches, add late joiners, or remove students.
 
 ---
 
@@ -215,7 +215,7 @@ A 100% discount yields an entry amount of `0.00`.
 
 **NTF-01** — Student-facing events MUST dispatch to **both** dashboard and email.
 
-**NTF-02** — Manager-facing events MUST dispatch to **dashboard only**.
+**NTF-02** — Teacher-facing events MUST dispatch to **dashboard only**.
 
 **NTF-03** — Notification dispatch MUST NOT block the business transaction that triggered it. Email sending MUST be queued.
 
@@ -258,7 +258,7 @@ Every rule above MUST have at least one automated test referencing its ID in the
 
 ```ts
 describe('PEN-06: penalty must not stack', () => { ... });
-describe('RBAC-03: manager cannot verify own enrollment payment', () => { ... });
+describe('RBAC-03: teacher cannot verify own enrollment payment', () => { ... });
 ```
 
 Rules most likely to be violated by a naive implementation, and therefore requiring explicit test coverage before merge:

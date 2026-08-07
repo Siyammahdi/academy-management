@@ -34,11 +34,11 @@ describe('Courses/Batches (real Postgres)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let adminToken: string;
-  let managerToken: string;
+  let teacherToken: string;
 
   async function createUserWithRole(
     email: string,
-    role: 'admin' | 'manager',
+    role: 'admin' | 'teacher',
   ): Promise<string> {
     const passwordHash = await argon2.hash('password123');
     const user = await prisma.user.create({
@@ -69,9 +69,9 @@ describe('Courses/Batches (real Postgres)', () => {
       `admin-${suffix}@example.com`,
       'admin',
     );
-    managerToken = await createUserWithRole(
-      `manager-${suffix}@example.com`,
-      'manager',
+    teacherToken = await createUserWithRole(
+      `teacher-${suffix}@example.com`,
+      'teacher',
     );
   });
 
@@ -181,11 +181,11 @@ describe('Courses/Batches (real Postgres)', () => {
     });
   });
 
-  describe('RBAC-05: a manager receives 403 creating a course or a batch', () => {
-    it('rejects a manager creating a course', async () => {
+  describe('RBAC-05: a teacher receives 403 creating a course or a batch', () => {
+    it('rejects a teacher creating a course', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/courses')
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({
           title: 'Should be forbidden',
           billingType: 'monthly',
@@ -198,10 +198,10 @@ describe('Courses/Batches (real Postgres)', () => {
       );
     });
 
-    it('rejects a manager creating a batch', async () => {
+    it('rejects a teacher creating a batch', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/batches')
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({
           courseId: 'irrelevant',
           name: 'Should be forbidden',
@@ -246,13 +246,13 @@ describe('Courses/Batches (real Postgres)', () => {
       return (batchRes.body as BatchBody).id;
     }
 
-    it('rejects a manager not assigned to the batch with 403 BATCH_NOT_ASSIGNED', async () => {
+    it('rejects a teacher not assigned to the batch with 403 BATCH_NOT_ASSIGNED', async () => {
       const batchId = await createCourseAndBatch();
 
-      // `managerToken`'s user is never assigned to any batch in this file.
+      // `teacherToken`'s user is never assigned to any batch in this file.
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/batches/${batchId}/class-link`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({ classLink: 'https://meet.google.com/abc-defg-hij' })
         .expect(403);
       expect((res.body as ErrorResponseBody).error).toBe('BATCH_NOT_ASSIGNED');
@@ -263,25 +263,25 @@ describe('Courses/Batches (real Postgres)', () => {
       expect(batch.classLink).toBeNull();
     });
 
-    it('lets the assigned manager set the link and writes class_link_updated', async () => {
+    it('lets the assigned teacher set the link and writes class_link_updated', async () => {
       const batchId = await createCourseAndBatch();
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const assignedManagerToken = await createUserWithRole(
-        `assigned-manager-${suffix}@example.com`,
-        'manager',
+      const assignedTeacherToken = await createUserWithRole(
+        `assigned-teacher-${suffix}@example.com`,
+        'teacher',
       );
-      const assignedManager = await prisma.user.findUniqueOrThrow({
-        where: { email: `assigned-manager-${suffix}@example.com` },
+      const assignedTeacher = await prisma.user.findUniqueOrThrow({
+        where: { email: `assigned-teacher-${suffix}@example.com` },
       });
       await request(app.getHttpServer())
-        .post(`/api/v1/batches/${batchId}/managers`)
+        .post(`/api/v1/batches/${batchId}/teachers`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ userId: assignedManager.id })
+        .send({ userId: assignedTeacher.id })
         .expect(201);
 
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/batches/${batchId}/class-link`)
-        .set('Authorization', `Bearer ${assignedManagerToken}`)
+        .set('Authorization', `Bearer ${assignedTeacherToken}`)
         .send({ classLink: 'https://meet.google.com/abc-defg-hij' })
         .expect(200);
       expect((res.body as BatchBody & { classLink: string }).classLink).toBe(

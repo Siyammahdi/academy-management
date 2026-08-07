@@ -63,9 +63,9 @@ The `homework`/`recordings` modules are the reference pattern for "a new table t
 
 1. Add the Prisma model with `batchId`, `onDelete: Cascade` to `Batch`, `@@map` to a plural snake_case table name. Additive-only migration — never alter an existing table for this.
 2. Add the resource kind to `TargetResourceKind` (`common/decorators/target-resource.decorator.ts`) and a case in `resolveTarget()` (`common/guards/target-resolver.util.ts`) if `PATCH`/`DELETE` routes address the resource by its own id rather than the batch id.
-3. Controller routes reuse `@Roles('manager', 'admin')` + `@TargetResource('batch' | 'yourKind')` + `BatchScopeGuard` — manager-own-batch-or-admin, enforced identically every time.
+3. Controller routes reuse `@Roles('teacher', 'admin')` + `@TargetResource('batch' | 'yourKind')` + `BatchScopeGuard` — teacher-own-batch-or-admin, enforced identically every time.
 4. Add the audit action(s) to `../docs/02-business-rules.md` AUD-04's list and write them via `AuditService.record()` inside the same transaction as the mutation.
-5. Unit tests (mocked Prisma) + an e2e test proving an unassigned manager gets `403 BATCH_NOT_ASSIGNED`.
+5. Unit tests (mocked Prisma) + an e2e test proving an unassigned teacher gets `403 BATCH_NOT_ASSIGNED`.
 
 ## Conventions
 

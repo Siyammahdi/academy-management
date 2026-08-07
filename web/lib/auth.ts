@@ -11,7 +11,7 @@ import {
   setStoredActiveRole,
 } from './active-role'
 
-export type RoleName = 'admin' | 'manager' | 'student'
+export type RoleName = 'admin' | 'teacher' | 'student'
 
 export interface AuthUser {
   id: string
@@ -42,7 +42,7 @@ export interface RegisterInput {
 
 /**
  * Home for the restored workspace (preferred role) when still permitted.
- * Falls back to admin → manager → student. RBAC-01 — one login, many roles.
+ * Falls back to admin → teacher → student. RBAC-01 — one login, many roles.
  */
 export function homePathForRoles(roles: readonly string[]): string {
   const role = resolveActiveRole(roles, getStoredActiveRole())
@@ -65,12 +65,32 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   return persistAuth(result)
 }
 
-export async function register(input: RegisterInput): Promise<AuthResponse> {
-  const result = await apiFetch<AuthResponse>('/auth/register', {
+export async function register(
+  input: RegisterInput,
+): Promise<{ email: string; message: string; requiresEmailVerification: true }> {
+  return apiFetch('/auth/register', {
     method: 'POST',
     body: JSON.stringify(input),
   })
-  return persistAuth(result)
+}
+
+export async function verifyEmail(
+  email: string,
+  code: string,
+): Promise<{ message: string }> {
+  return apiFetch('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  })
+}
+
+export async function resendEmailVerification(
+  email: string,
+): Promise<{ message: string }> {
+  return apiFetch('/auth/resend-email-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
 }
 
 export async function refreshSession(): Promise<AuthResponse | null> {

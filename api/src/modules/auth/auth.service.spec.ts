@@ -4,11 +4,14 @@ import * as argon2 from 'argon2';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { EmailAlreadyRegisteredException } from '../../common/exceptions/email-already-registered.exception';
+import { EmailNotVerifiedException } from '../../common/exceptions/email-not-verified.exception';
 import { InvalidCredentialsException } from '../../common/exceptions/invalid-credentials.exception';
 import { InvalidResetTokenException } from '../../common/exceptions/invalid-reset-token.exception';
 import { ResetTokenExpiredException } from '../../common/exceptions/reset-token-expired.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { EmailService } from '../email/email.service';
+import { OtpService } from '../otp/otp.service';
 
 function createJwtServiceMock(): JwtService {
   return {
@@ -24,11 +27,36 @@ function createMailMock(): MailService {
   } as unknown as MailService;
 }
 
+function createEmailMock(): EmailService {
+  return {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  } as unknown as EmailService;
+}
+
+function createOtpMock(): OtpService {
+  return {
+    issue: jest.fn().mockResolvedValue({
+      code: '123456',
+      expiresAt: new Date(Date.now() + 600_000),
+    }),
+    verify: jest.fn().mockResolvedValue(undefined),
+    clear: jest.fn().mockResolvedValue(undefined),
+  } as unknown as OtpService;
+}
+
 function createService(
   prisma: PrismaService,
   mail: MailService = createMailMock(),
+  email: EmailService = createEmailMock(),
+  otp: OtpService = createOtpMock(),
 ): AuthService {
-  return new AuthService(prisma, createJwtServiceMock(), mail);
+  return new AuthService(
+    prisma,
+    createJwtServiceMock(),
+    mail,
+    email,
+    otp,
+  );
 }
 
 function hashToken(token: string): string {
@@ -37,12 +65,14 @@ function hashToken(token: string): string {
 
 describe('AuthService', () => {
   describe('register', () => {
-    it('creates User + Student + student role in one transaction, with a sequential studentId (doc 05 §6)', async () => {
+    it('creates User + Student + student role and requires email verification (no session)', async () => {
       const tx = {
         user: {
-          create: jest
-            .fn()
-            .mockResolvedValue({ id: 'user1', email: 'a@x.com' }),
+          create: jest.fn().mockResolvedValue({
+            id: 'user1',
+            email: 'a@x.com',
+            fullName: 'Ana Rahman',
+          }),
         },
         userRole: { create: jest.fn().mockResolvedValue({}) },
         studentIdSequence: {
@@ -58,10 +88,11 @@ describe('AuthService', () => {
         $transaction: jest
           .fn()
           .mockImplementation((cb: (tx: unknown) => unknown) => cb(tx)),
-        refreshToken: { create: jest.fn().mockResolvedValue({}) },
       } as unknown as PrismaService;
 
-      const service = createService(prisma);
+      const email = createEmailMock();
+      const otp = createOtpMock();
+      const service = createService(prisma, createMailMock(), email, otp);
       const result = await service.register({
         email: 'a@x.com',
         password: 'password123',
@@ -69,25 +100,25 @@ describe('AuthService', () => {
         phone: '01700000000',
       });
 
+      expect(tx.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          email: 'a@x.com',
+          isEmailVerified: false,
+        }),
+      });
       expect(tx.userRole.create).toHaveBeenCalledWith({
         data: { userId: 'user1', role: 'student' },
       });
-      expect(tx.studentIdSequence.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { current: { increment: 1 } },
+      expect(otp.issue).toHaveBeenCalled();
+      expect(email.sendVerificationEmail).toHaveBeenCalledWith({
+        to: 'a@x.com',
+        fullName: 'Ana Rahman',
+        code: '123456',
+        expiryMinutes: expect.any(Number),
       });
-      expect(tx.student.create).toHaveBeenCalledWith({
-        data: {
-          studentId: 'ANA-0007',
-          userId: 'user1',
-          fullName: 'Ana Rahman',
-          phone: '01700000000',
-        },
-      });
-      expect(result.user.studentId).toBe('ANA-0007');
-      expect(result.user.roles).toEqual(['student']);
-      expect(result.accessToken).toBe('signed-token');
-      expect(result.refreshToken).toBe('signed-token');
+      expect(result.requiresEmailVerification).toBe(true);
+      expect(result.email).toBe('a@x.com');
+      expect(result).not.toHaveProperty('accessToken');
     });
 
     it('rejects a duplicate email registration', async () => {
@@ -120,6 +151,7 @@ describe('AuthService', () => {
             id: 'user1',
             email: 'a@x.com',
             status: 'active',
+            isEmailVerified: true,
             passwordHash,
             roles: [],
             student: null,
@@ -131,6 +163,28 @@ describe('AuthService', () => {
       await expect(
         service.login({ email: 'a@x.com', password: 'wrong-password' }),
       ).rejects.toThrow(InvalidCredentialsException);
+    });
+
+    it('rejects unverified email after a correct password', async () => {
+      const passwordHash = await argon2.hash('correct-password');
+      const prisma = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'user1',
+            email: 'a@x.com',
+            status: 'active',
+            isEmailVerified: false,
+            passwordHash,
+            roles: [],
+            student: null,
+          }),
+        },
+      } as unknown as PrismaService;
+
+      const service = createService(prisma);
+      await expect(
+        service.login({ email: 'a@x.com', password: 'correct-password' }),
+      ).rejects.toThrow(EmailNotVerifiedException);
     });
 
     it('rejects login for an unknown email the same way as a wrong password', async () => {
@@ -152,12 +206,20 @@ describe('AuthService', () => {
             id: 'user1',
             email: 'a@x.com',
             status: 'active',
+            isEmailVerified: true,
+            fullName: 'Ana Rahman',
             passwordHash,
             roles: [{ role: 'student' }],
             student: { studentId: 'ANA-0001', fullName: 'Ana Rahman' },
           }),
+          update: jest.fn().mockResolvedValue({}),
         },
         refreshToken: { create: jest.fn().mockResolvedValue({}) },
+        $transaction: jest
+          .fn()
+          .mockImplementation((ops: unknown) =>
+            Promise.all(ops as Promise<unknown>[]),
+          ),
       } as unknown as PrismaService;
 
       const service = createService(prisma);
@@ -171,6 +233,7 @@ describe('AuthService', () => {
         email: 'a@x.com',
         roles: ['student'],
         studentId: 'ANA-0001',
+        fullName: 'Ana Rahman',
       });
     });
   });

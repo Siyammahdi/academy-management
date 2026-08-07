@@ -43,7 +43,7 @@ export function EnrollmentRouteGate({ children }: { children: ReactNode }) {
         showApplications={hasPending}
         description={
           hasPending
-            ? 'Your application is waiting for payment to clear. Online payments unlock class as soon as the bank confirms — no manager review. Manual payments wait for verification.'
+            ? 'Your application is waiting for payment to clear. Online payments unlock class as soon as the bank confirms — no teacher review. Manual payments wait for verification.'
             : 'Class links, homework, and your courses unlock after you have an active enrollment in a batch.'
         }
       />

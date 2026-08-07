@@ -56,7 +56,7 @@ Generated code gets these wrong because they contradict common patterns. They ar
 | `FEE-03` | Editing a course fee **never** touches an existing batch |
 | `FEE-06` | The entry discount **never** reduces the penalty amount |
 | `PAY-03` | The **webhook** settles a gateway payment — never the browser redirect |
-| `RBAC-03` | Self-approval is blocked **even inside a batch the manager owns** |
+| `RBAC-03` | Self-approval is blocked **even inside a batch the teacher owns** |
 
 ---
 

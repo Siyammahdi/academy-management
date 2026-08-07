@@ -20,17 +20,17 @@ function createGuard(findUnique: jest.Mock): BatchScopeGuard {
   const reflector = {
     getAllAndOverride: jest.fn().mockReturnValue('batch'),
   } as unknown as Reflector;
-  const prisma = { batchManager: { findUnique } } as unknown as PrismaService;
+  const prisma = { batchTeacher: { findUnique } } as unknown as PrismaService;
   return new BatchScopeGuard(prisma, reflector);
 }
 
 describe('BatchScopeGuard', () => {
-  describe('RBAC-02: a manager receives 403 on an unassigned batch', () => {
-    it('rejects when no BatchManager row exists for this user and batch', async () => {
+  describe('RBAC-02: a teacher receives 403 on an unassigned batch', () => {
+    it('rejects when no BatchTeacher row exists for this user and batch', async () => {
       const findUnique = jest.fn().mockResolvedValue(null);
       const guard = createGuard(findUnique);
       const context = createContext(
-        { id: 'mgr1', email: 'm@x.com', roles: ['manager'], studentId: null },
+        { id: 'mgr1', email: 'm@x.com', roles: ['teacher'], studentId: null },
         { id: 'batch1' },
       );
 
@@ -43,11 +43,11 @@ describe('BatchScopeGuard', () => {
     });
   });
 
-  it('allows a manager assigned to the batch', async () => {
+  it('allows a teacher assigned to the batch', async () => {
     const findUnique = jest.fn().mockResolvedValue({ id: 'bm1' });
     const guard = createGuard(findUnique);
     const context = createContext(
-      { id: 'mgr1', email: 'm@x.com', roles: ['manager'], studentId: null },
+      { id: 'mgr1', email: 'm@x.com', roles: ['teacher'], studentId: null },
       { id: 'batch1' },
     );
 

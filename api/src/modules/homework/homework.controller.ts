@@ -27,7 +27,7 @@ import type { HomeworkResponse } from './homework.presentation';
 export class HomeworkController {
   constructor(private readonly homeworkService: HomeworkService) {}
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Post('batches/:id/homework')
@@ -39,7 +39,7 @@ export class HomeworkController {
     return this.homeworkService.create(id, dto, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Get('batches/:id/homework')
@@ -47,7 +47,7 @@ export class HomeworkController {
     return this.homeworkService.listForBatch(id);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('homework')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Patch('homework/:id')
@@ -59,7 +59,7 @@ export class HomeworkController {
     return this.homeworkService.update(id, dto, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('homework')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Delete('homework/:id')
@@ -70,8 +70,8 @@ export class HomeworkController {
     return this.homeworkService.remove(id, user);
   }
 
-  /** PDF worksheet — managers of the batch, or students with an active seat. */
-  @Roles('student', 'manager', 'admin')
+  /** PDF worksheet — teachers of the batch, or students with an active seat. */
+  @Roles('student', 'teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('homework/:id/pdf')
   async pdf(

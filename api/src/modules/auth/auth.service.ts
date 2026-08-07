@@ -1,11 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma, RoleName } from '@prisma/client';
+import { OtpType, Prisma, RoleName } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { EmailService } from '../email/email.service';
+import { OtpService } from '../otp/otp.service';
+import { OTP_EXPIRY_MINUTES } from '../otp/otp.config';
+import { OtpInvalidException } from '../otp/otp.exceptions';
 import { EmailAlreadyRegisteredException } from '../../common/exceptions/email-already-registered.exception';
+import {
+  EmailAlreadyVerifiedException,
+  EmailNotVerifiedException,
+} from '../../common/exceptions/email-not-verified.exception';
 import { InvalidCredentialsException } from '../../common/exceptions/invalid-credentials.exception';
 import { InvalidRefreshTokenException } from '../../common/exceptions/invalid-refresh-token.exception';
 import { InvalidResetTokenException } from '../../common/exceptions/invalid-reset-token.exception';
@@ -15,6 +23,12 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendEmailVerificationDto } from './dto/resend-email-verification.dto';
+import {
+  EmailVerificationSuccessDto,
+  RegisterPendingVerificationDto,
+} from './dto/email-verification-response.dto';
 import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import {
   JWT_ACCESS_EXPIRY,
@@ -38,9 +52,11 @@ interface RefreshTokenPayload {
 }
 
 function hashToken(token: string): string {
-  // Deterministic (unlike argon2) so the DB's unique index on tokenHash
-  // can be used for direct lookup — see doc 05 §2's RefreshToken model.
   return createHash('sha256').update(token).digest('hex');
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
 }
 
 @Injectable()
@@ -51,45 +67,50 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mail: MailService,
+    private readonly email: EmailService,
+    private readonly otp: OtpService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponseDto> {
+  async register(dto: RegisterDto): Promise<RegisterPendingVerificationDto> {
+    const email = normalizeEmail(dto.email);
     const passwordHash = await argon2.hash(dto.password);
 
     let created: {
-      user: { id: string; email: string };
-      student: { studentId: string; fullName: string };
+      user: { id: string; email: string; fullName: string | null };
     };
 
     try {
       created = await this.prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
-          data: { email: dto.email, passwordHash },
+          data: {
+            email,
+            passwordHash,
+            fullName: dto.fullName.trim(),
+            phone: dto.phone.trim(),
+            isEmailVerified: false,
+          },
         });
 
-        // RBAC-01 — registration always grants the 'student' role
         await tx.userRole.create({
           data: { userId: user.id, role: 'student' },
         });
 
-        // doc 05 §6 — sequential, human-readable studentId, generated
-        // atomically inside this same transaction
         const seq = await tx.studentIdSequence.update({
           where: { id: 1 },
           data: { current: { increment: 1 } },
         });
         const studentId = `ANA-${String(seq.current).padStart(4, '0')}`;
 
-        const student = await tx.student.create({
+        await tx.student.create({
           data: {
             studentId,
             userId: user.id,
-            fullName: dto.fullName,
-            phone: dto.phone,
+            fullName: dto.fullName.trim(),
+            phone: dto.phone.trim(),
           },
         });
 
-        return { user, student };
+        return { user };
       });
     } catch (error) {
       if (
@@ -101,29 +122,88 @@ export class AuthService {
       throw error;
     }
 
-    const tokens = await this.createTokenPair(created.user.id);
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: created.user.id,
-        tokenHash: tokens.tokenHash,
-        expiresAt: tokens.expiresAt,
+    await this.dispatchEmailVerification(
+      created.user.id,
+      created.user.email,
+      created.user.fullName,
+    );
+
+    return {
+      email: created.user.email,
+      requiresEmailVerification: true,
+      message:
+        'Account created. Check your email for a verification code before signing in.',
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto): Promise<EmailVerificationSuccessDto> {
+    const email = normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, isEmailVerified: true, status: true },
+    });
+
+    // Generic failure — do not reveal whether the email is registered.
+    if (!user || user.status !== 'active') {
+      throw new OtpInvalidException();
+    }
+
+    if (user.isEmailVerified) {
+      throw new EmailAlreadyVerifiedException();
+    }
+
+    await this.otp.verify(user.id, dto.code, OtpType.EMAIL);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { isEmailVerified: true },
+    });
+
+    return { message: 'Email verified. You can sign in now.' };
+  }
+
+  async resendEmailVerification(
+    dto: ResendEmailVerificationDto,
+  ): Promise<EmailVerificationSuccessDto> {
+    const email = normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        isEmailVerified: true,
+        status: true,
       },
     });
 
+    // Always succeed when unknown — never reveal registration.
+    if (!user || user.status !== 'active') {
+      return {
+        message:
+          'If that email is registered and unverified, a new code has been sent.',
+      };
+    }
+
+    if (user.isEmailVerified) {
+      throw new EmailAlreadyVerifiedException();
+    }
+
+    await this.dispatchEmailVerification(user.id, user.email, user.fullName);
+
     return {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      user: this.toUserResponse(created.user, ['student'], created.student),
+      message:
+        'If that email is registered and unverified, a new code has been sent.',
     };
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
+    const email = normalizeEmail(dto.email);
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
       include: { roles: true, student: true },
     });
 
-    // Deliberately generic — never reveal whether the email or password was wrong
     if (!user || user.status !== 'active') {
       throw new InvalidCredentialsException();
     }
@@ -133,24 +213,57 @@ export class AuthService {
       throw new InvalidCredentialsException();
     }
 
+    if (!user.isEmailVerified) {
+      throw new EmailNotVerifiedException();
+    }
+
     const tokens = await this.createTokenPair(user.id);
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: tokens.tokenHash,
-        expiresAt: tokens.expiresAt,
-      },
-    });
+    const lastLoginAt = new Date();
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: tokens.tokenHash,
+          expiresAt: tokens.expiresAt,
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt },
+      }),
+    ]);
 
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user: this.toUserResponse(
-        user,
+        { ...user, fullName: user.fullName },
         user.roles.map((r) => r.role),
         user.student,
       ),
     };
+  }
+
+  private async dispatchEmailVerification(
+    userId: string,
+    email: string,
+    fullName: string | null,
+  ): Promise<void> {
+    const issued = await this.otp.issue(userId, OtpType.EMAIL);
+    try {
+      await this.email.sendVerificationEmail({
+        to: email,
+        fullName,
+        code: issued.code,
+        expiryMinutes: OTP_EXPIRY_MINUTES,
+      });
+    } catch (error) {
+      // NTF-04 — account + OTP remain; user can resend.
+      this.logger.error(
+        `Verification email enqueue failed for user=${userId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   async refresh(dto: RefreshDto): Promise<AuthResponseDto> {
@@ -366,7 +479,7 @@ export class AuthService {
   }
 
   private toUserResponse(
-    user: { id: string; email: string },
+    user: { id: string; email: string; fullName?: string | null },
     roles: RoleName[],
     student: { studentId: string; fullName: string } | null,
   ): UserResponseDto {
@@ -375,7 +488,7 @@ export class AuthService {
       email: user.email,
       roles,
       studentId: student?.studentId ?? null,
-      fullName: student?.fullName ?? null,
+      fullName: user.fullName ?? student?.fullName ?? null,
     };
   }
 }

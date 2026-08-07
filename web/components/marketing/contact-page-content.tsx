@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MailIcon, PhoneIcon } from 'lucide-react'
+import { MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 
 import { useLocale, useMarketingCopy } from '@/components/i18n/locale-provider'
 import { MarketingImage } from '@/components/marketing/marketing-image'
@@ -48,32 +48,50 @@ export function ContactPageContent() {
         <div className="grid gap-12 py-20 sm:py-24 lg:grid-cols-12 lg:gap-12">
           <div className="lg:col-span-6">
             <dl className="flex flex-col">
-              <div className="flex items-center justify-between gap-6 border-b border-border py-5">
+              <div className="flex items-start justify-between gap-6 border-b border-border py-5">
                 <dt className="flex items-center gap-3 text-base text-muted-foreground">
-                  <MailIcon className="size-4" aria-hidden />
+                  <MailIcon className="size-4 shrink-0" aria-hidden />
                   {page.email}
                 </dt>
-                <dd>
+                <dd className="text-right">
                   <a
                     href={`mailto:${t.contact.email}`}
-                    className="text-base font-medium text-primary-strong underline-offset-4 hover:underline"
+                    className="text-base font-medium break-all text-primary-strong underline-offset-4 hover:underline"
                   >
                     {t.contact.email}
                   </a>
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-6 border-b border-border py-5">
+              <div className="flex items-start justify-between gap-6 border-b border-border py-5">
                 <dt className="flex items-center gap-3 text-base text-muted-foreground">
-                  <PhoneIcon className="size-4" aria-hidden />
+                  <PhoneIcon className="size-4 shrink-0" aria-hidden />
                   {page.phone}
                 </dt>
                 <dd>
                   <a
-                    href={`tel:${t.contact.phone.replace(/[^+\d]/g, '')}`}
+                    href={`tel:${t.contact.phoneHref}`}
                     className="text-base font-medium text-primary-strong underline-offset-4 hover:underline"
                   >
                     {t.contact.phone}
                   </a>
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-6 border-b border-border py-5">
+                <dt className="flex items-center gap-3 text-base text-muted-foreground">
+                  <MapPinIcon className="size-4 shrink-0" aria-hidden />
+                  {page.registeredAddress}
+                </dt>
+                <dd className="max-w-[14rem] text-right text-base text-foreground">
+                  {t.contact.registeredAddress}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-6 border-b border-border py-5">
+                <dt className="flex items-center gap-3 text-base text-muted-foreground">
+                  <MapPinIcon className="size-4 shrink-0" aria-hidden />
+                  {page.officeAddress}
+                </dt>
+                <dd className="max-w-[14rem] text-right text-base text-foreground">
+                  {t.contact.officeAddress}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-6 border-b border-border py-5">
@@ -110,7 +128,7 @@ export function ContactPageContent() {
 
           <div className="lg:col-span-5 lg:col-start-8">
             <MarketingImage
-              image={MEDIA.assurance}
+              image={MEDIA.closing}
               className="aspect-4/5 w-full"
               sizes="(min-width: 1024px) 40vw, 100vw"
             />

@@ -187,7 +187,7 @@ describe('BatchesService', () => {
           batch: {
             findUnique: jest
               .fn()
-              .mockResolvedValue({ id: 'batch1', capacity: 30, managers: [] }),
+              .mockResolvedValue({ id: 'batch1', capacity: 30, teachers: [] }),
           },
           enrollment: { count: jest.fn().mockResolvedValue(12) },
         },
@@ -196,7 +196,7 @@ describe('BatchesService', () => {
       const result = await service.getById('batch1');
 
       expect(result.seatsRemaining).toBe(18);
-      expect(result.managers).toEqual([]);
+      expect(result.teachers).toEqual([]);
       expect(prisma.enrollment).toBeDefined();
     });
 
@@ -313,14 +313,14 @@ describe('BatchesService', () => {
     });
   });
 
-  describe('assignManager', () => {
+  describe('assignTeacher', () => {
     it('rejects a duplicate assignment with ConflictException', async () => {
       const { service } = createService(
         {},
         {
           batch: { findUnique: jest.fn().mockResolvedValue({ id: 'batch1' }) },
           user: { findUnique: jest.fn().mockResolvedValue({ id: 'mgr1' }) },
-          batchManager: {
+          batchTeacher: {
             create: jest.fn().mockRejectedValue(
               new Prisma.PrismaClientKnownRequestError('duplicate', {
                 code: 'P2002',
@@ -332,21 +332,21 @@ describe('BatchesService', () => {
       );
 
       await expect(
-        service.assignManager('batch1', { userId: 'mgr1' }),
+        service.assignTeacher('batch1', { userId: 'mgr1' }),
       ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('removeManager', () => {
+  describe('removeTeacher', () => {
     it('throws NotFoundException when no assignment exists', async () => {
       const { service } = createService(
         {},
         {
-          batchManager: { findUnique: jest.fn().mockResolvedValue(null) },
+          batchTeacher: { findUnique: jest.fn().mockResolvedValue(null) },
         },
       );
 
-      await expect(service.removeManager('batch1', 'mgr1')).rejects.toThrow(
+      await expect(service.removeTeacher('batch1', 'mgr1')).rejects.toThrow(
         NotFoundException,
       );
     });

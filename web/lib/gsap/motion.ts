@@ -434,3 +434,83 @@ export function popIn(
     },
   )
 }
+
+/**
+ * Vertical drift scrubbed to scroll — for sticky media and band accents.
+ */
+export function scrubY(
+  gsap: Gsap,
+  target: gsap.TweenTarget,
+  options: {
+    from?: number
+    to?: number
+    trigger?: Element | null
+    start?: string
+    end?: string
+  } = {},
+): void {
+  const {
+    from = 40,
+    to = -40,
+    trigger,
+    start = 'top bottom',
+    end = 'bottom top',
+  } = options
+  const scrollTarget = trigger ?? firstElement(target)
+  if (!scrollTarget) return
+
+  gsap.fromTo(
+    target,
+    { y: from },
+    {
+      y: to,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: scrollTarget,
+        start,
+        end,
+        scrub: 1.1,
+      },
+    },
+  )
+}
+
+/**
+ * Opacity scrub across a section’s viewport travel.
+ */
+export function scrubFade(
+  gsap: Gsap,
+  target: gsap.TweenTarget,
+  options: {
+    from?: number
+    to?: number
+    trigger?: Element | null
+    start?: string
+    end?: string
+  } = {},
+): void {
+  const {
+    from = 0.35,
+    to = 1,
+    trigger,
+    start = 'top 90%',
+    end = 'top 40%',
+  } = options
+  const scrollTarget = trigger ?? firstElement(target)
+  if (!scrollTarget) return
+
+  gsap.fromTo(
+    target,
+    { opacity: from },
+    {
+      opacity: to,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: scrollTarget,
+        start,
+        end,
+        scrub: true,
+      },
+    },
+  )
+}

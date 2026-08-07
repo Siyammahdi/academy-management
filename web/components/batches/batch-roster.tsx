@@ -39,7 +39,7 @@ export interface BatchRosterProps {
   batchId: string;
   eyebrow?: string;
   /** Shown in the error state when the batch can't be loaded (e.g. a
-   * manager isn't assigned to it, vs. it simply not existing). */
+   * teacher isn't assigned to it, vs. it simply not existing). */
   loadErrorMessage?: string;
   /**
    * Which blocks to render.
@@ -52,9 +52,9 @@ export interface BatchRosterProps {
 }
 
 // Used by both /admin/batches/:id (any batch, admin's own management
-// surface) and /manager/batches/:id (only batches the manager is assigned
+// surface) and /teacher/batches/:id (only batches the teacher is assigned
 // to — GET /batches/:id itself is public, but GET .../roster is guarded by
-// BatchScopeGuard, so an unassigned manager simply gets the error state).
+// BatchScopeGuard, so an unassigned teacher simply gets the error state).
 export function BatchRoster({
   batchId,
   loadErrorMessage = 'This batch could not be loaded.',
@@ -189,11 +189,11 @@ export function BatchRoster({
         </div>
         <div className="flex flex-col gap-1">
           <span className="font-body text-xs font-medium uppercase tracking-eyebrow text-ink-faint">
-            Managers
+            Teachers
           </span>
           <span className="font-body text-body text-ink">
-            {batch.managers.length > 0
-              ? batch.managers.map((m) => m.email).join(', ')
+            {batch.teachers.length > 0
+              ? batch.teachers.map((m) => m.email).join(', ')
               : 'None assigned'}
           </span>
         </div>

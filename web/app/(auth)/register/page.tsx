@@ -75,9 +75,9 @@ export default function RegisterPage() {
           email: email.trim(),
           password,
         })
-        // Registration always assigns the student role (doc 06 §2).
-        // persistAuth already stores the preferred workspace as student.
-        router.replace('/dashboard')
+        router.replace(
+          `/verify-email?email=${encodeURIComponent(email.trim())}`,
+        )
         router.refresh()
       } catch (err) {
         setError(registerErrorMessage(err))

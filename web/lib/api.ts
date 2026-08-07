@@ -57,7 +57,7 @@ export async function apiFetch<T>(
     );
   }
 
-  // A handful of admin routes (assign/remove manager) return no body at
+  // A handful of admin routes (assign/remove teacher) return no body at
   // all — response.json() would throw on an empty string.
   const text = await response.text();
   const body: unknown = text.length > 0 ? JSON.parse(text) : undefined;

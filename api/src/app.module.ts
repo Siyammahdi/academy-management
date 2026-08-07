@@ -20,6 +20,7 @@ import { RecordingsModule } from './modules/recordings/recordings.module';
 import { MailModule } from './modules/mail/mail.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { MoneySerializationInterceptor } from './common/interceptors/money-serialization.interceptor';
@@ -45,6 +46,7 @@ import { MoneySerializationInterceptor } from './common/interceptors/money-seria
     RecordingsModule,
     JobsModule,
     ReportingModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [
@@ -57,6 +59,7 @@ import { MoneySerializationInterceptor } from './common/interceptors/money-seria
       useValue: new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
+        transform: true,
       }),
     },
   ],

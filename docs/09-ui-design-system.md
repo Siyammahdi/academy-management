@@ -233,7 +233,7 @@ Breakpoints per Tailwind defaults. **Mobile is the primary case for students and
 
 **Shared:**
 - Tables collapse to stacked cards below `md`; never horizontally scrolling tables.
-- Admin/manager use the hamburger drawer below `lg` (not bottom tabs).
+- Admin/teacher use the hamburger drawer below `lg` (not bottom tabs).
 - The guest payment flow must be completable one-handed on a phone.
 
 ---

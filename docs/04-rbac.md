@@ -2,7 +2,7 @@
 
 **Purpose:** the complete authorization specification. Every permission decision in the system traces back to this document.
 
-**Core principle:** *a manager may confirm money and pause the billing engine, but may never move money.*
+**Core principle:** *a teacher may confirm money and pause the billing engine, but may never move money.*
 
 ---
 
@@ -11,11 +11,11 @@
 | Role | Scope | Definition |
 |---|---|---|
 | `admin` | Global | Full authority everywhere. Owns every money-affecting action. The escape hatch for anything the system does not handle automatically. |
-| `manager` | Assigned batches only | Operational authority within their batch(es): verify payments, grant grace, manage class content, view students and reporting. |
+| `teacher` | Assigned batches only | Operational authority within their batch(es): verify payments, grant grace, manage class content, view students and reporting. |
 | `student` | Self only | Their own enrollments, dues, payments, requests, and class content. |
 | *(guest)* | None | Not a role and not a user. An unauthenticated payer. |
 
-**A user may hold multiple roles simultaneously** (RBAC-01). A manager who is also enrolled as a student holds both `manager` and `student` on one account — one login, one email, one payment history.
+**A user may hold multiple roles simultaneously** (RBAC-01). A teacher who is also enrolled as a student holds both `teacher` and `student` on one account — one login, one email, one payment history.
 
 Roles are a **set**, never a single column. Permission checks ask *"does this user **have** role X?"*, never *"is this user's role X?"*.
 
@@ -25,7 +25,7 @@ Roles are a **set**, never a single column. Permission checks ask *"does this us
 
 `✓` permitted · `—` denied · `⚠` permitted with constraints
 
-| Action | Student | Manager | Admin |
+| Action | Student | Teacher | Admin |
 |---|:---:|:---:|:---:|
 | **Courses** | | | |
 | View active courses | ✓ | ✓ | ✓ |
@@ -35,7 +35,7 @@ Roles are a **set**, never a single column. Permission checks ask *"does this us
 | Create a batch, set fees / capacity / dates / discount | — | — | ✓ |
 | Edit a batch | — | — | ✓ |
 | Change batch status | — | — | ✓ |
-| Assign managers to a batch | — | — | ✓ |
+| Assign teachers to a batch | — | — | ✓ |
 | View batch roster | — | ⚠ own batches | ✓ |
 | **Enrollment** | | | |
 | Self-enroll in an open batch | ✓ | ✓ | ✓ |
@@ -81,17 +81,17 @@ Every `⚠` in the matrix reduces to one of these. They are the whole of the aut
 
 ### 3.1 Batch scope
 
-A manager's authority extends **only** to batches they are assigned to (RBAC-02).
+A teacher's authority extends **only** to batches they are assigned to (RBAC-02).
 
 Applies to: viewing rosters, verifying/rejecting payments, deciding grace requests, granting grace, viewing batch reporting, and every class-management write (class link, homework, recordings).
 
-A manager attempting any of these on an unassigned batch receives `403`.
+A teacher attempting any of these on an unassigned batch receives `403`.
 
 ### 3.2 Self-approval prohibition
 
-**A manager MUST NOT verify a payment, reject a payment, decide a request, or grant grace on their own enrollment** (RBAC-03).
+**A teacher MUST NOT verify a payment, reject a payment, decide a request, or grant grace on their own enrollment** (RBAC-03).
 
-This holds *even when the manager is legitimately assigned to that batch*. It closes the loophole where a manager who is also a student in their own batch could approve their own money.
+This holds *even when the teacher is legitimately assigned to that batch*. It closes the loophole where a teacher who is also a student in their own batch could approve their own money.
 
 The check: *does the target enrollment belong to the acting user's own Student profile?* If yes → refuse, escalate to admin.
 
@@ -101,9 +101,9 @@ Mechanically it is one comparison at the point of decision, applied at three cal
 
 **All money-affecting actions are admin-only** (RBAC-04): waivers, refunds, penalty reversal, marking a period paid without money, and partial-payment approval.
 
-Grace is the deliberate exception granted to managers — it moves a *date*, not an *amount*, and it is time-critical (it must be exercisable before the penalty job runs on the 6th). Routing grace through an admin would defeat its purpose.
+Grace is the deliberate exception granted to teachers — it moves a *date*, not an *amount*, and it is time-critical (it must be exercisable before the penalty job runs on the 6th). Routing grace through an admin would defeat its purpose.
 
-Every grace grant is therefore logged and attributable: which manager, which student, which period, when.
+Every grace grant is therefore logged and attributable: which teacher, which student, which period, when.
 
 ---
 
@@ -117,7 +117,7 @@ Three NestJS guards carry the entire model. They compose; a route may use severa
 |---|---|
 | `JwtAuthGuard` | Validates the access token, populates `request.user` |
 | `RolesGuard` | Does the user hold at least one of the required roles? |
-| `BatchScopeGuard` | Is this manager assigned to the batch this request targets? (admins bypass) |
+| `BatchScopeGuard` | Is this teacher assigned to the batch this request targets? (admins bypass) |
 | `SelfApprovalGuard` | Does the target enrollment belong to the acting user? If so, refuse. |
 
 **Guards enforce coarse access. Fine-grained ownership checks belong in the service layer**, where the entity has already been loaded — a guard should not re-query what the service is about to fetch.
@@ -128,7 +128,7 @@ Three NestJS guards carry the entire model. They compose; a route may use severa
 
 ```ts
 @Post('payments/:id/verify')
-@Roles('manager', 'admin')
+@Roles('teacher', 'admin')
 @UseGuards(JwtAuthGuard, RolesGuard, BatchScopeGuard, SelfApprovalGuard)
 verifyPayment(@Param('id') id: string, @CurrentUser() user: AuthUser) { ... }
 ```
@@ -137,7 +137,7 @@ A batch-scoped, non-money route (e.g. homework) omits `SelfApprovalGuard` and in
 
 ```ts
 @Patch('homework/:id')
-@Roles('manager', 'admin')
+@Roles('teacher', 'admin')
 @TargetResource('homework')
 @UseGuards(RolesGuard, BatchScopeGuard)
 update(@Param('id') id: string, ...) { ... }
@@ -151,11 +151,11 @@ update(@Param('id') id: string, ...) { ... }
 |---|---|---|
 | No / invalid token | `401` | — |
 | Missing role | `403` | `INSUFFICIENT_PERMISSIONS` |
-| Manager, unassigned batch | `403` | `BATCH_NOT_ASSIGNED` |
-| Manager, own enrollment | `403` | `SELF_APPROVAL_FORBIDDEN` |
+| Teacher, unassigned batch | `403` | `BATCH_NOT_ASSIGNED` |
+| Teacher, own enrollment | `403` | `SELF_APPROVAL_FORBIDDEN` |
 | Resource not found | `404` | — |
 
-**Never leak existence through authorization.** If a manager requests a batch they are not assigned to, return `403` — not `404` with details, and not a `200` with filtered data.
+**Never leak existence through authorization.** If a teacher requests a batch they are not assigned to, return `403` — not `404` with details, and not a `200` with filtered data.
 
 ---
 
@@ -183,7 +183,7 @@ These endpoints require no token:
 
 A `student` may act only on their own records:
 
-- `GET /me/enrollments`, `GET /me/billing-periods`, `GET /me/payments`, `GET /me/homework`, `GET /me/recordings` — scoped to their own `Student` by the service, never by a client-supplied id. A user with no `Student` profile (e.g. a manager who is not also a student) gets an empty list, not an error.
+- `GET /me/enrollments`, `GET /me/billing-periods`, `GET /me/payments`, `GET /me/homework`, `GET /me/recordings` — scoped to their own `Student` by the service, never by a client-supplied id. A user with no `Student` profile (e.g. a teacher who is not also a student) gets an empty list, not an error.
 - `POST /requests` *(not yet built — see `12-roadmap.md` R-02)* — the service will derive the enrollment from the authenticated user; a student-supplied `enrollmentId` MUST be validated as theirs.
 - A student MUST NOT be able to read another student's dues, payments, or profile through any endpoint.
 
@@ -195,11 +195,11 @@ A `student` may act only on their own records:
 
 Each requires an automated test named for its rule ID:
 
-- `RBAC-01` — a user holding both `manager` and `student` can act in both capacities
-- `RBAC-02` — a manager receives `403` on an unassigned batch
-- `RBAC-03` — a manager receives `403` verifying a payment on their own enrollment, **even in a batch they manage**
-- `RBAC-04` — a manager receives `403` on refund, penalty reversal, and partial-payment approval
-- `RBAC-05` — a manager receives `403` creating a course or batch
-- A manager receives `403 BATCH_NOT_ASSIGNED` creating/editing/deleting homework or a recording on a batch they don't manage
+- `RBAC-01` — a user holding both `teacher` and `student` can act in both capacities
+- `RBAC-02` — a teacher receives `403` on an unassigned batch
+- `RBAC-03` — a teacher receives `403` verifying a payment on their own enrollment, **even in a batch they manage**
+- `RBAC-04` — a teacher receives `403` on refund, penalty reversal, and partial-payment approval
+- `RBAC-05` — a teacher receives `403` creating a course or batch
+- A teacher receives `403 BATCH_NOT_ASSIGNED` creating/editing/deleting homework or a recording on a batch they don't manage
 - A student receives `403` reading another student's records
 - An admin bypasses batch scope and self-approval

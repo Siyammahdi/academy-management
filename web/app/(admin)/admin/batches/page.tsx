@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner'
 
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { AssignManagersPanel } from '@/components/admin/assign-managers-panel'
+import { AssignTeachersPanel } from '@/components/admin/assign-teachers-panel'
 import { BatchCard } from '@/components/batches/batch-card'
 import { AmountCell } from '@/components/money/amount-cell'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
@@ -324,7 +324,7 @@ function BatchForm({
   )
 }
 
-function ManagersModal({
+function TeachersModal({
   batch,
   onClose,
   onChanged,
@@ -334,10 +334,10 @@ function ManagersModal({
   onChanged: (batch: BatchWithSeats) => void
 }) {
   return (
-    <Modal isOpen onClose={onClose} title={`Managers · ${batch.name}`}>
-      <AssignManagersPanel
+    <Modal isOpen onClose={onClose} title={`Teachers · ${batch.name}`}>
+      <AssignTeachersPanel
         batchId={batch.id}
-        managers={batch.managers}
+        teachers={batch.teachers}
         onChanged={async () => {
           onChanged(await getBatch(batch.id))
         }}
@@ -375,7 +375,7 @@ function AdminBatchesPageContent() {
   const [newStatus, setNewStatus] = useState<BatchStatus>('upcoming')
   const [statusError, setStatusError] = useState<string | null>(null)
   const [isChangingStatus, setIsChangingStatus] = useState(false)
-  const [managersTarget, setManagersTarget] = useState<BatchWithSeats | null>(
+  const [teachersTarget, setTeachersTarget] = useState<BatchWithSeats | null>(
     null,
   )
 
@@ -476,7 +476,7 @@ function AdminBatchesPageContent() {
       <AdminPageHeader
         eyebrow="Academy"
         title="Batches"
-        description="Open seats under a course — capacity, enrollment window, due days, and managers. Status moves the batch through upcoming → enrolling → running → completed."
+        description="Open seats under a course — capacity, enrollment window, due days, and teachers. Status moves the batch through upcoming → enrolling → running → completed."
         actions={
           <>
             <Button
@@ -566,7 +566,7 @@ function AdminBatchesPageContent() {
           </p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             {batches.length === 0
-              ? 'Create a batch under a course to set capacity, windows, and managers.'
+              ? 'Create a batch under a course to set capacity, windows, and teachers.'
               : 'Try a different search or status filter.'}
           </p>
           {batches.length === 0 ? (
@@ -585,7 +585,7 @@ function AdminBatchesPageContent() {
         <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((batch) => {
             const course = courseById.get(batch.courseId)
-            const managerCount = batch.managers.length
+            const teacherCount = batch.teachers.length
 
             return (
               <BatchCard
@@ -603,7 +603,7 @@ function AdminBatchesPageContent() {
                 }}
                 workspaceHref={`/admin/batches/${batch.id}`}
                 facts={[
-                  `${managerCount} manager${managerCount === 1 ? '' : 's'}`,
+                  `${teacherCount} teacher${teacherCount === 1 ? '' : 's'}`,
                 ]}
                 secondaryActions={[
                   {
@@ -611,8 +611,8 @@ function AdminBatchesPageContent() {
                     href: `/admin/batches/${batch.id}/roster`,
                   },
                   {
-                    label: 'Managers',
-                    onClick: () => setManagersTarget(batch),
+                    label: 'Teachers',
+                    onClick: () => setTeachersTarget(batch),
                   },
                 ]}
                 menuActions={[
@@ -708,12 +708,12 @@ function AdminBatchesPageContent() {
         ) : null}
       </Modal>
 
-      {managersTarget ? (
-        <ManagersModal
-          batch={managersTarget}
-          onClose={() => setManagersTarget(null)}
+      {teachersTarget ? (
+        <TeachersModal
+          batch={teachersTarget}
+          onClose={() => setTeachersTarget(null)}
           onChanged={(updated) => {
-            setManagersTarget(updated)
+            setTeachersTarget(updated)
             setBatches(
               (prev) =>
                 prev?.map((b) => (b.id === updated.id ? updated : b)) ?? null,

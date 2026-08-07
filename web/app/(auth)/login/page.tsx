@@ -19,6 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { homePathForRoles, login } from '@/lib/auth'
 import { loginErrorMessage } from '@/lib/auth-errors'
+import { ApiError } from '@/lib/api'
 
 function isSafeInternalPath(value: string | null): value is string {
   return Boolean(value && value.startsWith('/') && !value.startsWith('//'))
@@ -32,9 +33,9 @@ const QUICK_LOGINS = [
     password: 'ChangeMe123!',
   },
   {
-    label: 'Manager',
-    email: 'siyammanager@gmail.com',
-    password: 'siyammanager',
+    label: 'Teacher',
+    email: 'siyamteacher@gmail.com',
+    password: 'siyamteacher',
   },
   {
     label: 'Student',
@@ -55,6 +56,7 @@ function LoginForm() {
     email?: string
     password?: string
   }>({})
+  const verifiedBanner = searchParams.get('verified') === '1'
 
   function fillQuickLogin(preset: (typeof QUICK_LOGINS)[number]): void {
     setEmail(preset.email)
@@ -92,6 +94,15 @@ function LoginForm() {
         router.replace(destination)
         router.refresh()
       } catch (err) {
+        if (
+          err instanceof ApiError &&
+          err.body.error === 'EMAIL_NOT_VERIFIED'
+        ) {
+          router.replace(
+            `/verify-email?email=${encodeURIComponent(email.trim())}`,
+          )
+          return
+        }
         setError(loginErrorMessage(err))
       }
     })
@@ -99,6 +110,11 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6" noValidate>
+      {verifiedBanner ? (
+        <p className="rounded-xl bg-status-paid-bg px-4 py-3 text-sm text-status-paid">
+          Email verified. You can sign in now.
+        </p>
+      ) : null}
       <div className="rounded-xl border border-dashed border-primary/30 bg-primary-wash/60 p-3 sm:p-4">
         <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
           Temporary · quick fill

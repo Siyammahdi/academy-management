@@ -32,24 +32,24 @@ import {
 } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
-const ALL_ROLES: RoleName[] = ['admin', 'manager', 'student']
+const ALL_ROLES: RoleName[] = ['admin', 'teacher', 'student']
 
 const ROLE_LABELS: Record<RoleName, string> = {
   admin: 'Super Admin',
-  manager: 'Course Manager',
+  teacher: 'Course Teacher',
   student: 'Student',
 }
 
 const ROLE_TONE: Record<RoleName, 'paid' | 'pending' | 'neutral'> = {
   admin: 'paid',
-  manager: 'pending',
+  teacher: 'pending',
   student: 'neutral',
 }
 
 const ROLE_FILTER_OPTIONS = [
   { value: 'all', label: 'All roles' },
   { value: 'admin', label: 'Admins' },
-  { value: 'manager', label: 'Managers' },
+  { value: 'teacher', label: 'Teachers' },
   { value: 'student', label: 'Students' },
 ]
 
@@ -87,7 +87,7 @@ function emptyCreateForm(): CreateFormState {
   return {
     email: '',
     password: '',
-    roles: ['manager'],
+    roles: ['teacher'],
     fullName: '',
     phone: '',
   }
@@ -154,7 +154,7 @@ export default function AdminRolesPage() {
     return {
       total: rows.length,
       admin: rows.filter((u) => u.roles.includes('admin')).length,
-      manager: rows.filter((u) => u.roles.includes('manager')).length,
+      teacher: rows.filter((u) => u.roles.includes('teacher')).length,
       student: rows.filter((u) => u.roles.includes('student')).length,
     }
   }, [users])
@@ -267,7 +267,7 @@ export default function AdminRolesPage() {
       <AdminPageHeader
         eyebrow="Workspace"
         title="Roles"
-        description="Create accounts and grant or revoke admin, manager, and student. A user may hold several roles at once. Changes are audited."
+        description="Create accounts and grant or revoke admin, teacher, and student. A user may hold several roles at once. Changes are audited."
         actions={
           <>
             <Button
@@ -312,9 +312,9 @@ export default function AdminRolesPage() {
           </p>
         </div>
         <div className="rounded-xl bg-status-pending-bg p-4">
-          <p className="text-xs text-status-pending">Managers</p>
+          <p className="text-xs text-status-pending">Teachers</p>
           <p className="mt-2 font-heading text-3xl font-semibold tabular-nums text-status-pending">
-            {users ? counts.manager : '—'}
+            {users ? counts.teacher : '—'}
           </p>
         </div>
         <div className="rounded-xl bg-muted/60 p-4">
@@ -527,7 +527,7 @@ export default function AdminRolesPage() {
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Student includes an ANA profile. Manager/admin can be staff-only.
+              Student includes an ANA profile. Teacher/admin can be staff-only.
             </p>
           </div>
 

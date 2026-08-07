@@ -36,7 +36,7 @@ export interface MarketingCopy {
     payFees: string
     logIn: string
     register: string
-    /** Logged-in CTA — opens role home (dashboard / manager / admin). */
+    /** Logged-in CTA — opens role home (dashboard / teacher / admin). */
     goToApp: string
     openMenu: string
     closeMenu: string
@@ -48,6 +48,7 @@ export interface MarketingCopy {
     academyColumn: string
     studentsColumn: string
     legalColumn: string
+    connectColumn: string
     programs: string
     howEnrollment: string
     about: string
@@ -61,6 +62,15 @@ export interface MarketingCopy {
     refund: string
     tradeLicenseLabel: string
     classesNote: string
+    followLabel: string
+    officeLabel: string
+    registeredLabel: string
+    backToTop: string
+    social: {
+      facebook: string
+      whatsapp: string
+      telegram: string
+    }
   }
   hero: {
     eyebrow: string
@@ -69,8 +79,10 @@ export interface MarketingCopy {
     ctaPrograms: string
     ctaRegister: string
     facts: MarketingFact[]
-    chipClosed: string
-    chipOpen: (batches: number, seats: number) => string
+    /** Quiet proof line above the identity statement. */
+    kicker: string
+    /** Bold academy positioning line in the hero intro stack. */
+    identity: string
   }
   academyStory: {
     eyebrow: string
@@ -82,6 +94,19 @@ export interface MarketingCopy {
       value: string
       note: string
     }
+    /** Three interactive “batch promise” beats. */
+    pillars: Array<{
+      index: string
+      title: string
+      body: string
+    }>
+    /** Interactive curriculum levels. */
+    levels: Array<{
+      id: string
+      label: string
+      note: string
+    }>
+    exploreHint: string
   }
   programs: {
     eyebrow: string
@@ -121,6 +146,7 @@ export interface MarketingCopy {
   journey: {
     eyebrow: string
     heading: string
+    lead: string
     steps: Array<{ index: string; title: string; body: string }>
     aside: string
     talkAdmissions: string
@@ -163,14 +189,20 @@ export interface MarketingCopy {
     lead: string
     seePrograms: string
     contactAdmissions: string
-    registrationHeading: string
-    registrationBody: string
     tradeLicenseLabel: string
+    tradeLicenseIdLabel: string
+    registeredAddressLabel: string
+    officeAddressLabel: string
+    locationsEyebrow: string
+    locationsHeading: string
+    locationsLead: string
     sections: Array<{
       index: string
       heading: string
       body: string[]
       image: MarketingImage
+      /** Optional fact rows under the body (licence numbers, etc.). */
+      facts?: Array<{ label: string; value: string }>
     }>
   }
   legal: {
@@ -193,6 +225,8 @@ export interface MarketingCopy {
     phone: string
     hours: string
     hoursValue: string
+    registeredAddress: string
+    officeAddress: string
     alreadyStudent: string
     alreadyStudentBody: string
     alreadyStudentAction: string
@@ -207,8 +241,20 @@ export interface MarketingCopy {
   contact: {
     email: string
     phone: string
-    /** Public trade licence number shown in footer and about. */
+    /** Digits for `tel:` links — Latin numerals, E.164-style. */
+    phoneHref: string
+    /** Trade licence number (licence no). */
     tradeLicense: string
+    /** Trade licence ID as issued on the certificate. */
+    tradeLicenseId: string
+    registeredAddress: string
+    officeAddress: string
+    /** External social profile URLs — Latin, not localized. */
+    social: {
+      facebook: string
+      whatsapp: string
+      telegram: string
+    }
   }
 }
 

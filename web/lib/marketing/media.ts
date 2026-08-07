@@ -1,13 +1,11 @@
 /**
  * Marketing photography registry.
  *
- * Every public-site image is declared here so the client's own photography
- * can replace these placeholders in one file. Swap `src` for a path under
- * `/public` (or a CDN URL added to `next.config.ts` remotePatterns) and keep
- * the aspect ratios listed beside each entry — the layouts are built around
- * them.
+ * Every public-site image is declared here so photography can be swapped in
+ * one place. Assets live under `/public` — prefer `/marketing/*` for section
+ * photography and `/poster_square/*` for course posters.
  *
- * Placeholders are freely licensed Unsplash photographs.
+ * Sources: Unsplash (free license). Swap `src` for client photography when ready.
  */
 
 export interface MarketingImage {
@@ -16,78 +14,123 @@ export interface MarketingImage {
   alt: string
 }
 
-function unsplash(id: string, width: number): string {
-  return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=80`
-}
-
 export const MEDIA = {
-  /** Hero, portrait 4:5 — a student in an online session. */
-  heroPrimary: {
-    src: unsplash('photo-1597933471507-1ca5765185d8', 1200),
-    alt: 'A student following an online class from a laptop at home.',
-  },
-  /** Hero inset, square — handwritten study notes. */
-  heroDetail: {
-    src: unsplash('photo-1520569495996-b5e1219cb625', 800),
-    alt: 'Handwritten notes beside an open book on a desk.',
-  },
-
-  /** About the academy, portrait 3:4 — manuscript calligraphy. */
-  academyPrimary: {
-    src: unsplash('photo-1720701574998-d68020bce2bd', 1200),
-    alt: 'Arabic calligraphy on an old manuscript page with gold detailing.',
-  },
-  /** About the academy, landscape — an open book on a table. */
-  academyDetail: {
-    src: unsplash('photo-1725007995235-6979cb34ff8e', 900),
-    alt: 'An open book resting on a wooden table.',
-  },
-
-  /** Flagship program — Arabic. Landscape 5:4. */
-  programArabic: {
-    src: unsplash('photo-1646229227468-ba6eb534d368', 1400),
-    alt: 'Arabic calligraphy inscribed across an ornamented ceiling.',
-  },
-  /** Flagship program — Qur'an. Landscape 5:4. */
-  programQuran: {
-    src: unsplash('photo-1542816417-0983c9c9ad53', 1400),
-    alt: 'An open Qur’an resting on a wooden stand.',
-  },
-
-  /** Weekly rhythm panels, portrait 3:4. */
-  experienceClass: {
-    src: unsplash('photo-1513258496099-48168024aec0', 1000),
-    alt: 'A student wearing headphones during a live online session.',
-  },
-  experienceHomework: {
-    src: unsplash('photo-1512238972088-8acb84db0771', 1000),
-    alt: 'A student writing an assignment at a desk.',
-  },
-  experienceRecording: {
-    src: unsplash('photo-1616587226960-4a03badbe8bf', 1000),
-    alt: 'A student rewatching a recorded class on a laptop.',
-  },
-  experienceFees: {
-    src: unsplash('photo-1547567667-1aa64e6f58dc', 1000),
-    alt: 'A person turning the page of a book at a quiet desk.',
-  },
-
-  /** Trust section, landscape — a teacher working through a point. */
-  assurance: {
-    src: unsplash('photo-1522881193457-37ae97c905bf', 1200),
-    alt: 'A teacher explaining a point to a student.',
-  },
-  /** Enrollment journey, portrait — students reading together. */
-  journey: {
-    src: unsplash('photo-1663162550932-f67b561e656f', 1000),
-    alt: 'A small group of students reading from a book together.',
-  },
-
-  /** Closing call to action, wide full-bleed. */
-  closing: {
-    src: unsplash('photo-1577561426384-62154a1e9457', 1800),
+  /** Landing hero full-bleed background. */
+  heroBg: {
+    src: '/backgrounds/hero-bg.jpg',
     alt: '',
   },
+  /** Portrait — Blue Mosque, Shah Alam. */
+  heroPrimary: {
+    src: '/marketing/hero-primary.jpg',
+    alt: 'The Blue Mosque in Shah Alam under warm evening light.',
+  },
+  /** Detail — Arabic manuscript page. */
+  heroDetail: {
+    src: '/marketing/hero-detail.jpg',
+    alt: 'Arabic calligraphy on an illuminated manuscript page.',
+  },
+
+  /** About the academy — manuscript calligraphy. */
+  academyPrimary: {
+    src: '/marketing/academy-primary.jpg',
+    alt: 'Arabic calligraphy on an old manuscript page with gold detailing.',
+  },
+  /** About the academy — sacred architecture. */
+  academyDetail: {
+    src: '/marketing/academy-detail.jpg',
+    alt: 'The Kaaba and pilgrims in the courtyard of Masjid al-Haram.',
+  },
+
+  /** Flagship program — Arabic calligraphy. */
+  programArabic: {
+    src: '/marketing/program-arabic.jpg',
+    alt: 'Backlit Arabic calligraphy cut into a modern architectural panel.',
+  },
+  /** Flagship program — Qur’an. */
+  programQuran: {
+    src: '/marketing/program-quran.jpg',
+    alt: 'A navy Qur’an with gold embossing on a dark surface.',
+  },
+
+  /** Experience — live class on a laptop. */
+  experienceClass: {
+    src: '/marketing/experience-class.jpg',
+    alt: 'A student wearing headphones during a live online session.',
+  },
+  /** Experience — homework and study materials. */
+  experienceHomework: {
+    src: '/marketing/experience-homework.jpg',
+    alt: 'A stack of study books on a desk.',
+  },
+  /** Experience — recordings / revisiting lessons. */
+  experienceRecording: {
+    src: '/marketing/experience-recording.jpg',
+    alt: 'Glowing Arabic calligraphy across an architectural surface.',
+  },
+  /** Experience — clear fees and dues. */
+  experienceFees: {
+    src: '/marketing/experience-fees.jpg',
+    alt: 'A Qur’an with gold calligraphy under warm light.',
+  },
+
+  /** Trust section. */
+  assurance: {
+    src: '/marketing/assurance.jpg',
+    alt: 'A Qur’an with gold calligraphy resting in soft light.',
+  },
+  /** Enrollment journey. */
+  journey: {
+    src: '/marketing/journey.jpg',
+    alt: 'Al-Masjid an-Nabawi under warm evening light.',
+  },
+
+  /** Closing call to action — full-bleed. */
+  closing: {
+    src: '/marketing/closing.jpg',
+    alt: '',
+  },
+
+  /** Extra Islamic architecture — available for about / contact. */
+  mosqueCourtyard: {
+    src: '/marketing/mosque-courtyard.jpg',
+    alt: 'The Kaaba and pilgrims in the courtyard of Masjid al-Haram.',
+  },
+  studyBooks: {
+    src: '/marketing/study-books.jpg',
+    alt: 'A stack of colourful study books.',
+  },
+
+  /** Hero marquee — academy course posters from /public/poster_square. */
+  posterArabic: {
+    src: '/poster_square/learning_arabic.png',
+    alt: 'Learning Arabic course poster',
+  },
+  posterAleema: {
+    src: '/poster_square/aleema.png',
+    alt: 'Aleema course poster',
+  },
+  posterFiqh: {
+    src: '/poster_square/fiqhun_nisa.png',
+    alt: 'Fiqh for women course poster',
+  },
+  posterAkhlaq: {
+    src: '/poster_square/husnul_khuluk.png',
+    alt: 'Husnul Khuluq course poster',
+  },
+  posterParenting: {
+    src: '/poster_square/parenting.png',
+    alt: 'Parenting course poster',
+  },
 } as const satisfies Record<string, MarketingImage>
+
+/** Ordered set used by the landing hero infinite marquee. */
+export const HERO_POSTERS = [
+  MEDIA.posterArabic,
+  MEDIA.posterAleema,
+  MEDIA.posterFiqh,
+  MEDIA.posterAkhlaq,
+  MEDIA.posterParenting,
+] as const
 
 export type MediaKey = keyof typeof MEDIA

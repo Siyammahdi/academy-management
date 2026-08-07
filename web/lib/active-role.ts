@@ -5,10 +5,10 @@ const ACTIVE_ROLE_STORAGE_KEY = 'nahda_active_role'
 /** Survives logout so the next login restores the last workspace. */
 const ACTIVE_ROLE_MAX_AGE = 365 * 24 * 60 * 60
 
-const ROLE_PRIORITY: RoleName[] = ['admin', 'manager', 'student']
+const ROLE_PRIORITY: RoleName[] = ['admin', 'teacher', 'student']
 
 function isRoleName(value: string): value is RoleName {
-  return value === 'admin' || value === 'manager' || value === 'student'
+  return value === 'admin' || value === 'teacher' || value === 'student'
 }
 
 function cookieOptions(maxAge: number): string {
@@ -80,8 +80,8 @@ export function homePathForRole(role: RoleName): string {
   switch (role) {
     case 'admin':
       return '/admin'
-    case 'manager':
-      return '/manager'
+    case 'teacher':
+      return '/teacher'
     case 'student':
       return '/dashboard'
   }
@@ -91,8 +91,8 @@ export function profilePathForRole(role: RoleName): string {
   switch (role) {
     case 'admin':
       return '/admin/profile'
-    case 'manager':
-      return '/manager/profile'
+    case 'teacher':
+      return '/teacher/profile'
     case 'student':
       return '/dashboard/profile'
   }
@@ -101,7 +101,7 @@ export function profilePathForRole(role: RoleName): string {
 /** Infer workspace from the current portal path. */
 export function roleFromPathname(pathname: string): RoleName | null {
   if (pathname.startsWith('/admin')) return 'admin'
-  if (pathname.startsWith('/manager')) return 'manager'
+  if (pathname.startsWith('/teacher')) return 'teacher'
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/payments')) {
     return 'student'
   }
@@ -113,8 +113,8 @@ export function workspaceRoleLabel(role: RoleName | null): string {
   switch (role) {
     case 'admin':
       return 'Super Admin'
-    case 'manager':
-      return 'Course Manager'
+    case 'teacher':
+      return 'Course Teacher'
     case 'student':
       return 'Student'
     default:
@@ -127,8 +127,8 @@ export function workspaceLabel(role: RoleName | null): string {
   switch (role) {
     case 'admin':
       return 'Super Admin Workspace'
-    case 'manager':
-      return 'Course Manager Workspace'
+    case 'teacher':
+      return 'Course Teacher Workspace'
     case 'student':
       return 'Student Workspace'
     default:

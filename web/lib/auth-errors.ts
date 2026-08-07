@@ -9,6 +9,8 @@ export function loginErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     return mapAuthError(err.body, {
       INVALID_CREDENTIALS: 'Incorrect email or password.',
+      EMAIL_NOT_VERIFIED:
+        'Verify your email before signing in. Check your inbox or resend a code.',
       fallback: 'Login could not be completed. Try again or contact an admin.',
     })
   }
@@ -28,6 +30,41 @@ export function registerErrorMessage(err: unknown): string {
     })
   }
   return 'Registration could not be completed. Try again or contact an admin.'
+}
+
+export function verifyEmailErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
+  if (err instanceof ApiError) {
+    return mapAuthError(err.body, {
+      OTP_INVALID: 'That verification code is incorrect.',
+      OTP_EXPIRED: 'This code has expired. Request a new one.',
+      OTP_TOO_MANY_ATTEMPTS:
+        'Too many incorrect attempts. Request a new verification code.',
+      OTP_NOT_FOUND: 'No active code found. Request a new one.',
+      EMAIL_ALREADY_VERIFIED: 'This email is already verified. You can sign in.',
+      TOO_MANY_REQUESTS: 'Too many attempts. Wait a minute and try again.',
+      fallback: 'Verification could not be completed. Try again.',
+    })
+  }
+  return 'Verification could not be completed. Try again.'
+}
+
+export function resendVerificationErrorMessage(err: unknown): string {
+  if (err instanceof NetworkApiError) {
+    return err.message
+  }
+  if (err instanceof ApiError) {
+    return mapAuthError(err.body, {
+      EMAIL_ALREADY_VERIFIED: 'This email is already verified. You can sign in.',
+      OTP_RESEND_COOLDOWN:
+        err.body.message || 'Please wait before requesting another code.',
+      TOO_MANY_REQUESTS: 'Too many requests. Wait a minute and try again.',
+      fallback: 'Could not resend the code. Try again.',
+    })
+  }
+  return 'Could not resend the code. Try again.'
 }
 
 export function forgotPasswordErrorMessage(err: unknown): string {

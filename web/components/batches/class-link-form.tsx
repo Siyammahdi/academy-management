@@ -24,7 +24,7 @@ function dateTimeLocalToIso(value: string): string {
 }
 
 /**
- * Manager/admin form: class URL + optional session window. Join opens
+ * Teacher/admin form: class URL + optional session window. Join opens
  * 5 minutes before start and closes at end (student UI).
  */
 export function ClassLinkForm({

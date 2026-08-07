@@ -72,7 +72,7 @@ const NEXT_STEPS = [
   {
     step: '03',
     title: 'Class unlocks',
-    body: 'Online payment activates when the bank confirms. Manual payment waits for manager verification.',
+    body: 'Online payment activates when the bank confirms. Manual payment waits for teacher verification.',
   },
 ] as const
 
@@ -442,7 +442,7 @@ export function OnboardingDashboard({
             void reloadEnrollment()
             onRefresh()
             toast.success(
-              'Online payment unlocks class after bank confirmation — no manager review. Manual payments wait for verification.',
+              'Online payment unlocks class after bank confirmation — no teacher review. Manual payments wait for verification.',
             )
           }}
         />

@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { DomainException } from './domain.exception';
 
-/// RBAC-02 / doc 04 §4.3 — manager, unassigned batch
+/// RBAC-02 / doc 04 §4.3 — teacher, unassigned batch
 export class BatchNotAssignedException extends DomainException {
   constructor() {
     super(

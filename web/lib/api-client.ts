@@ -110,7 +110,7 @@ export interface Batch {
   updatedAt: string;
 }
 
-export interface BatchManagerSummary {
+export interface BatchTeacherSummary {
   userId: string;
   email: string;
   fullName?: string | null;
@@ -118,7 +118,7 @@ export interface BatchManagerSummary {
 
 export type BatchWithSeats = Batch & {
   seatsRemaining: number;
-  managers: BatchManagerSummary[];
+  teachers: BatchTeacherSummary[];
 };
 
 export interface CreateBatchInput {
@@ -224,16 +224,162 @@ export type PendingPayment = Payment & {
 export type PaymentWithContext = PendingPayment;
 
 export interface UserSummary {
-  id: string;
-  email: string;
-  fullName?: string | null;
-  roles: string[];
-  createdAt?: string;
-  hasStudentProfile?: boolean;
+  id: string
+  email: string
+  fullName?: string | null
+  roles: RoleName[]
+  status?: 'active' | 'disabled'
+  createdAt?: string
+  hasStudentProfile?: boolean
 }
 
-export type RoleName = 'admin' | 'manager' | 'student';
+export type RoleName = 'admin' | 'teacher' | 'student'
 
+export interface AdminAuditEntry {
+  id: string
+  actorUserId: string | null
+  action: string
+  targetType: string
+  targetId: string
+  createdAt: string
+  details: unknown
+}
+
+export interface AdminUserDetailBase {
+  id: string
+  email: string
+  status: 'active' | 'disabled'
+  fullName: string | null
+  phone: string | null
+  gender: string | null
+  dateOfBirth: string | null
+  bloodGroup: string | null
+  nationality: string | null
+  nationalId: string | null
+  addressLine: string | null
+  city: string | null
+  district: string | null
+  postalCode: string | null
+  country: string | null
+  hasAvatar: boolean
+  roles: RoleName[]
+  emailVerified: boolean
+  phoneVerified: boolean
+  createdAt: string
+  updatedAt: string
+  lastLoginAt: string | null
+  createdBy: string | null
+  updatedBy: string | null
+}
+
+export interface TeacherDetail {
+  user: AdminUserDetailBase
+  teacher: {
+    employeeId: string | null
+    designation: string | null
+    department: string | null
+    bio: string | null
+    qualifications: string | null
+    experience: string | null
+    joiningDate: string | null
+    assignedCourses: Array<{ id: string; title: string; slug: string }>
+    assignedBatches: Array<{
+      id: string
+      name: string
+      course: { id: string; title: string; slug: string }
+      studentCount: number
+    }>
+    totalStudents: number
+  } | null
+  recentActivity: AdminAuditEntry[]
+  auditLogs: AdminAuditEntry[]
+  warnings: string[]
+}
+
+export interface StudentDetail {
+  student: {
+    id: string
+    studentId: string
+    fullName: string
+    phone: string
+    status: 'active' | 'inactive'
+    guardianName: string | null
+    guardianPhone: string | null
+    emergencyContact: string | null
+    createdAt: string
+    updatedAt: string
+    enrollmentDate: string | null
+    currentCourses: Array<{ id: string; title: string; slug: string }>
+    currentBatches: Array<{
+      id: string
+      name: string
+      course: { id: string; title: string; slug: string }
+    }>
+    attendanceSummary: string | null
+    progress: string | null
+  }
+  user: AdminUserDetailBase | null
+  billing: {
+    outstandingBalance: string
+    paymentStatus: string
+    currentBillingPeriod: {
+      id: string
+      periodMonth: string
+      status: string
+      amountOwed: string
+      amountPaid: string
+      outstanding: string
+      dueDate: string
+      batchName: string
+      courseTitle: string
+    } | null
+    billingHistory: Array<{
+      id: string
+      periodMonth: string
+      status: string
+      amountOwed: string
+      amountPaid: string
+      outstanding: string
+      dueDate: string
+      batchName: string
+      courseTitle: string
+      inPenalty: boolean
+    }>
+    paymentHistory: Array<{
+      id: string
+      amount: string
+      status: string
+      method: string
+      provider: string
+      createdAt: string
+      verifiedAt: string | null
+      periodMonth: string
+      batchName: string
+    }>
+    outstandingInvoices: Array<{
+      id: string
+      periodMonth: string
+      status: string
+      outstanding: string
+      dueDate: string
+      batchName: string
+    }>
+    penalties: Array<{
+      enrollmentId: string
+      batchName: string
+      inPenalty: boolean
+    }>
+    lastPaymentDate: string | null
+  }
+  recentActivity: AdminAuditEntry[]
+  auditLogs: AdminAuditEntry[]
+  warnings: string[]
+}
+
+export interface SetRoleResult {
+  user: UserSummary
+  warnings: string[]
+}
 function toQueryString(
   params: Record<string, string | number | undefined>,
 ): string {
@@ -374,18 +520,18 @@ export function changeBatchStatus(
   });
 }
 
-export function assignManager(batchId: string, userId: string): Promise<void> {
-  return apiFetch(`/batches/${batchId}/managers`, {
+export function assignTeacher(batchId: string, userId: string): Promise<void> {
+  return apiFetch(`/batches/${batchId}/teachers`, {
     method: 'POST',
     body: JSON.stringify({ userId }),
   });
 }
 
-export function removeManager(
+export function removeTeacher(
   batchId: string,
   userId: string,
 ): Promise<void> {
-  return apiFetch(`/batches/${batchId}/managers/${userId}`, {
+  return apiFetch(`/batches/${batchId}/teachers/${userId}`, {
     method: 'DELETE',
   });
 }
@@ -418,15 +564,15 @@ export function reinstateEnrollment(enrollmentId: string): Promise<Enrollment> {
   });
 }
 
-// Self-scoped for a manager (or an admin who also manages batches) — not in
+// Self-scoped for a teacher (or an admin who also manages batches) — not in
 // doc 06's own endpoint table; added because there was no way at all for a
-// manager to discover which batches they're assigned to.
-export function getManagedBatches(): Promise<BatchWithSeats[]> {
-  return apiFetch('/me/managed-batches');
+// teacher to discover which batches they're assigned to.
+export function getTaughtBatches(): Promise<BatchWithSeats[]> {
+  return apiFetch('/me/taught-batches');
 }
 
 export function getAtRiskCount(): Promise<{ count: number }> {
-  return apiFetch('/me/managed-batches/at-risk-count');
+  return apiFetch('/me/taught-batches/at-risk-count');
 }
 
 // Payments (doc 06 §7)
@@ -468,7 +614,7 @@ export function triggerGatewayExpiry(): Promise<{ jobId: string }> {
   return apiFetch('/jobs/gateway-expiry/trigger', { method: 'POST' });
 }
 
-// Small additive endpoints backing the overview page and the manager picker.
+// Small additive endpoints backing the overview page and the teacher picker.
 export function getStudentCount(): Promise<{ count: number }> {
   return apiFetch('/students/count');
 }
@@ -526,6 +672,42 @@ export function removeUserRole(
   return apiFetch(`/users/${userId}/roles/${role}`, {
     method: 'DELETE',
   });
+}
+
+export function getUserDetail(userId: string): Promise<TeacherDetail> {
+  return apiFetch(`/users/${userId}`);
+}
+
+export function getStudentDetail(studentId: string): Promise<StudentDetail> {
+  return apiFetch(`/students/${studentId}`);
+}
+
+/** Replace the user's role set with exactly one role. */
+export function setUserRole(
+  userId: string,
+  role: RoleName,
+): Promise<SetRoleResult> {
+  return apiFetch(`/users/${userId}/roles`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function fetchUserAvatarObjectUrl(
+  userId: string,
+): Promise<string | null> {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
 }
 
 // Student self-service (doc 06 §5/§6/§7) — every one of these is scoped by
@@ -736,7 +918,7 @@ export function listMyRecordings(): Promise<RecordingWithContext[]> {
 }
 
 // Reporting (doc 06 §11) — revenue, outstanding, enrollment capacity, ledger, audit logs.
-// These are admin/manager read-only endpoints.
+// These are admin/teacher read-only endpoints.
 
 export interface RevenueByMonth {
   periodMonth: string

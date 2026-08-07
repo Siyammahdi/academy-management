@@ -108,12 +108,12 @@ function addMonthsUtcFirstDay(date: Date, months: number): Date {
 export class ReportingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async getManagedBatchIds(actor: AuthUser): Promise<string[] | null> {
+  private async getTaughtBatchIds(actor: AuthUser): Promise<string[] | null> {
     if (actor.roles.includes('admin')) return null
-    if (!actor.roles.includes('manager')) return []
+    if (!actor.roles.includes('teacher')) return []
 
     const batches = await this.prisma.batch.findMany({
-      where: { managers: { some: { userId: actor.id } } },
+      where: { teachers: { some: { userId: actor.id } } },
       select: { id: true },
       orderBy: { createdAt: 'desc' },
     })
@@ -143,7 +143,7 @@ export class ReportingService {
     actor: AuthUser,
     query: { from?: string; to?: string; batchId?: string },
   ): Promise<RevenueReport> {
-    const scopeBatchIds = await this.getManagedBatchIds(actor)
+    const scopeBatchIds = await this.getTaughtBatchIds(actor)
     const { from, toExclusive } = this.resolveMonthRange(query)
 
     const batchIds =
@@ -240,7 +240,7 @@ export class ReportingService {
       limit?: string
     },
   ): Promise<OutstandingReport> {
-    const scopeBatchIds = await this.getManagedBatchIds(actor)
+    const scopeBatchIds = await this.getTaughtBatchIds(actor)
     const { page, limit, skip, take } = resolvePagination({
       page: query.page,
       limit: query.limit,
@@ -344,7 +344,7 @@ export class ReportingService {
     actor: AuthUser,
     query: { batchId?: string },
   ): Promise<EnrollmentReport> {
-    const scopeBatchIds = await this.getManagedBatchIds(actor)
+    const scopeBatchIds = await this.getTaughtBatchIds(actor)
     const batchIds =
       scopeBatchIds === null
         ? query.batchId
@@ -430,7 +430,7 @@ export class ReportingService {
       limit?: string
     },
   ): Promise<LedgerReport> {
-    const scopeBatchIds = await this.getManagedBatchIds(actor)
+    const scopeBatchIds = await this.getTaughtBatchIds(actor)
     const { from, toExclusive } = this.resolveMonthRange(query)
     const { page, limit, skip } = resolvePagination({
       page: query.page,

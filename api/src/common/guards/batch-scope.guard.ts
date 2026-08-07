@@ -9,7 +9,7 @@ import {
 import { BatchNotAssignedException } from '../exceptions/batch-not-assigned.exception';
 import { resolveTarget } from './target-resolver.util';
 
-/// doc 04 §3.1 / §4.1 (RBAC-02) — a manager's authority is scoped to batches
+/// doc 04 §3.1 / §4.1 (RBAC-02) — a teacher's authority is scoped to batches
 /// they are assigned to. Admins bypass (doc 04 §4.2).
 @Injectable()
 export class BatchScopeGuard implements CanActivate {
@@ -38,7 +38,7 @@ export class BatchScopeGuard implements CanActivate {
         ? (params.batchId ?? params.id)
         : (await resolveTarget(this.prisma, kind, params.id)).batchId;
 
-    const assignment = await this.prisma.batchManager.findUnique({
+    const assignment = await this.prisma.batchTeacher.findUnique({
       where: { batchId_userId: { batchId, userId: user.id } },
     });
 

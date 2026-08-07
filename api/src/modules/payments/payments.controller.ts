@@ -82,7 +82,7 @@ export class PaymentsController {
     return this.paymentsService.payManual(billingPeriodId, dto, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('payments/pending')
   listPending(
@@ -92,9 +92,9 @@ export class PaymentsController {
     return this.paymentsService.listPending(user, query);
   }
 
-  // RBAC-03 — SelfApprovalGuard blocks even a manager legitimately
+  // RBAC-03 — SelfApprovalGuard blocks even a teacher legitimately
   // assigned to this batch, on their own enrollment.
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('payment')
   @UseGuards(RolesGuard, BatchScopeGuard, SelfApprovalGuard)
   @Post('payments/:id/verify')
@@ -105,7 +105,7 @@ export class PaymentsController {
     return this.paymentsService.verify(paymentId, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('payment')
   @UseGuards(RolesGuard, BatchScopeGuard, SelfApprovalGuard)
   @Post('payments/:id/reject')

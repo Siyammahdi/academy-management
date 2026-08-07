@@ -26,6 +26,7 @@ export const en: MarketingCopy = {
     academyColumn: 'Academy',
     studentsColumn: 'Students & families',
     legalColumn: 'Policies',
+    connectColumn: 'Get in touch',
     programs: 'Programs',
     howEnrollment: 'How enrollment works',
     about: 'About',
@@ -39,11 +40,20 @@ export const en: MarketingCopy = {
     refund: 'Return & refund policy',
     tradeLicenseLabel: 'Trade licence',
     classesNote: 'Classes are taught on Zoom and Telegram, in Asia/Dhaka time.',
+    followLabel: 'Follow the academy',
+    officeLabel: 'Dhaka office',
+    registeredLabel: 'Registered address',
+    backToTop: 'Back to top',
+    social: {
+      facebook: 'Facebook',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+    },
   },
   hero: {
     eyebrow: 'Arabic & Qur’an study',
     headline: 'An academy where your teacher knows you.',
-    lead: 'Two programs, taught live to limited batches on Zoom and Telegram. Enrollment, fees, homework and class recordings stay in one clear place — for the student, and for whoever pays their fees.',
+    lead: 'Live classes in limited batches on Zoom and Telegram. Enrollment, fees, homework and recordings stay clear — for the student, and for whoever pays their fees.',
     ctaPrograms: 'See the programs',
     ctaRegister: 'Create an account',
     facts: [
@@ -51,9 +61,8 @@ export const en: MarketingCopy = {
       { label: 'Cohorts', value: 'Seats capped per batch' },
       { label: 'Fees', value: 'Monthly, due the 1st–5th' },
     ],
-    chipClosed: 'Next batch to be announced',
-    chipOpen: (batches, seats) =>
-      `${batches} ${batches === 1 ? 'batch' : 'batches'} open · ${seats} ${seats === 1 ? 'seat' : 'seats'} left`,
+    kicker: 'Small cohorts · Fixed fees · Live on Zoom & Telegram',
+    identity: 'Leading Arabic learning academy in Bangladesh',
   },
   academyStory: {
     eyebrow: 'The academy',
@@ -69,6 +78,41 @@ export const en: MarketingCopy = {
       value: 'Basic · Intermediate · Advanced',
       note: 'Programs run in parts of roughly eight months each. A part tells you where you are in the curriculum — it never changes what you owe.',
     },
+    pillars: [
+      {
+        index: '01',
+        title: 'A start date',
+        body: 'Every batch publishes when it begins — a day on the calendar, not a vague “soon.”',
+      },
+      {
+        index: '02',
+        title: 'A fee that holds',
+        body: 'Fees are copied the day the batch opens. Later price changes never touch that cohort.',
+      },
+      {
+        index: '03',
+        title: 'One seat, one student',
+        body: 'Capacity is real. When a batch fills we say so plainly, then open the next one.',
+      },
+    ],
+    levels: [
+      {
+        id: 'basic',
+        label: 'Basic',
+        note: 'Where most students begin — foundations built slowly, corrected in a small room, never rushed past.',
+      },
+      {
+        id: 'intermediate',
+        label: 'Intermediate',
+        note: 'The middle stretch: the same teacher, a tighter cohort, and deeper work over roughly eight months.',
+      },
+      {
+        id: 'advanced',
+        label: 'Advanced',
+        note: 'For students ready to go further. A part names where you are — it never changes what you owe.',
+      },
+    ],
+    exploreHint: 'Drag or scroll sideways · hover a promise',
   },
   programs: {
     eyebrow: 'Programs',
@@ -162,7 +206,7 @@ export const en: MarketingCopy = {
       {
         index: '01',
         title: 'Join the live class',
-        body: 'Your batch manager posts the session link. It appears on your dashboard as a single action — join it, or copy it to open on another device.',
+        body: 'Your batch teacher posts the session link. It appears on your dashboard as a single action — join it, or copy it to open on another device.',
         image: MEDIA.experienceClass,
       },
       {
@@ -180,7 +224,7 @@ export const en: MarketingCopy = {
       {
         index: '04',
         title: 'Settle the month',
-        body: 'Each enrollment carries its own balance and its own due date. Pay online, or submit a receipt for your manager to verify. Nothing is merged into one total.',
+        body: 'Each enrollment carries its own balance and its own due date. Pay online, or submit a receipt for your teacher to verify. Nothing is merged into one total.',
         image: MEDIA.experienceFees,
       },
     ],
@@ -188,6 +232,7 @@ export const en: MarketingCopy = {
   journey: {
     eyebrow: 'Enrollment',
     heading: 'Four steps, and no surprises after them.',
+    lead: 'From an open batch to a monthly rhythm — every step is fixed before you pay.',
     steps: [
       {
         index: '01',
@@ -202,7 +247,7 @@ export const en: MarketingCopy = {
       {
         index: '03',
         title: 'One payment starts you',
-        body: 'The entry fee for that batch and your first month are paid together. Paying online activates your seat immediately; a submitted receipt is verified by your batch manager first.',
+        body: 'The entry fee for that batch and your first month are paid together. Paying online activates your seat immediately; a submitted receipt is verified by your batch teacher first.',
       },
       {
         index: '04',
@@ -238,10 +283,10 @@ export const en: MarketingCopy = {
       },
       {
         title: 'Every payment is confirmed by accountable',
-        body: "Online payments are settled by the bank's own confirmation, never by the page you land on. Receipts are checked and marked verified by a named manager.",
+        body: "Online payments are settled by the bank's own confirmation, never by the page you land on. Receipts are checked and marked verified by a named teacher.",
       },
       {
-        title: 'A manager can never approve their own money',
+        title: 'A teacher can never approve their own money',
         body: 'Staff who are also enrolled cannot verify their own payments or grant themselves an extension. Those decisions escalate to an admin.',
       },
       {
@@ -291,7 +336,7 @@ export const en: MarketingCopy = {
       {
         question: 'How do I pay by hand rather than online?',
         answer:
-          'Submit the transaction reference and a photo of the receipt from your dashboard. It sits as pending until your batch manager verifies it, and your dashboard shows exactly which state it is in.',
+          'Submit the transaction reference and a photo of the receipt from your dashboard. It sits as pending until your batch teacher verifies it, and your dashboard shows exactly which state it is in.',
       },
     ],
   },
@@ -310,10 +355,14 @@ export const en: MarketingCopy = {
     lead: 'An Nahda teaches Arabic and the Qur’an with structure, patience, and clear expectations — for students, and for the families paying their fees.',
     seePrograms: 'See the programs',
     contactAdmissions: 'Contact admissions',
-    registrationHeading: 'Registered academy',
-    registrationBody:
-      'An Nahda Academy operates as a registered educational service in Bangladesh. Our trade licence number is published on this page and in the site footer.',
-    tradeLicenseLabel: 'Trade licence number',
+    tradeLicenseLabel: 'Licence no.',
+    tradeLicenseIdLabel: 'Licence ID',
+    registeredAddressLabel: 'Registered address',
+    officeAddressLabel: 'Office',
+    locationsEyebrow: 'Where we are',
+    locationsHeading: 'Registered in Kurigram. Teaching from Dhaka.',
+    locationsLead:
+      'Our trade licence is held at the registered address in Kurigram. Day-to-day admissions and operations run from the Mohammadpur office.',
     sections: [
       {
         index: '01',
@@ -338,9 +387,22 @@ export const en: MarketingCopy = {
         heading: 'How fees are handled',
         body: [
           'A batch takes a copy of its fees the day it is created, and those fees stay fixed for everyone enrolled in it. Later changes to a course price apply only to batches opened afterwards.',
-          'Pay online, or submit a receipt for your batch manager to verify. Each enrollment keeps its own balance and its own monthly due date — nothing is ever merged into a single unexplained total.',
+          'Pay online, or submit a receipt for your batch teacher to verify. Each enrollment keeps its own balance and its own monthly due date — nothing is ever merged into a single unexplained total.',
         ],
-        image: MEDIA.experienceFees,
+        image: MEDIA.assurance,
+      },
+      {
+        index: '04',
+        heading: 'A registered academy',
+        body: [
+          'An Nahda Academy operates as a registered educational service in Bangladesh. The trade licence number and ID below are published here and in the site footer so families can verify who they are paying.',
+          'Live classes run on Zoom and Telegram. Enrollment, fees, homework, and recordings live in this portal — the same records we use to run the academy.',
+        ],
+        image: MEDIA.mosqueCourtyard,
+        facts: [
+          { label: 'Licence no.', value: '002806' },
+          { label: 'Licence ID', value: '07-084-002806' },
+        ],
       },
     ],
   },
@@ -355,7 +417,7 @@ export const en: MarketingCopy = {
           heading: '1. Who we are',
           paragraphs: [
             'An Nahda Academy (“we”, “us”) provides live online Arabic and Qur’an instruction in limited batches, together with enrollment, fee, homework, and recording tools on this website.',
-            'Questions about these terms: admissions@annahda.academy.',
+            'Questions about these terms: annahda.net@gmail.com.',
           ],
         },
         {
@@ -436,7 +498,7 @@ export const en: MarketingCopy = {
           heading: '3. Who we share with',
           paragraphs: [
             'Payment gateways and banks process online payments on our behalf. They receive only what is required to complete the transaction.',
-            'Batch managers and administrators see student and payment information needed to teach, verify payments, and run the academy.',
+            'Batch teachers and administrators see student and payment information needed to teach, verify payments, and run the academy.',
             'We do not sell personal information.',
           ],
         },
@@ -450,7 +512,7 @@ export const en: MarketingCopy = {
         {
           heading: '5. Your choices',
           paragraphs: [
-            'You may request access to or correction of the personal data we hold about you by writing to admissions@annahda.academy.',
+            'You may request access to or correction of the personal data we hold about you by writing to annahda.net@gmail.com.',
             'Some records cannot be deleted while an enrollment or payment dispute is active, or where we must keep them for audit or legal reasons.',
           ],
         },
@@ -464,7 +526,7 @@ export const en: MarketingCopy = {
         {
           heading: '7. Contact',
           paragraphs: [
-            'Privacy questions: admissions@annahda.academy. We aim to respond within one working day.',
+            'Privacy questions: annahda.net@gmail.com. We aim to respond within one working day.',
           ],
         },
       ],
@@ -500,7 +562,7 @@ export const en: MarketingCopy = {
         {
           heading: '4. How to request a refund',
           paragraphs: [
-            'Email admissions@annahda.academy with the student name or ID, payment reference or receipt, amount, and reason.',
+            'Email annahda.net@gmail.com with the student name or ID, payment reference or receipt, amount, and reason.',
             'We may ask for additional proof. Approved refunds are returned via the original payment method where possible, or another method we confirm with you.',
           ],
         },
@@ -514,7 +576,7 @@ export const en: MarketingCopy = {
         {
           heading: '6. Contact',
           paragraphs: [
-            'Refund questions: admissions@annahda.academy or the phone number published on the Contact page.',
+            'Refund questions: annahda.net@gmail.com or the phone number published on the Contact page.',
           ],
         },
       ],
@@ -535,6 +597,8 @@ export const en: MarketingCopy = {
     phone: 'Phone',
     hours: 'Hours',
     hoursValue: 'Sat–Thu, Asia/Dhaka',
+    registeredAddress: 'Registered address',
+    officeAddress: 'Office',
     alreadyStudent: 'Already a student',
     alreadyStudentBody:
       'Log in to see your dues, submit a payment, and open your class link.',
@@ -551,9 +615,18 @@ export const en: MarketingCopy = {
       "Teaching happens on Zoom and in your batch's Telegram group. Enrollment, fees, homework and recordings live in the student portal.",
   },
   contact: {
-    email: 'admissions@annahda.academy',
-    phone: '+880 1700-000000',
-    /** Replace with the academy’s official trade licence number. */
-    tradeLicense: 'TRAD/DNCC/XXXXXX/2024',
+    email: 'annahda.net@gmail.com',
+    phone: '+880 1717-215070',
+    phoneHref: '+8801717215070',
+    tradeLicense: '002806',
+    tradeLicenseId: '07-084-002806',
+    registeredAddress: 'College Para, Kurigram',
+    officeAddress:
+      'House 32, Road 1, Aram Model Town, Mohammadpur, Dhaka-1207',
+    social: {
+      facebook: 'https://www.facebook.com/AnNahdaAcademy',
+      whatsapp: 'https://wa.me/8801717215070',
+      telegram: 'https://t.me/AnNahdaAcademy',
+    },
   },
 }

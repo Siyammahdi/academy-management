@@ -8,7 +8,7 @@ const ACTIVE_ROLE_COOKIE = 'nahda_active_role'
 // UX gate only — the API RolesGuard is the real authority (doc 07 §11).
 const REQUIRED_ROLE_BY_PREFIX: Array<{ prefix: string; role: string }> = [
   { prefix: '/admin', role: 'admin' },
-  { prefix: '/manager', role: 'manager' },
+  { prefix: '/teacher', role: 'teacher' },
   { prefix: '/dashboard', role: 'student' },
   // /payments/* is public — SSLCommerz redirects students AND guests here
   // after checkout. The page never settles payment (PAY-03); it only shows status.
@@ -16,18 +16,18 @@ const REQUIRED_ROLE_BY_PREFIX: Array<{ prefix: string; role: string }> = [
 
 const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/reset-password']
 
-function isRoleName(value: string): value is 'admin' | 'manager' | 'student' {
-  return value === 'admin' || value === 'manager' || value === 'student'
+function isRoleName(value: string): value is 'admin' | 'teacher' | 'student' {
+  return value === 'admin' || value === 'teacher' || value === 'student'
 }
 
 function homePathForRoles(roles: string[], preferred: string | undefined): string {
   if (preferred && isRoleName(preferred) && roles.includes(preferred)) {
     if (preferred === 'admin') return '/admin'
-    if (preferred === 'manager') return '/manager'
+    if (preferred === 'teacher') return '/teacher'
     return '/dashboard'
   }
   if (roles.includes('admin')) return '/admin'
-  if (roles.includes('manager')) return '/manager'
+  if (roles.includes('teacher')) return '/teacher'
   if (roles.includes('student')) return '/dashboard'
   return '/'
 }
@@ -72,7 +72,7 @@ export const config = {
     '/forgot-password',
     '/reset-password',
     '/admin/:path*',
-    '/manager/:path*',
+    '/teacher/:path*',
     '/dashboard/:path*',
   ],
 }

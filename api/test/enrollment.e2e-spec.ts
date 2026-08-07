@@ -46,11 +46,11 @@ describe('Enrollment (real Postgres)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let adminToken: string;
-  let managerToken: string;
+  let teacherToken: string;
 
   async function createStaffUser(
     prefix: string,
-    role: 'admin' | 'manager',
+    role: 'admin' | 'teacher',
   ): Promise<string> {
     const passwordHash = await argon2.hash('password123');
     const email = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
@@ -140,7 +140,7 @@ describe('Enrollment (real Postgres)', () => {
     prisma = app.get(PrismaService);
 
     adminToken = await createStaffUser('enr-admin', 'admin');
-    managerToken = await createStaffUser('enr-manager', 'manager');
+    teacherToken = await createStaffUser('enr-teacher', 'teacher');
   });
 
   afterAll(async () => {
@@ -306,7 +306,7 @@ describe('Enrollment (real Postgres)', () => {
   });
 
   describe('ENR-08: late joiners are admin-only and bypass the window', () => {
-    it('rejects a manager with 403 INSUFFICIENT_PERMISSIONS', async () => {
+    it('rejects a teacher with 403 INSUFFICIENT_PERMISSIONS', async () => {
       const { batchId } = await createCourseAndBatch({
         capacity: 30,
         enrollmentOpensAt: pastIso(60),
@@ -317,7 +317,7 @@ describe('Enrollment (real Postgres)', () => {
 
       const res = await request(app.getHttpServer())
         .post(`/api/v1/batches/${batchId}/late-joiner`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({ studentId: student.studentDbId })
         .expect(403);
       expect((res.body as ErrorResponseBody).error).toBe(

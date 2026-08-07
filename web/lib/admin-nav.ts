@@ -32,7 +32,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { href: '/admin/courses', label: 'Courses' },
       { href: '/admin/batches', label: 'Batches' },
-      { href: '/admin/managers', label: 'Managers' },
+      { href: '/admin/teachers', label: 'Teachers' },
       { href: '/admin/students', label: 'Students' },
     ],
   },
@@ -68,7 +68,7 @@ export function adminBatchWorkspaceTabs(
     {
       href: base,
       label: 'Overview',
-      description: 'Fees, windows, status, and managers',
+      description: 'Fees, windows, status, and teachers',
     },
     {
       href: `${base}/roster`,

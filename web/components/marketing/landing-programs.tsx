@@ -22,9 +22,12 @@ import { resolveEnrollCta } from '@/lib/marketing/enroll-cta'
 import { usePublicAuth } from '@/lib/use-public-auth'
 import { cn } from '@/lib/utils'
 
+/** Site header clearance for sticky cards. */
+const STACK_TOP_BASE = '5.5rem'
+
 /**
- * Sticky program stack — split-panel cards (cover + copy). Same anatomy on
- * every card so the stack reads as one deliberate composition.
+ * Sticky program stack — equal-height cards, consistent peek, no scale
+ * transforms (those left uneven gaps between layers).
  */
 export function LandingPrograms() {
   const t = useMarketingCopy()
@@ -56,20 +59,20 @@ export function LandingPrograms() {
         const inner = card.querySelector<HTMLElement>('[data-stack-inner]')
         if (!inner) return
 
+        // Dim prior cards as the next one covers them — brightness only,
+        // never scale (scale shrinks the face and opens uneven gaps).
         if (index < stackCards.length - 1) {
           const next = stackCards[index + 1]
           gsap.fromTo(
             inner,
-            { scale: 1, filter: 'brightness(1)' },
+            { filter: 'brightness(1)' },
             {
-              scale: 0.96,
-              filter: 'brightness(0.93)',
+              filter: 'brightness(0.88)',
               ease: 'none',
-              transformOrigin: 'center top',
               scrollTrigger: {
                 trigger: next,
                 start: 'top bottom',
-                end: 'top 12%',
+                end: 'top 20%',
                 scrub: true,
               },
             },
@@ -78,15 +81,15 @@ export function LandingPrograms() {
 
         gsap.fromTo(
           inner,
-          { opacity: 0, y: 36 },
+          { opacity: 0, y: 28 },
           {
             opacity: 1,
             y: 0,
-            duration: 0.9,
+            duration: 0.85,
             ease: EASE.expo,
             scrollTrigger: {
               trigger: card,
-              start: 'top 82%',
+              start: 'top 85%',
               once: true,
             },
           },
@@ -100,11 +103,11 @@ export function LandingPrograms() {
         if (!inner) return
         gsap.fromTo(
           inner,
-          { opacity: 0, y: 28 },
+          { opacity: 0, y: 24 },
           {
             opacity: 1,
             y: 0,
-            duration: 0.8,
+            duration: 0.75,
             ease: EASE.expo,
             scrollTrigger: { trigger: card, start: 'top 90%', once: true },
           },
@@ -139,11 +142,11 @@ export function LandingPrograms() {
           </p>
         </div>
 
-        <div className="relative mt-14 space-y-4 pb-[4vh] sm:mt-20 sm:space-y-5">
+        <div className="relative mt-14 flex flex-col gap-5 pb-8 sm:mt-20 md:gap-6">
           {status === 'loading' ? (
             <>
-              <Skeleton className="aspect-video w-full rounded-xl sm:aspect-auto sm:h-80" />
-              <Skeleton className="aspect-video w-full rounded-xl sm:aspect-auto sm:h-80" />
+              <Skeleton className="aspect-video w-full rounded-xl md:h-96 md:aspect-auto" />
+              <Skeleton className="aspect-video w-full rounded-xl md:h-96 md:aspect-auto" />
             </>
           ) : null}
 
@@ -163,7 +166,13 @@ export function LandingPrograms() {
   )
 }
 
-function StackCard({ course, index }: { course: Course; index: number }) {
+function StackCard({
+  course,
+  index,
+}: {
+  course: Course
+  index: number
+}) {
   const t = useMarketingCopy()
   const ui = t.programs
   const auth = usePublicAuth()
@@ -178,7 +187,8 @@ function StackCard({ course, index }: { course: Course; index: number }) {
   })
 
   const indexLabel = String(index + 1).padStart(2, '0')
-  const top = `calc(5.25rem + ${index * 0.7}rem)`
+  // Each layer peeks the same amount; last card still sticks so the stack holds.
+  const top = `calc(${STACK_TOP_BASE} + ${index * 0.75}rem)`
   const tagline = course.tagline?.trim() || course.description?.trim() || null
   const monthly =
     course.billingType === 'monthly' ? formatMoney(course.monthlyFee) : null
@@ -186,23 +196,33 @@ function StackCard({ course, index }: { course: Course; index: number }) {
   return (
     <article
       data-stack-card
-      className="md:sticky"
-      style={{ top, zIndex: 10 + index }}
+      className="relative w-full md:sticky"
+      style={{
+        top,
+        zIndex: 10 + index,
+      }}
     >
       <div
         data-stack-inner
-        className="will-change-transform overflow-hidden rounded-xl bg-card ring-1 ring-foreground/5"
+        className={cn(
+          'group/stack w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/5',
+          'transition-[filter,ring-color] duration-500 hover:ring-primary/25',
+          // Equal height on desktop — uneven heights were letting taller
+          // prior cards poke out beside shorter ones.
+          'md:h-96',
+        )}
       >
-        <div className="grid md:grid-cols-12 md:items-stretch">
-          {/* Cover — visual anchor */}
-          <div className="relative md:col-span-5 lg:col-span-5">
-            <CourseCover
-              courseId={course.id}
-              title={course.title}
-              hasThumbnail={course.hasThumbnail}
-              updatedAt={course.updatedAt}
-              className="aspect-4/3 w-full md:absolute md:inset-0 md:aspect-auto md:h-full md:min-h-80"
-            />
+        <div className="grid h-full md:grid-cols-12 md:items-stretch">
+          <div className="relative overflow-hidden md:col-span-5 md:h-full">
+            <div className="aspect-4/3 w-full md:absolute md:inset-0 md:aspect-auto md:h-full">
+              <CourseCover
+                courseId={course.id}
+                title={course.title}
+                hasThumbnail={course.hasThumbnail}
+                updatedAt={course.updatedAt}
+                className="h-full min-h-full w-full transition-transform duration-700 ease-out group-hover/stack:scale-105"
+              />
+            </div>
             <span
               aria-hidden
               className="pointer-events-none absolute bottom-3 left-4 font-heading text-5xl font-semibold tracking-tight text-primary-foreground/25 md:bottom-5 md:left-6 md:text-6xl"
@@ -211,9 +231,8 @@ function StackCard({ course, index }: { course: Course; index: number }) {
             </span>
           </div>
 
-          {/* Copy — calm hierarchy */}
-          <div className="flex flex-col justify-between gap-8 p-6 sm:p-8 md:col-span-7 lg:p-10">
-            <div>
+          <div className="flex flex-col justify-between gap-6 p-6 sm:p-8 md:col-span-7 md:h-full md:gap-5 lg:p-9">
+            <div className="min-h-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
                   {course.category?.trim() || ui.eyebrow}
@@ -225,23 +244,23 @@ function StackCard({ course, index }: { course: Course; index: number }) {
                 <EnrollmentCue status={status} batch={batch} labels={ui} />
               </div>
 
-              <h3 className="mt-5 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-3xl lg:text-4xl">
+              <h3 className="mt-4 line-clamp-2 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
                 {course.title}
-                {course.emphasis ? (
-                  <span className="mt-1 block font-heading text-xl font-medium tracking-tight text-primary-strong/75 italic sm:text-2xl">
-                    {course.emphasis}
-                  </span>
-                ) : null}
               </h3>
+              {course.emphasis ? (
+                <span className="mt-1 line-clamp-1 block font-heading text-lg font-medium tracking-tight text-primary-strong/75 italic sm:text-xl">
+                  {course.emphasis}
+                </span>
+              ) : null}
 
               {tagline ? (
-                <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+                <p className="mt-3 line-clamp-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
                   {tagline}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-6">
+            <div className="shrink-0 space-y-4">
               <FeeStrip
                 status={status}
                 course={course}
@@ -250,7 +269,7 @@ function StackCard({ course, index }: { course: Course; index: number }) {
               />
 
               {batch ? (
-                <p className="text-xs leading-relaxed text-muted-foreground">
+                <p className="line-clamp-1 text-xs leading-relaxed text-muted-foreground">
                   {ui.batchMeta(
                     batch.name,
                     formatDate(batch.courseStartDate),
@@ -341,7 +360,7 @@ function FeeStrip({
   }
 
   return (
-    <dl className="flex flex-wrap gap-x-8 gap-y-4">
+    <dl className="flex flex-wrap gap-x-8 gap-y-3">
       <div>
         <dt className="text-xs text-muted-foreground">{labels.entryFee}</dt>
         <dd className="mt-0.5 font-heading text-xl font-semibold tabular-nums tracking-tight text-foreground">

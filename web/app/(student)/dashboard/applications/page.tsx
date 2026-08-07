@@ -114,7 +114,7 @@ export default function StudentApplicationsPage() {
       <StudentPageHeader
         eyebrow="Applications"
         title="My Applications"
-        description="Finish payment here to activate your seat. Online payment unlocks class after bank confirmation — no manager verification. Manual payment waits for a manager to verify your proof."
+        description="Finish payment here to activate your seat. Online payment unlocks class after bank confirmation — no teacher verification. Manual payment waits for a teacher to verify your proof."
         actions={
           <Button
             variant="outline"
@@ -208,7 +208,7 @@ export default function StudentApplicationsPage() {
                   ) : null}
                   {period?.status === 'pending' ? (
                     <p className="text-sm text-muted-foreground">
-                      A payment is already waiting for manager verification.
+                      A payment is already waiting for teacher verification.
                     </p>
                   ) : (
                     <Button
@@ -241,7 +241,7 @@ export default function StudentApplicationsPage() {
             void reload()
             void reloadPeriods()
             toast.success(
-              'If you paid online, class is unlocked after bank confirmation. Manual payments wait for manager verification.',
+              'If you paid online, class is unlocked after bank confirmation. Manual payments wait for teacher verification.',
             )
           }}
         />

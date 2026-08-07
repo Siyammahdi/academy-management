@@ -58,7 +58,7 @@ export function ClassJoinControls({
   if (state.kind === 'no_link') {
     return (
       <p className={cn('text-sm', muted, className)}>
-        No class link yet. Your manager will post it when class is ready.
+        No class link yet. Your teacher will post it when class is ready.
       </p>
     )
   }
@@ -67,7 +67,7 @@ export function ClassJoinControls({
     return (
       <div className={cn('space-y-3', className)}>
         <p className={cn('text-sm', muted)}>
-          Class schedule is not set yet. Join will unlock once your manager
+          Class schedule is not set yet. Join will unlock once your teacher
           sets the session time.
         </p>
         <Button

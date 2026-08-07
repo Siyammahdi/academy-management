@@ -28,7 +28,7 @@ export function ClassroomSpotlight({ classrooms }: ClassroomSpotlightProps) {
               Classroom
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-              When a manager posts a class link and schedule for an active
+              When a teacher posts a class link and schedule for an active
               enrollment, Join unlocks here five minutes before class.
             </p>
           </div>

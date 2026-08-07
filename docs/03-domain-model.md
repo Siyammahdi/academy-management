@@ -28,7 +28,7 @@ Course ──spawns──▶ Batch ──has──▶ Enrollment ──owns─�
 | `Student` | Academic/financial profile; guest-lookup target |
 | `Course` | Template — definition and current pricing |
 | `Batch` | The enrollable unit; frozen pricing and operations |
-| `BatchManager` | Manager assignment (many-to-many) |
+| `BatchTeacher` | Teacher assignment (many-to-many) |
 | `Enrollment` | One student in one batch — the spine |
 | `BillingPeriod` | One month's ledger: owed, paid, outstanding |
 | `Payment` | One money event settling one period |
@@ -47,7 +47,7 @@ Course ──spawns──▶ Batch ──has──▶ Enrollment ──owns─�
 
 The **login identity**. Deliberately separate from `Student`.
 
-**Why separate:** managers and admins are users but not students (they would carry empty student columns); the guest lookup must query student data without any auth account; and a student may exist with **no** login at all.
+**Why separate:** teachers and admins are users but not students (they would carry empty student columns); the guest lookup must query student data without any auth account; and a student may exist with **no** login at all.
 
 | Field | Notes |
 |---|---|
@@ -57,12 +57,12 @@ The **login identity**. Deliberately separate from `Student`.
 | `status` | `active` \| `disabled` |
 | `createdAt` | |
 
-**Roles** — a user holds a **set** of roles (`admin`, `manager`, `student`), not a single value, because one person may be both a manager and a student (RBAC-01).
+**Roles** — a user holds a **set** of roles (`admin`, `teacher`, `student`), not a single value, because one person may be both a teacher and a student (RBAC-01).
 
 **Relationships**
 - `User` 1 ─ 0..1 `Student`
 - `User` * ─ * `Role`
-- `User` * ─ * `Batch` (as manager, via `BatchManager`)
+- `User` * ─ * `Batch` (as teacher, via `BatchTeacher`)
 - Referenced by `Payment.verifiedBy`, `Request.decidedBy`, `Refund.refundedBy`, `AuditLog.actorUserId`
 
 ---
@@ -120,7 +120,7 @@ The **template** — what a program is and what it *currently* costs. Not enroll
 
 ## 4. `Batch`
 
-A concrete offering — one cohort with its own roster, managers, dates, and **frozen** financial terms. **The enrollable unit.**
+A concrete offering — one cohort with its own roster, teachers, dates, and **frozen** financial terms. **The enrollable unit.**
 
 | Field | Notes |
 |---|---|
@@ -146,7 +146,7 @@ A concrete offering — one cohort with its own roster, managers, dates, and **f
 
 **Relationships**
 - `Batch` * ─ 1 `Course`
-- `Batch` * ─ * `User` (managers, via `BatchManager`)
+- `Batch` * ─ * `User` (teachers, via `BatchTeacher`)
 - `Batch` 1 ─ * `Enrollment`
 
 ---
@@ -225,7 +225,7 @@ One money event, settling exactly one period.
 
 **Behaviour**
 - **Gateway** — created `pending` on redirect; the **webhook** settles it to `verified` (PAY-03). Expires after 60 minutes without a callback (PAY-05).
-- **Manual** — created `pending`; a manager verifies or rejects. It does **not** contribute to `amountPaid` while pending, but it **does** protect from the penalty (PEN-05).
+- **Manual** — created `pending`; a teacher verifies or rejects. It does **not** contribute to `amountPaid` while pending, but it **does** protect from the penalty (PEN-05).
 
 ---
 
@@ -262,7 +262,7 @@ Grace and partial payment are **mechanically different** — one moves a date, t
 | `decidedBy` / `decidedAt` | |
 | `createdAt` | |
 
-**Authority:** `grace` → manager or admin. `partial_payment` → **admin only** (it accepts less money than owed, and managers never move money).
+**Authority:** `grace` → teacher or admin. `partial_payment` → **admin only** (it accepts less money than owed, and teachers never move money).
 
 **Initiation:** a student applies (lands `pending`), or staff create a `grace` directly (created already `approved`).
 
@@ -312,7 +312,7 @@ These hold across the whole model and MUST be enforced in the service layer:
 3. **A period's outstanding balance never migrates.** Shortfalls stay on their own month.
 4. **The penalty flag is a guard, not a status.** It prevents stacking; it does not describe enrollment state.
 5. **Snapshots are immutable.** Once a batch copies a fee, nothing upstream may change it.
-6. **Self-approval is impossible.** A manager may never decide anything on their own enrollment (RBAC-03).
+6. **Self-approval is impossible.** A teacher may never decide anything on their own enrollment (RBAC-03).
 7. **Every state change that touches money writes an audit entry.**
 
 ---
@@ -329,7 +329,7 @@ These attach to `Batch` and touch no billing table. They are the proof of the ex
 | `dueDate` | End-of-Dhaka-day instant for the supplied calendar date |
 | `createdAt` | Indexed on `(batchId, dueDate)` |
 
-Students read homework across their **active** enrollments via `/me/homework`. Manager writes are batch-scoped.
+Students read homework across their **active** enrollments via `/me/homework`. Teacher writes are batch-scoped.
 
 ### `RecordedClass`
 | Field | Notes |
@@ -341,7 +341,7 @@ Students read homework across their **active** enrollments via `/me/homework`. M
 | `createdAt` | Indexed on `(batchId, recordedFor)` |
 
 ### `Batch.classLink`
-A nullable field on `Batch`, not a separate entity — a single live-class link, manager-editable, shown to students on their active enrollments.
+A nullable field on `Batch`, not a separate entity — a single live-class link, teacher-editable, shown to students on their active enrollments.
 
 ### `Batch.classStartsAt` / `Batch.classEndsAt`
 Optional next-session window. Students may join from **5 minutes before** `classStartsAt` until `classEndsAt`. If either is unset, the join control stays locked with “schedule is not set yet.”

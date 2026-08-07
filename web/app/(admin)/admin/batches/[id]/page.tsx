@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner'
 
 import { AdminBatchHero } from '@/components/admin/admin-batch-hero'
-import { AssignManagersPanel } from '@/components/admin/assign-managers-panel'
+import { AssignTeachersPanel } from '@/components/admin/assign-teachers-panel'
 import { AmountCell } from '@/components/money/amount-cell'
 import { FilterDropdown } from '@/components/ui/filter-dropdown'
 import { Button } from '@/components/ui/button'
@@ -113,7 +113,7 @@ export default function AdminBatchOverviewPage() {
   const [statusError, setStatusError] = useState<string | null>(null)
   const [statusSaving, setStatusSaving] = useState(false)
 
-  const [managersOpen, setManagersOpen] = useState(false)
+  const [teachersOpen, setTeachersOpen] = useState(false)
 
   async function load(): Promise<void> {
     setBusy(true)
@@ -214,8 +214,8 @@ export default function AdminBatchOverviewPage() {
     }
   }
 
-  function openManagers(): void {
-    setManagersOpen(true)
+  function openTeachers(): void {
+    setTeachersOpen(true)
   }
 
   return (
@@ -250,11 +250,11 @@ export default function AdminBatchOverviewPage() {
                 variant="outline"
                 className="min-h-11 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10"
                 onClick={() => {
-                  openManagers()
+                  openTeachers()
                 }}
               >
                 <UsersIcon />
-                Managers
+                Teachers
               </Button>
             </>
           ) : null
@@ -304,18 +304,18 @@ export default function AdminBatchOverviewPage() {
           <section className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-xl bg-muted/50 p-5">
               <h2 className="font-heading text-base font-semibold text-foreground">
-                Managers
+                Teachers
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Who can verify payments and run classroom tools for this batch.
               </p>
-              {batch.managers.length === 0 ? (
+              {batch.teachers.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">
-                  No managers assigned yet.
+                  No teachers assigned yet.
                 </p>
               ) : (
                 <ul className="mt-4 flex flex-col gap-2">
-                  {batch.managers.map((m) => (
+                  {batch.teachers.map((m) => (
                     <li
                       key={m.userId}
                       className="rounded-lg bg-background/80 px-3 py-2 text-sm text-foreground"
@@ -329,11 +329,11 @@ export default function AdminBatchOverviewPage() {
                 className="mt-4 min-h-11"
                 variant="secondary"
                 onClick={() => {
-                  openManagers()
+                  openTeachers()
                 }}
               >
                 <UserPlusIcon />
-                Manage managers
+                Manage teachers
               </Button>
             </div>
 
@@ -558,14 +558,14 @@ export default function AdminBatchOverviewPage() {
       </Modal>
 
       <Modal
-        isOpen={managersOpen}
-        onClose={() => setManagersOpen(false)}
-        title={`Managers · ${batch?.name ?? ''}`}
+        isOpen={teachersOpen}
+        onClose={() => setTeachersOpen(false)}
+        title={`Teachers · ${batch?.name ?? ''}`}
       >
         {batch ? (
-          <AssignManagersPanel
+          <AssignTeachersPanel
             batchId={batchId}
-            managers={batch.managers}
+            teachers={batch.teachers}
             onChanged={async () => {
               await load()
             }}

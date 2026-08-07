@@ -14,16 +14,16 @@ import type { BatchWithSeats } from './batches.service';
 export class MyBatchesController {
   constructor(private readonly batchesService: BatchesService) {}
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
-  @Get('me/managed-batches')
+  @Get('me/taught-batches')
   listMine(@CurrentUser() user: AuthUser): Promise<BatchWithSeats[]> {
     return this.batchesService.listMine(user.id);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
-  @Get('me/managed-batches/at-risk-count')
+  @Get('me/taught-batches/at-risk-count')
   atRiskCount(@CurrentUser() user: AuthUser): Promise<{ count: number }> {
     return this.batchesService.countAtRisk(user.id);
   }

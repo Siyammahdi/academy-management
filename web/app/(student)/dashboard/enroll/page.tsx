@@ -258,7 +258,7 @@ export default function StudentEnrollPage() {
             setPaymentTarget(null)
             void reloadEnrollment()
             toast.success(
-              'Online payment unlocks class after bank confirmation — no manager review. Manual payments wait for verification.',
+              'Online payment unlocks class after bank confirmation — no teacher review. Manual payments wait for verification.',
             )
           }}
         />

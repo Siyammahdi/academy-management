@@ -49,11 +49,11 @@ describe('Recordings (real Postgres)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let adminToken: string;
-  let managerToken: string; // never assigned to any batch in this file
+  let teacherToken: string; // never assigned to any batch in this file
 
   async function createUserWithRole(
     prefix: string,
-    role: 'admin' | 'manager',
+    role: 'admin' | 'teacher',
   ): Promise<{ token: string; userId: string }> {
     const passwordHash = await argon2.hash('password123');
     const email = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
@@ -165,20 +165,20 @@ describe('Recordings (real Postgres)', () => {
     prisma = app.get(PrismaService);
 
     adminToken = (await createUserWithRole('rec-admin', 'admin')).token;
-    managerToken = (await createUserWithRole('rec-manager', 'manager')).token;
+    teacherToken = (await createUserWithRole('rec-teacher', 'teacher')).token;
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  describe('manager batch scope', () => {
-    it('rejects a manager not assigned to the batch on create, list, update, and delete', async () => {
+  describe('teacher batch scope', () => {
+    it('rejects a teacher not assigned to the batch on create, list, update, and delete', async () => {
       const batchId = await createCourseAndBatch();
 
       const createRes = await request(app.getHttpServer())
         .post(`/api/v1/batches/${batchId}/recordings`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({
           title: 'Week 1',
           youtubeVideoId: 'dQw4w9WgXcQ',
@@ -191,7 +191,7 @@ describe('Recordings (real Postgres)', () => {
 
       const listRes = await request(app.getHttpServer())
         .get(`/api/v1/batches/${batchId}/recordings`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .expect(403);
       expect((listRes.body as ErrorResponseBody).error).toBe(
         'BATCH_NOT_ASSIGNED',
@@ -211,7 +211,7 @@ describe('Recordings (real Postgres)', () => {
 
       const updateRes = await request(app.getHttpServer())
         .patch(`/api/v1/recordings/${recordingId}`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .send({ title: 'Hacked title' })
         .expect(403);
       expect((updateRes.body as ErrorResponseBody).error).toBe(
@@ -220,7 +220,7 @@ describe('Recordings (real Postgres)', () => {
 
       const deleteRes = await request(app.getHttpServer())
         .delete(`/api/v1/recordings/${recordingId}`)
-        .set('Authorization', `Bearer ${managerToken}`)
+        .set('Authorization', `Bearer ${teacherToken}`)
         .expect(403);
       expect((deleteRes.body as ErrorResponseBody).error).toBe(
         'BATCH_NOT_ASSIGNED',
@@ -232,14 +232,14 @@ describe('Recordings (real Postgres)', () => {
       expect(stillThere.title).toBe('Week 1');
     });
 
-    it('lets the assigned manager create, list, update, and delete', async () => {
+    it('lets the assigned teacher create, list, update, and delete', async () => {
       const batchId = await createCourseAndBatch();
       const assigned = await createUserWithRole(
-        'rec-assigned-manager',
-        'manager',
+        'rec-assigned-teacher',
+        'teacher',
       );
       await request(app.getHttpServer())
-        .post(`/api/v1/batches/${batchId}/managers`)
+        .post(`/api/v1/batches/${batchId}/teachers`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ userId: assigned.userId })
         .expect(201);

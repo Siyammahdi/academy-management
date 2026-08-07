@@ -32,14 +32,14 @@ app/
 ├── (public)/    marketing: home, about, contact, guest payment (/pay)
 ├── (auth)/      login, register
 ├── (admin)/     admin console — courses, batches, roster, payments
-├── (manager)/   manager console — own-batch roster, payment verification
+├── (teacher)/   teacher console — own-batch roster, payment verification
 └── (student)/   dashboard, dues, payments, browse/enroll, homework, recordings
 
 components/
 ├── ui/          shadcn (Base UI + Luma) — Button, Input, Card, Field, Sonner, …
 ├── auth/        AuthShell, PasswordInput — login/register chrome
 ├── ledger/      LedgerLine, AmountCell, StatusPill — migrating to money/ next
-├── layout/      AppShell, Sidebar, PageHeader — shared by admin/manager/student consoles
+├── layout/      AppShell, Sidebar, PageHeader — shared by admin/teacher/student consoles
 ├── batches/     BatchRoster, HomeworkPanel, RecordingsPanel
 ├── payments/    PaymentModal, PendingPaymentsQueue
 └── media/       YoutubeEmbed
@@ -55,7 +55,7 @@ lib/
 ├── format.ts         formatMoney(), formatDate()
 └── utils.ts          cn() — shadcn class merge```
 
-**Reuse philosophy:** admin and manager render the *same* components (`BatchRoster`, `HomeworkPanel`, `RecordingsPanel`, `PendingPaymentsQueue`) parameterized by route/props, not forked copies. If you need "the same thing but for manager," check whether the admin version already takes the props you need before writing a new component.
+**Reuse philosophy:** admin and teacher render the *same* components (`BatchRoster`, `HomeworkPanel`, `RecordingsPanel`, `PendingPaymentsQueue`) parameterized by route/props, not forked copies. If you need "the same thing but for teacher," check whether the admin version already takes the props you need before writing a new component.
 
 ---
 

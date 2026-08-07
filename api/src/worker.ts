@@ -16,9 +16,18 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(WorkerModule);
 
   const mail = app.get<MailProvider>(MAIL_PROVIDER);
+  const resendKey = process.env.RESEND_API_KEY?.trim();
   logger.log(
-    `Mail provider active: ${mail.providerName}; MAIL_FROM=${mail.fromAddress}`,
+    `Mail provider active: ${mail.providerName}; from=${mail.fromAddress}`,
   );
+  logger.log(
+    `Mail env: RESEND_API_KEY=${resendKey ? `set(len=${resendKey.length})` : 'unset'} MAIL_FROM=${process.env.MAIL_FROM ?? '(unset)'} SMTP_HOST=${process.env.SMTP_HOST ?? '(unset)'}`,
+  );
+  if (mail.providerName === 'resend') {
+    logger.log(
+      'Resend test-mode note: with onboarding@resend.dev you can only send to the Resend account email until a domain is verified.',
+    );
+  }
   logger.log(
     'Worker started — processing penalty-sweep, billing-generation, gateway-expiry, email-dispatch.',
   );

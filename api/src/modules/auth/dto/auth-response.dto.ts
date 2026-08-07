@@ -6,7 +6,7 @@ export class UserResponseDto {
   roles: RoleName[];
   /** Human-readable Student.studentId (e.g. "ANA-0042"), not the internal cuid. */
   studentId: string | null;
-  /** From linked Student profile when present; null for staff-only accounts. */
+  /** User.fullName, falling back to linked Student.fullName. */
   fullName: string | null;
 }
 

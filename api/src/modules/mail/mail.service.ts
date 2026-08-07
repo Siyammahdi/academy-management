@@ -22,6 +22,11 @@ export class MailService {
     @Inject(MAIL_PROVIDER) private readonly provider: MailProvider,
   ) {}
 
+  /** Active transport name — for worker/processor logs. */
+  get providerName(): MailProvider['providerName'] {
+    return this.provider.providerName;
+  }
+
   /** Enqueue a message for asynchronous delivery. Never awaits the send. */
   async enqueue(message: MailMessage): Promise<void> {
     await this.emailQueue.add(JOB_NAMES.emailDispatch, { message });

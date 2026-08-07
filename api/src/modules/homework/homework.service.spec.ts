@@ -4,10 +4,10 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from '../../common/decorators/current-user.decorator';
 
-const manager: AuthUser = {
+const teacher: AuthUser = {
   id: 'mgr1',
-  email: 'manager@x.com',
-  roles: ['manager'],
+  email: 'teacher@x.com',
+  roles: ['teacher'],
   studentId: null,
 };
 
@@ -66,7 +66,7 @@ describe('HomeworkService', () => {
           description: 'Do all odd-numbered problems.',
           dueDate: '2026-08-15',
         },
-        manager,
+        teacher,
       );
 
       expect(result.id).toBe('hw1');
@@ -105,7 +105,7 @@ describe('HomeworkService', () => {
             description: 'y',
             dueDate: '2026-08-15',
           },
-          manager,
+          teacher,
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -136,7 +136,7 @@ describe('HomeworkService', () => {
       const result = await service.update(
         'hw1',
         { title: 'New title', dueDate: '2026-08-20' },
-        manager,
+        teacher,
       );
 
       expect(result.title).toBe('New title');
@@ -177,7 +177,7 @@ describe('HomeworkService', () => {
       const { service } = createService(tx);
 
       await expect(
-        service.update('missing', { title: 'x' }, manager),
+        service.update('missing', { title: 'x' }, teacher),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -198,7 +198,7 @@ describe('HomeworkService', () => {
       };
       const { service, audit } = createService(tx);
 
-      await service.remove('hw1', manager);
+      await service.remove('hw1', teacher);
 
       expect(tx.homework.delete).toHaveBeenCalledWith({ where: { id: 'hw1' } });
       expect(audit.record).toHaveBeenCalledWith(
@@ -217,7 +217,7 @@ describe('HomeworkService', () => {
       };
       const { service } = createService(tx);
 
-      await expect(service.remove('missing', manager)).rejects.toThrow(
+      await expect(service.remove('missing', teacher)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -247,7 +247,7 @@ describe('HomeworkService', () => {
       const findMany = jest.fn();
       const { service } = createService({}, { homework: { findMany } });
 
-      const result = await service.listMine(manager);
+      const result = await service.listMine(teacher);
 
       expect(result).toEqual([]);
       expect(findMany).not.toHaveBeenCalled();

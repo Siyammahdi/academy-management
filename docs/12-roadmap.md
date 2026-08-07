@@ -18,9 +18,9 @@ These were in the original specification and remain unbuilt. They finish the pro
 **Why first:** the product's job is telling students who owe money. Right now nothing notifies anyone. This is the largest functional gap against the original PRD.
 
 - Dispatch subsystem driven by a rule table (NTF-05) — channel is data, not branching logic.
-- Student events → dashboard + email (NTF-01). Manager events → dashboard only (NTF-02).
+- Student events → dashboard + email (NTF-01). Teacher events → dashboard only (NTF-02).
 - Email sent via a queued BullMQ job (NTF-03); a failed email must not roll back the triggering action (NTF-04).
-- Events per doc 02 NTF table: due-soon, payment received/verified, payment rejected, penalty applied, fell behind, new batch, plus the manager-facing queue/at-risk notices.
+- Events per doc 02 NTF table: due-soon, payment received/verified, payment rejected, penalty applied, fell behind, new batch, plus the teacher-facing queue/at-risk notices.
 - Needs an email provider (Resend or similar) behind an interface.
 
 **Attaches to:** a new `Notification` consumer + the existing `email` BullMQ queue slot. Triggers fire from existing services (payment verify, penalty apply) — add dispatch calls, do not restructure those services.
@@ -29,8 +29,8 @@ These were in the original specification and remain unbuilt. They finish the pro
 **Why:** the `Request` model exists in the schema but has no behaviour. These are the human-override paths the penalty engine already expects (PEN-05 protects pending requests).
 
 - Student creates `grace` or `partial_payment` requests (REQ-01, REQ-04).
-- `grace` decided by manager or admin (REQ-02); `partial_payment` **admin only** (REQ-03).
-- A manager may never decide a request on their own enrollment (RBAC-03) — reuse `SelfApprovalGuard`.
+- `grace` decided by teacher or admin (REQ-02); `partial_payment` **admin only** (REQ-03).
+- A teacher may never decide a request on their own enrollment (RBAC-03) — reuse `SelfApprovalGuard`.
 - A pending request protects from the penalty (REQ-05, PEN-05) — the penalty job already checks for this; confirm the query includes pending requests.
 - Approved grace sets `extendedDueDate` (REQ-06); approved partial payment permits short payment, shortfall stays on the period (REQ-07, BIL-07).
 - No notification on decision (REQ-08).
@@ -38,16 +38,16 @@ These were in the original specification and remain unbuilt. They finish the pro
 **Attaches to:** `Request` (already in schema) → `BillingPeriod`. The penalty gate already anticipates this — verify PEN-04 condition 3 reads approved grace correctly.
 
 ### R-03 · Reporting and export
-**Why:** admins need financial visibility; managers need their batch's state.
+**Why:** admins need financial visibility; teachers need their batch's state.
 
 - Revenue, outstanding, enrollment counts, payment ledger, audit trail (doc 06 §11).
-- Scope by role: managers see their batches only, admins see academy-wide (RBAC-02).
+- Scope by role: teachers see their batches only, admins see academy-wide (RBAC-02).
 - Admin-only CSV export, month-by-month (doc 01 §12).
 
 **Attaches to:** read-only queries over existing tables. No new writable entities. Money aggregation uses `Decimal`, computed server-side.
 
 ### R-04 · Role-management UI
-**Why:** roles are currently assigned only through Prisma Studio. The client cannot add a manager after handover without developer help.
+**Why:** roles are currently assigned only through Prisma Studio. The client cannot add a teacher after handover without developer help.
 
 - Admin-only: list users, view and toggle roles, assign/disable (doc 06 §11, RBAC-04).
 - `user_role_changed` audit entry (AUD-04).
@@ -59,10 +59,10 @@ These were in the original specification and remain unbuilt. They finish the pro
 ## Phase 2 — Client-added scope
 
 ### R-05 · Resources / notes / files
-Manager-shared materials on a batch.
+Teacher-shared materials on a batch.
 
-- New `Resource` table → `Batch`: title, type, `url`, createdAt. Manager-scoped writes.
-- **Ship with a `url` field first** — managers paste links (Drive, etc.). No storage code needed.
+- New `Resource` table → `Batch`: title, type, `url`, createdAt. Teacher-scoped writes.
+- **Ship with a `url` field first** — teachers paste links (Drive, etc.). No storage code needed.
 - **Later:** object storage (Cloudflare R2 — S3-compatible, zero egress) behind the same `url` field. The data model does not change when upload is added.
 - Same pattern as homework/recordings: attaches to `Batch`, reuses `BatchScopeGuard`.
 

@@ -133,7 +133,11 @@ export function PaymentReceipt({
         <footer className="mt-10 border-t border-primary/15 pt-4 text-xs leading-relaxed text-muted-foreground">
           This receipt confirms a payment recorded by An Nahda Academy. Online
           payments settle when the bank confirms; manual payments show as
-          verified after manager review. Keep this for your records.
+          verified after teacher review. Keep this for your records.
+          <span className="mt-2 block">
+            annahda.net@gmail.com · +880 1717-215070 · House 32, Road 1, Aram
+            Model Town, Mohammadpur, Dhaka-1207 · Licence 002806
+          </span>
         </footer>
       </div>
     </div>

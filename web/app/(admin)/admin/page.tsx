@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 
 import { AdminHomeSkeleton } from '@/components/admin/admin-home-skeleton'
-import { PendingVerifyStrip } from '@/components/manager/pending-verify-strip'
+import { PendingVerifyStrip } from '@/components/teacher/pending-verify-strip'
 import { WorkspaceHero } from '@/components/layout/workspace-hero'
 import { StatusBadge } from '@/components/money/status-badge'
 import { Badge } from '@/components/ui/badge'
@@ -104,7 +104,7 @@ async function fetchHomeData(): Promise<AdminHomeData> {
     .filter((b) => b.seatsRemaining <= Math.max(2, Math.floor(b.capacity * 0.1)))
     .sort((a, b) => a.seatsRemaining - b.seatsRemaining)
 
-  const unassignedBatches = detailed.filter((b) => b.managers.length === 0)
+  const unassignedBatches = detailed.filter((b) => b.teachers.length === 0)
 
   return {
     user,
@@ -262,8 +262,8 @@ export default function AdminOverviewPage() {
         user={data.user}
         description={
           attentionCount > 0
-            ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention — seat pressure, money waiting, and batches still without a manager.`
-            : 'Seat pressure, money waiting on confirmation, and managers who still need a batch — not classroom homework. That stays with course managers.'
+            ? `${attentionCount} item${attentionCount === 1 ? '' : 's'} need your attention — seat pressure, money waiting, and batches still without a teacher.`
+            : 'Seat pressure, money waiting on confirmation, and teachers who still need a batch — not classroom homework. That stays with course teachers.'
         }
         aside={
           <div className="shrink-0 rounded-xl bg-background/80 px-2.5 py-1.5 text-right sm:px-3 sm:py-2">
@@ -371,7 +371,7 @@ export default function AdminOverviewPage() {
             Needs your attention
           </h2>
           <p className="text-sm text-muted-foreground">
-            Owner decisions only — verification, full batches, missing managers.
+            Owner decisions only — verification, full batches, missing teachers.
           </p>
         </div>
 
@@ -391,13 +391,13 @@ export default function AdminOverviewPage() {
             }))}
           />
           <AttentionPanel
-            title="Batches without a manager"
-            empty="Every checked active batch has at least one manager."
+            title="Batches without a teacher"
+            empty="Every checked active batch has at least one teacher."
             items={data.unassignedBatches.map((batch) => ({
               id: batch.id,
               href: `/admin/batches/${batch.id}`,
               primary: batch.name,
-              secondary: 'Assign a manager so verification and classroom stay covered',
+              secondary: 'Assign a teacher so verification and classroom stay covered',
               badge: { tone: 'pending' as const, label: 'Unassigned' },
             }))}
           />
@@ -437,9 +437,9 @@ export default function AdminOverviewPage() {
             hint="Capacity and windows"
           />
           <QuickAction
-            href="/admin/managers"
+            href="/admin/teachers"
             icon={UserPlusIcon}
-            label="See managers"
+            label="See teachers"
             hint="Who can verify"
           />
           <QuickAction

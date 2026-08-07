@@ -158,7 +158,7 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   } else if (!signedIn && isVerified) {
     heading = 'Payment successful'
     body =
-      'The fee is settled. The student can sign in — classroom access is unlocked without manager verification.'
+      'The fee is settled. The student can sign in — classroom access is unlocked without teacher verification.'
   } else if (!signedIn) {
     heading = 'Payment submitted'
     body =
@@ -180,13 +180,13 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   ) {
     heading = 'Confirming your payment…'
     body =
-      'Validating with the bank. Online payments unlock your course automatically — no manager verification.'
+      'Validating with the bank. Online payments unlock your course automatically — no teacher verification.'
   } else if (isVerified) {
     heading = enrollmentActivated
       ? 'You are enrolled'
       : 'Payment successful'
     body = enrollmentActivated
-      ? 'Your online payment is confirmed. Classroom, homework, and courses are unlocked — no manager verification needed.'
+      ? 'Your online payment is confirmed. Classroom, homework, and courses are unlocked — no teacher verification needed.'
       : 'Your dues have been updated. Open your dashboard to continue.'
   } else if (payment === null) {
     heading = 'Payment status unknown'
@@ -203,7 +203,7 @@ function PaymentStatusContent({ intent }: PaymentStatusContentProps) {
   } else {
     heading = 'Still confirming'
     body =
-      'The bank has not finished confirming yet. Online payments do not need manager review — check again in a moment.'
+      'The bank has not finished confirming yet. Online payments do not need teacher review — check again in a moment.'
     showRefresh = true
   }
 

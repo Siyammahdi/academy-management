@@ -27,11 +27,12 @@ async function main(): Promise<void> {
   const passwordHash = await argon2.hash(SEED_ADMIN_PASSWORD);
   const admin = await prisma.user.upsert({
     where: { id: SEED_ADMIN_USER_ID },
-    update: {},
+    update: { isEmailVerified: true },
     create: {
       id: SEED_ADMIN_USER_ID,
       email: SEED_ADMIN_EMAIL,
       passwordHash,
+      isEmailVerified: true,
     },
   });
 

@@ -200,7 +200,7 @@ export class HomeworkService {
     return { mimeType: homework.pdfMimeType, body: homework.pdf };
   }
 
-  /** Managers of the batch, admins, or students with an active enrollment. */
+  /** Teachers of the batch, admins, or students with an active enrollment. */
   async canAccessPdf(id: string, actor: AuthUser): Promise<boolean> {
     const homework = await this.prisma.homework.findUnique({
       where: { id },
@@ -208,8 +208,8 @@ export class HomeworkService {
     });
     if (!homework) return false;
     if (actor.roles.includes('admin')) return true;
-    if (actor.roles.includes('manager')) {
-      const assigned = await this.prisma.batchManager.findFirst({
+    if (actor.roles.includes('teacher')) {
+      const assigned = await this.prisma.batchTeacher.findFirst({
         where: { batchId: homework.batchId, userId: actor.id },
         select: { id: true },
       });

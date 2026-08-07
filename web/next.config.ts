@@ -19,8 +19,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.ytimg.com' },
-      // Marketing photography placeholders — see lib/marketing/media.ts.
-      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
   async rewrites() {

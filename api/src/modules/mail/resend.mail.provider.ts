@@ -34,14 +34,20 @@ export class ResendMailProvider implements MailProvider {
   }
 
   async send(message: MailMessage): Promise<void> {
+    this.logger.log(
+      `Resend request start from=${this.fromAddress} to=${message.to} subject=${JSON.stringify(message.subject)}`,
+    );
+
     try {
-      const { data, error } = await this.client.emails.send({
+      const result = await this.client.emails.send({
         from: this.fromAddress,
         to: message.to,
         subject: message.subject,
         html: message.html,
         text: message.text,
       });
+
+      const { data, error } = result;
 
       if (error) {
         this.logger.error(
@@ -52,11 +58,15 @@ export class ResendMailProvider implements MailProvider {
         );
       }
 
-      this.logger.log(
-        `Resend success to=${message.to} id=${data?.id ?? 'unknown'}`,
-      );
+      if (!data?.id) {
+        this.logger.error(
+          `Resend returned no message id to=${message.to} raw=${JSON.stringify(result)}`,
+        );
+        throw new Error('Resend send failed: empty response (no id)');
+      }
+
+      this.logger.log(`Resend success to=${message.to} id=${data.id}`);
     } catch (error) {
-      // Already logged the structured Resend error response above.
       if (
         error instanceof Error &&
         error.message.startsWith('Resend send failed:')

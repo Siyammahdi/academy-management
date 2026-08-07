@@ -60,7 +60,7 @@ interface BatchCardProps {
   course: BatchCardCourse
   workspaceHref: string
   seatsRemaining?: number
-  /** Quiet facts under the capacity row (managers, link state, etc.). */
+  /** Quiet facts under the capacity row (teachers, link state, etc.). */
   facts?: string[]
   secondaryActions?: BatchCardSecondaryAction[]
   menuActions?: BatchCardMenuAction[]
@@ -121,7 +121,7 @@ function CapacityBar({
 }
 
 /**
- * Shared batch surface for admin/manager shelves and list pages.
+ * Shared batch surface for admin/teacher shelves and list pages.
  * Cover → title → capacity → one primary CTA; secondary work stays quiet.
  */
 export function BatchCard({

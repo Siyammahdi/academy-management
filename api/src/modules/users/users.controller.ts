@@ -3,11 +3,16 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
+  NotFoundException,
   Param,
   Post,
+  Put,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common'
+import type { Response } from 'express'
 import { RoleName } from '@prisma/client'
 
 import { Roles } from '../../common/decorators/roles.decorator'
@@ -16,15 +21,20 @@ import type { AuthUser } from '../../common/decorators/current-user.decorator'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { AssignRoleDto } from './dto/assign-role.dto'
 import { CreateUserDto } from './dto/create-user.dto'
-import { UsersService, UserSummary } from './users.service'
+import { SetRoleDto } from './dto/set-role.dto'
+import {
+  SetRoleResult,
+  TeacherDetailResponse,
+  UsersService,
+  UserSummary,
+} from './users.service'
 
 @Controller('users')
+@Roles('admin')
+@UseGuards(RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Admin directory (R-04) and manager picker (optional ?role=).
-  @Roles('admin')
-  @UseGuards(RolesGuard)
   @Get()
   list(
     @Query('role') role?: string,
@@ -33,9 +43,6 @@ export class UsersController {
     return this.usersService.list({ role, q })
   }
 
-  // Manual provisioning — staff or student accounts without public register.
-  @Roles('admin')
-  @UseGuards(RolesGuard)
   @Post()
   create(
     @Body() dto: CreateUserDto,
@@ -44,8 +51,35 @@ export class UsersController {
     return this.usersService.create(dto, actor)
   }
 
-  @Roles('admin')
-  @UseGuards(RolesGuard)
+  @Get(':id')
+  getDetail(@Param('id') userId: string): Promise<TeacherDetailResponse> {
+    return this.usersService.getDetail(userId)
+  }
+
+  @Get(':id/avatar')
+  async getAvatar(
+    @Param('id') userId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const avatar = await this.usersService.getAvatar(userId)
+    if (!avatar) {
+      throw new NotFoundException('Not found')
+    }
+    res.setHeader('Content-Type', avatar.mimeType)
+    res.setHeader('Cache-Control', 'private, max-age=300')
+    res.status(HttpStatus.OK).send(avatar.body)
+  }
+
+  /** Replace the entire role set with exactly one role. */
+  @Put(':id/roles')
+  setRole(
+    @Param('id') userId: string,
+    @Body() dto: SetRoleDto,
+    @CurrentUser() actor: AuthUser,
+  ): Promise<SetRoleResult> {
+    return this.usersService.setRole(userId, dto.role, actor)
+  }
+
   @Post(':id/roles')
   assignRole(
     @Param('id') userId: string,
@@ -55,8 +89,6 @@ export class UsersController {
     return this.usersService.assignRole(userId, dto.role, actor)
   }
 
-  @Roles('admin')
-  @UseGuards(RolesGuard)
   @Delete(':id/roles/:role')
   removeRole(
     @Param('id') userId: string,

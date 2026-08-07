@@ -21,13 +21,13 @@ function createGuard(requiredRoles: RoleName[] | undefined): RolesGuard {
 }
 
 describe('RolesGuard', () => {
-  describe('RBAC-01: a user holding both manager and student can act in both capacities', () => {
-    it('allows a dual-role user on a manager-only route', () => {
-      const guard = createGuard(['manager', 'admin']);
+  describe('RBAC-01: a user holding both teacher and student can act in both capacities', () => {
+    it('allows a dual-role user on a teacher-only route', () => {
+      const guard = createGuard(['teacher', 'admin']);
       const context = createContext({
         id: 'u1',
         email: 'm@x.com',
-        roles: ['manager', 'student'],
+        roles: ['teacher', 'student'],
         studentId: 's1',
       });
       expect(guard.canActivate(context)).toBe(true);
@@ -38,20 +38,20 @@ describe('RolesGuard', () => {
       const context = createContext({
         id: 'u1',
         email: 'm@x.com',
-        roles: ['manager', 'student'],
+        roles: ['teacher', 'student'],
         studentId: 's1',
       });
       expect(guard.canActivate(context)).toBe(true);
     });
   });
 
-  describe('RBAC-05: a manager receives 403 creating a course or batch', () => {
-    it('rejects a manager on an admin-only route', () => {
+  describe('RBAC-05: a teacher receives 403 creating a course or batch', () => {
+    it('rejects a teacher on an admin-only route', () => {
       const guard = createGuard(['admin']);
       const context = createContext({
         id: 'u1',
         email: 'm@x.com',
-        roles: ['manager'],
+        roles: ['teacher'],
         studentId: null,
       });
       expect(() => guard.canActivate(context)).toThrow(

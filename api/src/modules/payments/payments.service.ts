@@ -340,7 +340,7 @@ export class PaymentsService {
   }
 
   // doc 05 index rationale — payments (status, method) is specifically the
-  // manager's pending-MANUAL-payment queue; gateway payments settle via
+  // teacher's pending-MANUAL-payment queue; gateway payments settle via
   // the webhook, never a human review.
   async listPending(
     actor: AuthUser,
@@ -353,7 +353,7 @@ export class PaymentsService {
     };
     if (!actor.roles.includes('admin')) {
       where.billingPeriod = {
-        enrollment: { batch: { managers: { some: { userId: actor.id } } } },
+        enrollment: { batch: { teachers: { some: { userId: actor.id } } } },
       };
     }
 

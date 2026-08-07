@@ -235,7 +235,7 @@ export default function AdminStudentsPage() {
               key={student.id}
               className="rounded-xl bg-muted/60 px-4 py-4 sm:px-5"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">
@@ -259,6 +259,13 @@ export default function AdminStudentsPage() {
                     {student.activeEnrollments === 1 ? '' : 's'}
                   </p>
                 </div>
+                <Button
+                  size="sm"
+                  className="min-h-11 shrink-0"
+                  render={<Link href={`/admin/students/${student.id}`} />}
+                >
+                  View details
+                </Button>
               </div>
             </li>
           ))}

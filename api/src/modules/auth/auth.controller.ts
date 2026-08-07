@@ -17,6 +17,12 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendEmailVerificationDto } from './dto/resend-email-verification.dto';
+import {
+  EmailVerificationSuccessDto,
+  RegisterPendingVerificationDto,
+} from './dto/email-verification-response.dto';
 import { AuthResponseDto, UserResponseDto } from './dto/auth-response.dto';
 
 @Controller('auth')
@@ -25,8 +31,32 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
+  register(
+    @Body() dto: RegisterDto,
+  ): Promise<RegisterPendingVerificationDto> {
     return this.authService.register(dto);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
+  @Post('verify-email')
+  verifyEmail(
+    @Body() dto: VerifyEmailDto,
+  ): Promise<EmailVerificationSuccessDto> {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
+  @Post('resend-email-verification')
+  resendEmailVerification(
+    @Body() dto: ResendEmailVerificationDto,
+  ): Promise<EmailVerificationSuccessDto> {
+    return this.authService.resendEmailVerification(dto);
   }
 
   @Public()
@@ -43,8 +73,6 @@ export class AuthController {
     return this.authService.refresh(dto);
   }
 
-  // Always 200 — never reveals whether the email is registered.
-  // Rate-limited: 5 requests / IP / minute.
   @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

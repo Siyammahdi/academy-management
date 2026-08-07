@@ -9,7 +9,7 @@ import {
 import { SelfApprovalException } from '../exceptions/self-approval.exception';
 import { resolveTarget } from './target-resolver.util';
 
-/// doc 04 §3.2 (RBAC-03) — a manager must never approve an action on their
+/// doc 04 §3.2 (RBAC-03) — a teacher must never approve an action on their
 /// own enrollment, even in a batch they legitimately manage. Admins bypass
 /// (doc 04 §4.2).
 @Injectable()
@@ -45,7 +45,7 @@ export class SelfApprovalGuard implements CanActivate {
 
     const { studentId } = await resolveTarget(this.prisma, kind, params.id);
 
-    // RBAC-03 — refused even though the manager legitimately manages this
+    // RBAC-03 — refused even though the teacher legitimately manages this
     // batch (doc 04 §3.2). Not a 404 either way: never leak existence.
     if (studentId === user.studentId) {
       throw new SelfApprovalException();

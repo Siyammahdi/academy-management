@@ -167,7 +167,14 @@ export function LandingCta() {
             >
               {t.contact.email}
             </a>{' '}
-            {closing.orCall} {t.contact.phone}.
+            {closing.orCall}{' '}
+            <a
+              href={`tel:${t.contact.phoneHref}`}
+              className="text-primary-foreground underline-offset-4 hover:underline"
+            >
+              {t.contact.phone}
+            </a>
+            .
           </p>
         </div>
       </Container>

@@ -26,9 +26,9 @@ Tokens currently sit in a JS-readable cookie — XSS-exposed. An attacker who la
 ### H-03 · Verify every money path in a browser, as each role
 Automated tests passed while `Enrollment.status` never activated — proof that the UI layer hides real bugs. Walk, as a human:
 
-- Admin creates course → opens batch → assigns manager
+- Admin creates course → opens batch → assigns teacher
 - Student enrolls → pays (gateway *and* manual) → sees status
-- Manager verifies → student sees it settled
+- Teacher verifies → student sees it settled
 - Guest pays for a student by identifier
 - Penalty trigger (admin manual-trigger) → student sees the fee
 
@@ -43,7 +43,7 @@ No endpoint is rate-limited. Two concrete exposures:
 - **Auth** (login, register, refresh) needs limits to blunt credential stuffing and brute force.
 
 ### H-05 · Input sanitization and output encoding
-Manager- and student-supplied text (homework descriptions, resource titles, guest names) renders in dashboards. Confirm:
+Teacher- and student-supplied text (homework descriptions, resource titles, guest names) renders in dashboards. Confirm:
 
 - React's default escaping is not bypassed anywhere (`dangerouslySetInnerHTML` must not appear).
 - URL fields (class link, resource links) are validated as `http(s)` and rendered with `rel="noopener noreferrer"`.

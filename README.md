@@ -53,7 +53,7 @@ academy-management/
         ├── (public)/    marketing (home, about, contact, guest payment)
         ├── (auth)/      login, register
         ├── (admin)/     admin console
-        ├── (manager)/   manager console
+        ├── (teacher)/   teacher console
         └── (student)/   student dashboard, dues, payments, homework, recordings
 ```
 
@@ -63,7 +63,7 @@ academy-management/
 
 - **Backend:** NestJS, PostgreSQL 16, Prisma 7, Redis + BullMQ, self-built JWT auth, SSLCommerz (payment gateway)
 - **Frontend:** Next.js (App Router), Tailwind, no external UI kit — the design system in `docs/09-ui-design-system.md` is implemented from tokens
-- **Package manager:** pnpm, in both `api/` and `web/` independently
+- **Package teacher:** pnpm, in both `api/` and `web/` independently
 
 ---
 

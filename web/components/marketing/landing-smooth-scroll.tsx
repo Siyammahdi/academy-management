@@ -39,6 +39,12 @@ function ScrollTriggerBridge() {
     if (!lenis) return
     const gsap = registerGsap()
 
+    ;(
+      window as Window & {
+        __lenis?: typeof lenis
+      }
+    ).__lenis = lenis
+
     // Keep ScrollTrigger's scroll position in lockstep with Lenis.
     const onScroll = () => {
       ScrollTrigger.update()
@@ -61,11 +67,24 @@ function ScrollTriggerBridge() {
     gsap.config({ force3D: true })
     ScrollTrigger.config({ ignoreMobileResize: true })
 
+    // Arrive on `/#section` after navigation from another page.
+    if (window.location.hash) {
+      const id = decodeURIComponent(window.location.hash.slice(1))
+      const el = document.getElementById(id)
+      if (el) {
+        requestAnimationFrame(() => {
+          lenis.scrollTo(el, { offset: -96, duration: 1.15 })
+        })
+      }
+    }
+
     return () => {
       cancelAnimationFrame(raf)
       lenis.off('scroll', onScroll)
       window.removeEventListener('load', refresh)
       window.removeEventListener('resize', refresh)
+      const win = window as Window & { __lenis?: typeof lenis }
+      if (win.__lenis === lenis) delete win.__lenis
     }
   }, [lenis])
 

@@ -74,7 +74,7 @@ src/
 │   ├── users/                 # users, roles
 │   ├── students/              # profiles, sequential ID generation
 │   ├── courses/               # catalog
-│   ├── batches/               # batches, manager assignment, fee snapshotting
+│   ├── batches/               # batches, teacher assignment, fee snapshotting
 │   ├── enrollment/            # enrollment, capacity, late joiners, withdrawal
 │   ├── billing/               # ★ periods, penalty engine, status derivation
 │   ├── payments/              # manual + gateway, verification, refunds
@@ -129,8 +129,8 @@ Repository  →  Prisma access. Query composition only, no rules.
 |---|---|
 | Is the user authenticated? | Guard |
 | Does the user hold the role? | Guard |
-| Is this manager assigned to this batch? | Guard (`BatchScopeGuard`) |
-| Is this the manager's own enrollment? | Guard (`SelfApprovalGuard`) |
+| Is this teacher assigned to this batch? | Guard (`BatchScopeGuard`) |
+| Is this the teacher's own enrollment? | Guard (`SelfApprovalGuard`) |
 | Is the batch full? | Service (needs a transaction) |
 | Does the student have arrears? | Service |
 | Is `amountPaid` correct after verification? | Service, inside a transaction |
@@ -272,7 +272,7 @@ app/
 ├── (public)/          # landing, about, contact, courses, guest payment
 ├── (auth)/            # login, register
 ├── (student)/         # dashboard, dues, payments, requests
-├── (manager)/         # verification queue, roster, batch reporting
+├── (teacher)/         # verification queue, roster, batch reporting
 └── (admin)/           # courses, batches, students, payments, reporting, audit
 ```
 

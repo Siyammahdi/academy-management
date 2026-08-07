@@ -31,22 +31,22 @@ function createGuard(paymentRecord: unknown): {
 }
 
 describe('SelfApprovalGuard', () => {
-  describe('RBAC-03: a manager receives 403 verifying a payment on their own enrollment, even in a batch they manage', () => {
-    it('rejects when the target payment belongs to the manager’s own Student profile', async () => {
+  describe('RBAC-03: a teacher receives 403 verifying a payment on their own enrollment, even in a batch they manage', () => {
+    it('rejects when the target payment belongs to the teacher’s own Student profile', async () => {
       const { guard } = createGuard({
         billingPeriod: {
           enrollment: { batchId: 'batch1', studentId: 'student-mgr' },
         },
       });
-      // This manager legitimately manages batch1 (irrelevant here — doc 04 §3.2:
-      // the block applies even when the manager is assigned to the batch).
-      const managerActingOnOwnEnrollment: AuthUser = {
+      // This teacher legitimately manages batch1 (irrelevant here — doc 04 §3.2:
+      // the block applies even when the teacher is assigned to the batch).
+      const teacherActingOnOwnEnrollment: AuthUser = {
         id: 'mgr1',
         email: 'm@x.com',
-        roles: ['manager', 'student'],
+        roles: ['teacher', 'student'],
         studentId: 'student-mgr',
       };
-      const context = createContext(managerActingOnOwnEnrollment, {
+      const context = createContext(teacherActingOnOwnEnrollment, {
         id: 'payment1',
       });
 
@@ -56,19 +56,19 @@ describe('SelfApprovalGuard', () => {
     });
   });
 
-  it("allows a manager verifying a payment on a different student's enrollment", async () => {
+  it("allows a teacher verifying a payment on a different student's enrollment", async () => {
     const { guard } = createGuard({
       billingPeriod: {
         enrollment: { batchId: 'batch1', studentId: 'student-other' },
       },
     });
-    const manager: AuthUser = {
+    const teacher: AuthUser = {
       id: 'mgr1',
       email: 'm@x.com',
-      roles: ['manager'],
+      roles: ['teacher'],
       studentId: 'student-mgr',
     };
-    const context = createContext(manager, { id: 'payment1' });
+    const context = createContext(teacher, { id: 'payment1' });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
@@ -91,19 +91,19 @@ describe('SelfApprovalGuard', () => {
     expect(findUniqueOrThrow).not.toHaveBeenCalled();
   });
 
-  it('allows a plain manager with no linked Student profile', async () => {
+  it('allows a plain teacher with no linked Student profile', async () => {
     const { guard } = createGuard({
       billingPeriod: {
         enrollment: { batchId: 'batch1', studentId: 'student-other' },
       },
     });
-    const manager: AuthUser = {
+    const teacher: AuthUser = {
       id: 'mgr1',
       email: 'm@x.com',
-      roles: ['manager'],
+      roles: ['teacher'],
       studentId: null,
     };
-    const context = createContext(manager, { id: 'payment1' });
+    const context = createContext(teacher, { id: 'payment1' });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });

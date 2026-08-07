@@ -4,10 +4,10 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from '../../common/decorators/current-user.decorator';
 
-const manager: AuthUser = {
+const teacher: AuthUser = {
   id: 'mgr1',
-  email: 'manager@x.com',
-  roles: ['manager'],
+  email: 'teacher@x.com',
+  roles: ['teacher'],
   studentId: null,
 };
 
@@ -67,7 +67,7 @@ describe('RecordingsService', () => {
           youtubeVideoId: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
           recordedFor: '2026-08-15',
         },
-        manager,
+        teacher,
       );
 
       expect(result.id).toBe('rec1');
@@ -115,7 +115,7 @@ describe('RecordingsService', () => {
           youtubeVideoId: 'dQw4w9WgXcQ',
           recordedFor: '2026-08-15',
         },
-        manager,
+        teacher,
       );
 
       expect(tx.recordedClass.create).toHaveBeenCalledWith({
@@ -140,7 +140,7 @@ describe('RecordingsService', () => {
             youtubeVideoId: 'dQw4w9WgXcQ',
             recordedFor: '2026-08-15',
           },
-          manager,
+          teacher,
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -174,7 +174,7 @@ describe('RecordingsService', () => {
           title: 'New title',
           youtubeVideoId: 'https://youtu.be/bbbbbbbbbbb',
         },
-        manager,
+        teacher,
       );
 
       expect(result.title).toBe('New title');
@@ -210,7 +210,7 @@ describe('RecordingsService', () => {
       const { service } = createService(tx);
 
       await expect(
-        service.update('rec1', { youtubeVideoId: 'not a link' }, manager),
+        service.update('rec1', { youtubeVideoId: 'not a link' }, teacher),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -221,7 +221,7 @@ describe('RecordingsService', () => {
       const { service } = createService(tx);
 
       await expect(
-        service.update('missing', { title: 'x' }, manager),
+        service.update('missing', { title: 'x' }, teacher),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -242,7 +242,7 @@ describe('RecordingsService', () => {
       };
       const { service, audit } = createService(tx);
 
-      await service.remove('rec1', manager);
+      await service.remove('rec1', teacher);
 
       expect(tx.recordedClass.delete).toHaveBeenCalledWith({
         where: { id: 'rec1' },
@@ -263,7 +263,7 @@ describe('RecordingsService', () => {
       };
       const { service } = createService(tx);
 
-      await expect(service.remove('missing', manager)).rejects.toThrow(
+      await expect(service.remove('missing', teacher)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -293,7 +293,7 @@ describe('RecordingsService', () => {
       const findMany = jest.fn();
       const { service } = createService({}, { recordedClass: { findMany } });
 
-      const result = await service.listMine(manager);
+      const result = await service.listMine(teacher);
 
       expect(result).toEqual([]);
       expect(findMany).not.toHaveBeenCalled();

@@ -26,7 +26,7 @@ import { UpdateRecordingDto } from './dto/update-recording.dto';
 export class RecordingsController {
   constructor(private readonly recordingsService: RecordingsService) {}
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Post('batches/:id/recordings')
@@ -38,7 +38,7 @@ export class RecordingsController {
     return this.recordingsService.create(id, dto, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('batch')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Get('batches/:id/recordings')
@@ -46,7 +46,7 @@ export class RecordingsController {
     return this.recordingsService.listForBatch(id);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('recording')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Patch('recordings/:id')
@@ -58,7 +58,7 @@ export class RecordingsController {
     return this.recordingsService.update(id, dto, user);
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @TargetResource('recording')
   @UseGuards(RolesGuard, BatchScopeGuard)
   @Delete('recordings/:id')

@@ -146,9 +146,9 @@ export function AdminBatchHero({
             </p>
           </div>
           <div className="rounded-lg bg-primary-foreground/10 px-3 py-3">
-            <p className="text-xs text-primary-foreground/70">Managers</p>
+            <p className="text-xs text-primary-foreground/70">Teachers</p>
             <p className="mt-1 font-heading text-xl font-semibold tabular-nums">
-              {batch.managers.length}
+              {batch.teachers.length}
             </p>
           </div>
           <div className="rounded-lg bg-primary-foreground/10 px-3 py-3">

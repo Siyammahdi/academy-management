@@ -412,7 +412,7 @@ export default function GuestPayPage() {
                                 Pay manually
                               </span>
                               <span className="mt-0.5 block text-xs text-muted-foreground">
-                                Reference + https proof · manager verifies
+                                Reference + https proof · teacher verifies
                               </span>
                             </span>
                           </button>
@@ -484,7 +484,7 @@ export default function GuestPayPage() {
                       Payment submitted
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      A manager will verify the proof. The student sees the
+                      A teacher will verify the proof. The student sees the
                       update on their dashboard when it clears.
                     </p>
                   </div>

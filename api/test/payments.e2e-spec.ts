@@ -45,7 +45,7 @@ describe('Payments (real Postgres)', () => {
 
   async function createStaffUser(
     prefix: string,
-    role: 'admin' | 'manager',
+    role: 'admin' | 'teacher',
   ): Promise<string> {
     const passwordHash = await argon2.hash('password123');
     const email = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
@@ -304,7 +304,7 @@ describe('Payments (real Postgres)', () => {
     });
   });
 
-  describe('RBAC-03: a manager cannot verify or reject their own enrollment', () => {
+  describe('RBAC-03: a teacher cannot verify or reject their own enrollment', () => {
     it('returns 403 SELF_APPROVAL_FORBIDDEN even in a batch they manage', async () => {
       const { batchId } = await createCourseAndBatch({
         capacity: 30,
@@ -315,13 +315,13 @@ describe('Payments (real Postgres)', () => {
         monthlyFee: '500.00',
       });
 
-      // One account, two hats: a student profile AND a manager role
+      // One account, two hats: a student profile AND a teacher role
       // (RBAC-01 — a person may be both). Roles are re-read from the DB on
-      // every request (see JwtStrategy), so granting 'manager' after
+      // every request (see JwtStrategy), so granting 'teacher' after
       // registration takes effect immediately without a fresh login.
       const dualHat = await registerStudent('dual-hat');
       await prisma.userRole.create({
-        data: { userId: dualHat.userId, role: 'manager' },
+        data: { userId: dualHat.userId, role: 'teacher' },
       });
 
       const enrollRes = await request(app.getHttpServer())
@@ -332,7 +332,7 @@ describe('Payments (real Postgres)', () => {
       const { firstPeriod } = enrollRes.body as EnrollResponseBody;
 
       await request(app.getHttpServer())
-        .post(`/api/v1/batches/${batchId}/managers`)
+        .post(`/api/v1/batches/${batchId}/teachers`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ userId: dualHat.userId })
         .expect(201);

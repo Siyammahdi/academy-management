@@ -11,7 +11,7 @@ import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 import { ChangeBatchStatusDto } from './dto/change-batch-status.dto';
-import { AssignManagerDto } from './dto/assign-manager.dto';
+import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { UpdateClassLinkDto } from './dto/update-class-link.dto';
 import {
   Paginated,
@@ -20,7 +20,7 @@ import {
   resolvePagination,
 } from '../../common/utils/pagination';
 
-export interface BatchManagerSummary {
+export interface BatchTeacherSummary {
   userId: string;
   email: string;
   fullName: string | null;
@@ -28,7 +28,7 @@ export interface BatchManagerSummary {
 
 export type BatchWithSeats = Batch & {
   seatsRemaining: number;
-  managers: BatchManagerSummary[];
+  teachers: BatchTeacherSummary[];
 };
 
 export interface BatchListQuery extends PaginationQuery {
@@ -130,7 +130,7 @@ export class BatchesService {
     const batch = await this.prisma.batch.findUnique({
       where: { id },
       include: {
-        managers: {
+        teachers: {
           include: {
             user: { include: { student: { select: { fullName: true } } } },
           },
@@ -145,11 +145,11 @@ export class BatchesService {
       where: { batchId: id, status: { in: [...ACTIVE_ENROLLMENT_STATUSES] } },
     });
 
-    const { managers, ...rest } = batch;
+    const { teachers, ...rest } = batch;
     return {
       ...rest,
       seatsRemaining: Math.max(0, batch.capacity - activeCount),
-      managers: managers.map((m) => ({
+      teachers: teachers.map((m) => ({
         userId: m.userId,
         email: m.user.email,
         fullName: m.user.student?.fullName ?? null,
@@ -158,13 +158,13 @@ export class BatchesService {
   }
 
   // doc 06 §1 — self-scoped read; not in doc 06's own endpoint table, but
-  // there was previously no way for a manager to discover which batches
+  // there was previously no way for a teacher to discover which batches
   // they're assigned to at all (GET /batches is public/unscoped).
   async listMine(userId: string): Promise<BatchWithSeats[]> {
     const batches = await this.prisma.batch.findMany({
-      where: { managers: { some: { userId } } },
+      where: { teachers: { some: { userId } } },
       include: {
-        managers: {
+        teachers: {
           include: {
             user: { include: { student: { select: { fullName: true } } } },
           },
@@ -186,13 +186,13 @@ export class BatchesService {
     });
     const countByBatch = new Map(counts.map((c) => [c.batchId, c._count]));
 
-    return batches.map(({ managers, ...batch }) => ({
+    return batches.map(({ teachers, ...batch }) => ({
       ...batch,
       seatsRemaining: Math.max(
         0,
         batch.capacity - (countByBatch.get(batch.id) ?? 0),
       ),
-      managers: managers.map((m) => ({
+      teachers: teachers.map((m) => ({
         userId: m.userId,
         email: m.user.email,
         fullName: m.user.student?.fullName ?? null,
@@ -200,7 +200,7 @@ export class BatchesService {
     }));
   }
 
-  // "Students at risk" on the manager overview — defined as PEN-06's
+  // "Students at risk" on the teacher overview — defined as PEN-06's
   // inPenalty flag, the one real, already-tracked concept this maps to;
   // "overdue but not yet penalized" isn't computable anywhere yet (the
   // billing-periods module is an unbuilt stub).
@@ -208,7 +208,7 @@ export class BatchesService {
     const count = await this.prisma.enrollment.count({
       where: {
         inPenalty: true,
-        batch: { managers: { some: { userId } } },
+        batch: { teachers: { some: { userId } } },
       },
     });
     return { count };
@@ -404,7 +404,7 @@ export class BatchesService {
     });
   }
 
-  async assignManager(batchId: string, dto: AssignManagerDto): Promise<void> {
+  async assignTeacher(batchId: string, dto: AssignTeacherDto): Promise<void> {
     const [batch, user] = await Promise.all([
       this.prisma.batch.findUnique({ where: { id: batchId } }),
       this.prisma.user.findUnique({ where: { id: dto.userId } }),
@@ -414,7 +414,7 @@ export class BatchesService {
     }
 
     try {
-      await this.prisma.batchManager.create({
+      await this.prisma.batchTeacher.create({
         data: { batchId, userId: dto.userId },
       });
     } catch (error) {
@@ -423,21 +423,21 @@ export class BatchesService {
         error.code === 'P2002'
       ) {
         throw new ConflictException(
-          'Manager is already assigned to this batch',
+          'Teacher is already assigned to this batch',
         );
       }
       throw error;
     }
   }
 
-  async removeManager(batchId: string, userId: string): Promise<void> {
-    const existing = await this.prisma.batchManager.findUnique({
+  async removeTeacher(batchId: string, userId: string): Promise<void> {
+    const existing = await this.prisma.batchTeacher.findUnique({
       where: { batchId_userId: { batchId, userId } },
     });
     if (!existing) {
       throw new NotFoundException('Not found');
     }
-    await this.prisma.batchManager.delete({ where: { id: existing.id } });
+    await this.prisma.batchTeacher.delete({ where: { id: existing.id } });
   }
 
   async getRoster(batchId: string): Promise<RosterEntry[]> {

@@ -12,7 +12,7 @@ export interface MailMessage {
  */
 export interface MailProvider {
   /** Active transport — logged at worker boot so misconfig is obvious. */
-  readonly providerName: 'resend' | 'console';
+  readonly providerName: 'smtp' | 'resend' | 'console';
   /** Resolved From: address this provider will use (or would use). */
   readonly fromAddress: string;
   send(message: MailMessage): Promise<void>;

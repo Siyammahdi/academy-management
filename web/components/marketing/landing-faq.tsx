@@ -12,7 +12,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { blurRise, skewRise, wordRise } from '@/lib/gsap/motion'
+import { blurRise, ruleDraw, scrubFade, skewRise, wordRise } from '@/lib/gsap/motion'
 import { EASE } from '@/lib/gsap'
 import { useGsapContext } from '@/lib/gsap/use-gsap-context'
 import { useMarketingCopy } from '@/components/i18n/locale-provider'
@@ -33,10 +33,26 @@ export function LandingFaq() {
     const items = root.querySelectorAll('[data-faq-item]')
     if (items.length) {
       skewRise(gsap, items, { stagger: 0.08, y: 28, skew: 2, start: 'top 90%' })
+
+      items.forEach((item) => {
+        scrubFade(gsap, item, {
+          from: 0.45,
+          to: 1,
+          trigger: item,
+          start: 'top 95%',
+          end: 'top 55%',
+        })
+      })
     }
 
     const aside = root.querySelector('[data-faq-aside]')
-    if (aside) blurRise(gsap, aside, { y: 24, blur: 10 })
+    if (aside) {
+      blurRise(gsap, aside, { y: 24, blur: 10 })
+      const asideRule = aside.querySelector('[data-faq-aside-rule]')
+      if (asideRule) {
+        ruleDraw(gsap, asideRule, { trigger: aside, start: 'top 88%' })
+      }
+    }
 
     const footer = root.querySelector('[data-faq-footer]')
     if (footer) {
@@ -77,8 +93,13 @@ export function LandingFaq() {
 
               <div
                 data-faq-aside
-                className="mt-8 rounded-xl bg-primary-wash p-6"
+                className="mt-8 rounded-xl bg-primary-wash p-6 transition-transform duration-500 hover:-translate-y-1"
               >
+                <div
+                  data-faq-aside-rule
+                  aria-hidden
+                  className="mb-4 h-px w-12 origin-left scale-x-0 bg-primary"
+                />
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {faq.aside}
                 </p>
@@ -99,6 +120,7 @@ export function LandingFaq() {
                   key={item.question}
                   value={index}
                   data-faq-item
+                  className="transition-colors duration-300 hover:bg-primary-wash/40"
                 >
                   <AccordionTrigger>{item.question}</AccordionTrigger>
                   <AccordionContent>{item.answer}</AccordionContent>

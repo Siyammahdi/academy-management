@@ -10,7 +10,7 @@
 ### Naming
 - Resources are **plural nouns**: `/courses`, `/batches`, `/payments`.
 - Actions that are not CRUD are **sub-resource verbs**: `POST /payments/:id/verify`, `POST /requests/:id/decide`.
-- Self-scoped reads live under `/me`: `GET /me/enrollments`.
+- Self-scoped reads live under `/me`: `GET /me/profile`, `GET /me/enrollments`, etc.
 
 ### Status codes
 
@@ -45,9 +45,9 @@ Every error returns this envelope. No exceptions.
 
 ### Error codes
 
-`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `PAYMENT_AMOUNT_INVALID` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `THUMBNAIL_INVALID` · `COURSE_SLUG_TAKEN` · `GATEWAY_SESSION_FAILED` · `GATEWAY_NOT_CONFIGURED`
+`BATCH_FULL` · `ENROLLMENT_WINDOW_CLOSED` · `ALREADY_ENROLLED` · `ARREARS_EXIST` · `PAYMENT_ALREADY_SETTLED` · `PAYMENT_AMOUNT_INVALID` · `SELF_APPROVAL_FORBIDDEN` · `BATCH_NOT_ASSIGNED` · `INSUFFICIENT_PERMISSIONS` · `STUDENT_NOT_FOUND` · `PERIOD_ALREADY_PAID` · `INVALID_WEBHOOK_SIGNATURE` · `INVALID_RESET_TOKEN` · `RESET_TOKEN_EXPIRED` · `TOO_MANY_REQUESTS` · `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `EMAIL_NOT_VERIFIED` · `EMAIL_ALREADY_VERIFIED` · `OTP_EXPIRED` · `OTP_INVALID` · `OTP_TOO_MANY_ATTEMPTS` · `OTP_NOT_FOUND` · `OTP_RESEND_COOLDOWN` · `THUMBNAIL_INVALID` · `COURSE_SLUG_TAKEN` · `GATEWAY_SESSION_FAILED` · `GATEWAY_NOT_CONFIGURED`
 
-Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN`
+Auth (added during implementation): `EMAIL_ALREADY_REGISTERED` · `INVALID_CREDENTIALS` · `INVALID_REFRESH_TOKEN` · `EMAIL_NOT_VERIFIED` · `EMAIL_ALREADY_VERIFIED` · OTP codes (`OTP_*`)
 
 ### Pagination
 
@@ -69,13 +69,97 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `POST` | `/auth/register` | Public | Creates `User` + `Student`, assigns `student` role |
-| `POST` | `/auth/login` | Public | Returns access + refresh token |
+| `POST` | `/auth/register` | Public | Creates `User` + `Student`, assigns `student` role. Does **not** issue tokens. Sends email verification OTP. |
+| `POST` | `/auth/verify-email` | Public | `{ email, code }` — marks `isEmailVerified`. Rate-limited. |
+| `POST` | `/auth/resend-email-verification` | Public | `{ email }` — new OTP + email. Cooldown + rate-limited. Always opaque success when unknown. |
+| `POST` | `/auth/login` | Public | Returns access + refresh token. Rejects `EMAIL_NOT_VERIFIED` until verified. |
 | `POST` | `/auth/refresh` | Public | Rotates the refresh token |
 | `POST` | `/auth/forgot-password` | Public | Always `200`. Emails a reset link when the address is registered; never reveals whether it is. Rate-limited (5/min/IP). |
 | `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` — single-use, 30-min token; revokes all refresh tokens on success |
 | `POST` | `/auth/logout` | Auth | Revokes the refresh token |
-| `GET` | `/auth/me` | Auth | Current user, roles, linked student |
+| `GET` | `/auth/me` | Auth | Current user, roles, linked student (`fullName` from `User.fullName` with Student fallback) |
+
+### Profile (self-service)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/me/profile` | Auth | Full profile: personal, contact, account (read-only), role-specific academic blocks |
+| `GET` | `/me/profile/avatar` | Auth | Binary avatar bytes (`Content-Type` from stored mime). `404 AVATAR_NOT_FOUND` when unset |
+| `PATCH` | `/me/profile` | Auth | Update own profile only. Cannot change role, status, or permissions |
+| `PATCH` | `/me/profile/password` | Auth | `{ currentPassword, newPassword, confirmPassword }` — revokes all refresh tokens on success |
+| `DELETE` | `/me/profile` | Auth | `{ password, confirmation }` — `confirmation` must match account email. Disables account, scrubs PII, revokes sessions. Blocks deleting the last active admin (`LAST_ADMIN_DELETE_BLOCKED`) |
+
+### Users & students (admin directory)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/users?role=&q=` | Admin | Directory / teacher picker |
+| `GET` | `/users/:id` | Admin | Full user detail (profile, teacher block, audit) |
+| `GET` | `/users/:id/avatar` | Admin | Binary avatar |
+| `POST` | `/users` | Admin | Provision account + roles |
+| `PUT` | `/users/:id/roles` | Admin | `{ role }` — **replaces** the role set with exactly one role; audits `user_role_changed` (`change: 'replaced'`); returns `{ user, warnings[] }` |
+| `POST` | `/users/:id/roles` | Admin | Additive assign (RBAC-01) |
+| `DELETE` | `/users/:id/roles/:role` | Admin | Remove one role; `LAST_ADMIN` / `CANNOT_STRIP_OWN_ADMIN` |
+| `GET` | `/students?page&limit&q&status` | Admin | Student directory |
+| `GET` | `/students/count` | Admin | |
+| `GET` | `/students/:id` | Admin | Full student detail (linked user, billing, payments, audit) |
+
+```jsonc
+// PUT /users/:id/roles → 200
+{ "user": { "id": "…", "email": "…", "roles": ["teacher"], "…" }, "warnings": ["…"] }
+```
+
+```jsonc
+// GET /me/profile → 200 (abridged)
+{
+  "id": "clx...",
+  "email": "teacher@example.com",
+  "status": "active",
+  "fullName": "Ayesha Rahman",
+  "phone": "017…",
+  "gender": "female",
+  "dateOfBirth": "1990-05-12",
+  "bloodGroup": "B+",
+  "nationality": "Bangladeshi",
+  "nationalId": null,
+  "addressLine": "…",
+  "city": "Dhaka",
+  "district": "Dhaka",
+  "postalCode": "1207",
+  "country": "Bangladesh",
+  "hasAvatar": true,
+  "lastLoginAt": "2026-07-30T08:00:00.000Z",
+  "createdAt": "…",
+  "updatedAt": "…",
+  "roles": ["teacher"],
+  "emailVerified": false,   // verification flows not built yet
+  "phoneVerified": false,
+  "teacher": {
+    "employeeId": "T-12",
+    "designation": "Instructor",
+    "department": "Quran",
+    "bio": "…",
+    "qualifications": "…",
+    "experience": "…",
+    "joiningDate": "2024-01-15",
+    "assignedCourses": [{ "id": "…", "title": "…", "slug": "…" }],
+    "assignedBatches": [{ "id": "…", "name": "…", "course": { "id": "…", "title": "…", "slug": "…" } }]
+  },
+  "student": null,
+  "admin": null
+}
+
+// PATCH /me/profile — editable scalars + optional nested teacher/student + avatar
+// avatar: { mimeType, data } (base64 / data-URL), or clearAvatar: true
+// Errors: 409 EMAIL_TAKEN · 409 PHONE_TAKEN · 400 AVATAR_INVALID
+
+// PATCH /me/profile/password → 204
+// Errors: 400 CURRENT_PASSWORD_INCORRECT · 400 PASSWORD_CONFIRMATION_MISMATCH
+
+// DELETE /me/profile → 204
+// Body: { "password": "…", "confirmation": "user@example.com" }
+// Errors: 400 CURRENT_PASSWORD_INCORRECT · 400 ACCOUNT_DELETE_CONFIRMATION_INVALID · 409 LAST_ADMIN_DELETE_BLOCKED
+```
 
 ```jsonc
 // POST /auth/login → 200
@@ -85,7 +169,7 @@ Requests and responses use **ISO 8601 UTC** (`2026-03-01T00:00:00.000Z`). `perio
   "user": {
     "id": "clx...",
     "email": "student@example.com",
-    "roles": ["student", "manager"],
+    "roles": ["student", "teacher"],
     "studentId": "ANA-0042"
   }
 }
@@ -156,9 +240,11 @@ Error codes: `THUMBNAIL_INVALID` (400) · `COURSE_SLUG_TAKEN` (409).
 | `POST` | `/batches` | Admin | **Snapshots course fees** (FEE-02) |
 | `PATCH` | `/batches/:id` | Admin | |
 | `POST` | `/batches/:id/status` | Admin | `completed` stops billing (BIL-11) |
-| `POST` | `/batches/:id/managers` | Admin | Assign a manager |
-| `DELETE` | `/batches/:id/managers/:userId` | Admin | |
-| `GET` | `/batches/:id/roster` | Manager (own) / Admin | |
+| `POST` | `/batches/:id/teachers` | Admin | Assign a teacher |
+| `DELETE` | `/batches/:id/teachers/:userId` | Admin | |
+| `GET` | `/batches/:id/roster` | Teacher (own) / Admin | |
+| `GET` | `/me/taught-batches` | Teacher / Admin | Batches the actor is assigned to |
+| `GET` | `/me/taught-batches/at-risk-count` | Teacher / Admin | Count of assigned batches needing attention |
 
 ```jsonc
 // POST /batches — fees are NOT accepted from the client; they are copied from the course
@@ -210,7 +296,7 @@ Errors: `409 BATCH_FULL` · `409 ALREADY_ENROLLED` · `403 ENROLLMENT_WINDOW_CLO
 | Method | Path | Auth | Notes | Built? |
 |---|---|---|---|---|
 | `GET` | `/me/billing-periods` | Student | Filter `?status=unpaid` | ✅ |
-| `GET` | `/enrollments/:id/billing-periods` | Manager (own) / Admin | | ⛔ **NOT BUILT** |
+| `GET` | `/enrollments/:id/billing-periods` | Teacher (own) / Admin | | ⛔ **NOT BUILT** |
 | `POST` | `/billing-periods/:id/mark-paid` | **Admin** | Waiver — no money (RBAC-04) | ⛔ **NOT BUILT** |
 
 The two unbuilt rows have no controller, service method, or route today — see `10-current-state.md` §2 and `12-roadmap.md`. Do not build a frontend call against them yet.
@@ -223,9 +309,9 @@ The two unbuilt rows have no controller, service method, or route today — see 
 |---|---|---|---|
 | `POST` | `/billing-periods/:id/pay/gateway` | Student | Returns SSLCommerz redirect URL |
 | `POST` | `/billing-periods/:id/pay/manual` | Student | Requires reference + https `proofUrl` (PAY-06). Amount MUST equal full outstanding (`PAYMENT_AMOUNT_INVALID` otherwise). |
-| `GET` | `/payments/pending` | Manager (own) / Admin | Verification queue |
-| `POST` | `/payments/:id/verify` | Manager (own) / Admin | **Blocked on own enrollment** (RBAC-03) |
-| `POST` | `/payments/:id/reject` | Manager (own) / Admin | Removes penalty protection (PAY-09) |
+| `GET` | `/payments/pending` | Teacher (own) / Admin | Verification queue |
+| `POST` | `/payments/:id/verify` | Teacher (own) / Admin | **Blocked on own enrollment** (RBAC-03) |
+| `POST` | `/payments/:id/reject` | Teacher (own) / Admin | Removes penalty protection (PAY-09) |
 | `POST` | `/payments/:id/refund` | **Admin** | |
 | `GET` | `/me/payments` | Student | |
 
@@ -288,11 +374,11 @@ Unauthenticated. The only public write surface besides auth.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `POST` | `/billing-periods/:id/requests` | Student | `grace` or `partial_payment` |
-| `GET` | `/requests/pending` | Manager (own) / Admin | Managers see `grace` only |
+| `GET` | `/requests/pending` | Teacher (own) / Admin | Teachers see `grace` only |
 | `POST` | `/requests/:id/decide` | See below | |
-| `POST` | `/billing-periods/:id/grace` | Manager (own) / Admin | Direct grant, auto-approved (REQ-04) |
+| `POST` | `/billing-periods/:id/grace` | Teacher (own) / Admin | Direct grant, auto-approved (REQ-04) |
 
-**Decision authority:** `grace` → manager or admin. `partial_payment` → **admin only** (REQ-03). A manager attempting to decide a `partial_payment` receives `403 INSUFFICIENT_PERMISSIONS`; on their own enrollment, `403 SELF_APPROVAL_FORBIDDEN`.
+**Decision authority:** `grace` → teacher or admin. `partial_payment` → **admin only** (REQ-03). A teacher attempting to decide a `partial_payment` receives `403 INSUFFICIENT_PERMISSIONS`; on their own enrollment, `403 SELF_APPROVAL_FORBIDDEN`.
 
 No notification fires on decision (REQ-08).
 
@@ -307,7 +393,7 @@ No notification fires on decision (REQ-08).
 
 **PAY-03:** the browser is never trusted alone. Settlement requires SSLCommerz **Order Validation** (via IPN or the success-return confirm endpoint).
 
-On success (`VALID` / `VALIDATED` + amount match): payment `verified`, period updated, **enrollment → `active` (ENR-06)** — no manager verification for online pay. Manual pay still needs verify (ENR-07).
+On success (`VALID` / `VALIDATED` + amount match): payment `verified`, period updated, **enrollment → `active` (ENR-06)** — no teacher verification for online pay. Manual pay still needs verify (ENR-07).
 
 IPN flow:
 1. Verify signature. Invalid → `401 INVALID_WEBHOOK_SIGNATURE`.
@@ -325,14 +411,14 @@ Success return: SSLCommerz POSTs to `/payments/sslcommerz-return` → redirects 
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET` | `/reports/revenue` | Manager (own) / Admin | `?from=&to=&batchId=` |
-| `GET` | `/reports/outstanding` | Manager (own) / Admin | |
-| `GET` | `/reports/enrollments` | Manager (own) / Admin | Seats filled vs capacity |
-| `GET` | `/reports/ledger` | Manager (own) / Admin | Every transaction |
+| `GET` | `/reports/revenue` | Teacher (own) / Admin | `?from=&to=&batchId=` |
+| `GET` | `/reports/outstanding` | Teacher (own) / Admin | |
+| `GET` | `/reports/enrollments` | Teacher (own) / Admin | Seats filled vs capacity |
+| `GET` | `/reports/ledger` | Teacher (own) / Admin | Every transaction |
 | `GET` | `/reports/export` | **Admin** | CSV, month-by-month |
 | `GET` | `/audit-logs` | **Admin** | Filter by actor, action, target |
 
-Managers receive their batches only; the service applies the scope, never the client (RBAC-02).
+Teachers receive their batches only; the service applies the scope, never the client (RBAC-02).
 
 ---
 
@@ -350,13 +436,13 @@ Managers receive their batches only; the service applies the scope, never the cl
 
 ## 12b. Class management (added scope)
 
-Content that attaches to a batch. All manager-write routes are batch-scoped via `BatchScopeGuard` (manager on their own batch, or admin); the batch is resolved from the resource id on `PATCH`/`DELETE` via the shared target-resolver.
+Content that attaches to a batch. All teacher-write routes are batch-scoped via `BatchScopeGuard` (teacher on their own batch, or admin); the batch is resolved from the resource id on `PATCH`/`DELETE` via the shared target-resolver.
 
 **Class link**
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `PATCH` | `/batches/:id/class-link` | Manager (own) / Admin | `{ classLink, classStartsAt?, classEndsAt?, clearSchedule? }` — join opens 5 minutes before start |
+| `PATCH` | `/batches/:id/class-link` | Teacher (own) / Admin | `{ classLink, classStartsAt?, classEndsAt?, clearSchedule? }` — join opens 5 minutes before start |
 
 The link and schedule are returned by `GET /batches/:id` and surfaced to students on `GET /me/enrollments`.
 
@@ -364,10 +450,10 @@ The link and schedule are returned by `GET /batches/:id` and surfaced to student
 
 | Method | Path | Auth |
 |---|---|---|
-| `POST` | `/batches/:id/homework` | Manager (own) / Admin |
-| `GET` | `/batches/:id/homework` | Manager (own) / Admin |
-| `PATCH` | `/homework/:id` | Manager (own) / Admin |
-| `DELETE` | `/homework/:id` | Manager (own) / Admin |
+| `POST` | `/batches/:id/homework` | Teacher (own) / Admin |
+| `GET` | `/batches/:id/homework` | Teacher (own) / Admin |
+| `PATCH` | `/homework/:id` | Teacher (own) / Admin |
+| `DELETE` | `/homework/:id` | Teacher (own) / Admin |
 | `GET` | `/me/homework` | Student — across active enrollments, sorted by dueDate |
 
 `dueDate` stores the end-of-Dhaka-day instant for the calendar date supplied, so upcoming/past-due comparison is a plain instant comparison.
@@ -376,10 +462,10 @@ The link and schedule are returned by `GET /batches/:id` and surfaced to student
 
 | Method | Path | Auth |
 |---|---|---|
-| `POST` | `/batches/:id/recordings` | Manager (own) / Admin |
-| `GET` | `/batches/:id/recordings` | Manager (own) / Admin |
-| `PATCH` | `/recordings/:id` | Manager (own) / Admin |
-| `DELETE` | `/recordings/:id` | Manager (own) / Admin |
+| `POST` | `/batches/:id/recordings` | Teacher (own) / Admin |
+| `GET` | `/batches/:id/recordings` | Teacher (own) / Admin |
+| `PATCH` | `/recordings/:id` | Teacher (own) / Admin |
+| `DELETE` | `/recordings/:id` | Teacher (own) / Admin |
 | `GET` | `/me/recordings` | Student — active enrollments, newest first |
 
 The API stores the **YouTube video id**, not a URL — a pasted full link (`youtube.com/watch`, `youtu.be`, `/shorts/`, `/embed/`, `m.youtube.com`) is reduced to the id on input. The frontend builds the embed from the id via `youtube-nocookie.com`.

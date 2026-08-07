@@ -11,7 +11,7 @@ import { ReportingService } from './reporting.service'
 export class ReportingController {
   constructor(private readonly reporting: ReportingService) {}
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('reports/revenue')
   revenue(
@@ -22,7 +22,7 @@ export class ReportingController {
     return this.reporting.revenue(user, query)
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('reports/outstanding')
   outstanding(
@@ -39,7 +39,7 @@ export class ReportingController {
     return this.reporting.outstanding(user, query)
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('reports/enrollments')
   enrollments(
@@ -49,7 +49,7 @@ export class ReportingController {
     return this.reporting.enrollments(user, query)
   }
 
-  @Roles('manager', 'admin')
+  @Roles('teacher', 'admin')
   @UseGuards(RolesGuard)
   @Get('reports/ledger')
   ledger(

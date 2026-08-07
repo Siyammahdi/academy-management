@@ -22,7 +22,7 @@ export function AdminBatchShelf({
           No batches yet
         </p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-          Open a batch under a course to set capacity, windows, and managers.
+          Open a batch under a course to set capacity, windows, and teachers.
         </p>
         <Button className="mt-4 min-h-11" render={<Link href="/admin/batches" />}>
           Create a batch

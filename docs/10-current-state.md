@@ -58,7 +58,7 @@
 | Design tokens (`tailwind.config.ts`) | ✅ 🌐 Purple palette, type, spacing per doc 09 |
 | Primitives (Button, Input, Card, Pill, Select, Modal, Textarea) | 🟡 🌐 |
 | Ledger components (LedgerLine, AmountCell, StatusPill) | 🟡 🌐 The signature component |
-| Auth pages (login, register, verify-email) | 🌐 Register requires OTP email verify before login; verify + resend wired |
+| Auth pages (login, register, verify-email, forgot/reset password) | 🌐 Register requires OTP verify; password reset uses queued HTML email + single-use 30-min token |
 | Public: about, contact | 🌐 Editorial rebuild; photography from `lib/marketing/media.ts` |
 | Public: landing page | 🌐 Eight editorial sections, GSAP motion; featured courses drive the programs stack (`GET /courses?featured=true`); fees/seats from live API |
 | Public: course details (`/courses/[slug]`) | 🌐 Dynamic from `GET /courses/:slug` — marketing copy, parts, fees, open batches |

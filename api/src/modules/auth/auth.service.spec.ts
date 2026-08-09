@@ -9,7 +9,6 @@ import { InvalidCredentialsException } from '../../common/exceptions/invalid-cre
 import { InvalidResetTokenException } from '../../common/exceptions/invalid-reset-token.exception';
 import { ResetTokenExpiredException } from '../../common/exceptions/reset-token-expired.exception';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
 import { EmailService } from '../email/email.service';
 import { OtpService } from '../otp/otp.service';
 
@@ -20,16 +19,10 @@ function createJwtServiceMock(): JwtService {
   } as unknown as JwtService;
 }
 
-function createMailMock(): MailService {
-  return {
-    enqueue: jest.fn().mockResolvedValue(undefined),
-    deliver: jest.fn().mockResolvedValue(undefined),
-  } as unknown as MailService;
-}
-
 function createEmailMock(): EmailService {
   return {
     sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
   } as unknown as EmailService;
 }
 
@@ -46,17 +39,10 @@ function createOtpMock(): OtpService {
 
 function createService(
   prisma: PrismaService,
-  mail: MailService = createMailMock(),
   email: EmailService = createEmailMock(),
   otp: OtpService = createOtpMock(),
 ): AuthService {
-  return new AuthService(
-    prisma,
-    createJwtServiceMock(),
-    mail,
-    email,
-    otp,
-  );
+  return new AuthService(prisma, createJwtServiceMock(), email, otp);
 }
 
 function hashToken(token: string): string {
@@ -92,7 +78,7 @@ describe('AuthService', () => {
 
       const email = createEmailMock();
       const otp = createOtpMock();
-      const service = createService(prisma, createMailMock(), email, otp);
+      const service = createService(prisma, email, otp);
       const result = await service.register({
         email: 'a@x.com',
         password: 'password123',
@@ -240,35 +226,48 @@ describe('AuthService', () => {
 
   describe('forgotPassword: never reveals whether an email exists', () => {
     it('returns without error and without enqueueing when the email is unknown', async () => {
-      const mail = createMailMock();
+      const email = createEmailMock();
       const prisma = {
         user: { findFirst: jest.fn().mockResolvedValue(null) },
       } as unknown as PrismaService;
 
-      const service = createService(prisma, mail);
+      const service = createService(prisma, email);
       await expect(
         service.forgotPassword({ email: 'nobody@example.com' }),
       ).resolves.toBeUndefined();
-      expect(mail.enqueue).not.toHaveBeenCalled();
+      expect(email.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
     it('stores a hashed token and enqueues email when the user exists', async () => {
-      const mail = createMailMock();
+      const email = createEmailMock();
+      const tx = {
+        passwordResetToken: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          create: jest.fn().mockResolvedValue({}),
+        },
+      };
       const prisma = {
         user: {
           findFirst: jest.fn().mockResolvedValue({
             id: 'user1',
             email: 'a@x.com',
+            fullName: 'Ana Rahman',
             status: 'active',
           }),
         },
-        passwordResetToken: { create: jest.fn().mockResolvedValue({}) },
+        $transaction: jest
+          .fn()
+          .mockImplementation((cb: (tx: unknown) => unknown) => cb(tx)),
       } as unknown as PrismaService;
 
-      const service = createService(prisma, mail);
+      const service = createService(prisma, email);
       await service.forgotPassword({ email: 'a@x.com' });
 
-      expect(prisma.passwordResetToken.create).toHaveBeenCalledWith(
+      expect(tx.passwordResetToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user1', usedAt: null },
+        data: { usedAt: expect.any(Date) as Date },
+      });
+      expect(tx.passwordResetToken.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             userId: 'user1',
@@ -277,10 +276,12 @@ describe('AuthService', () => {
           }),
         }),
       );
-      expect(mail.enqueue).toHaveBeenCalledWith(
+      expect(email.sendPasswordResetEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'a@x.com',
-          subject: expect.stringContaining('password') as string,
+          fullName: 'Ana Rahman',
+          resetUrl: expect.stringContaining('/reset-password?token=') as string,
+          expiryMinutes: 30,
         }),
       );
     });

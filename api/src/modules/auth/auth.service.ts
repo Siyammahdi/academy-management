@@ -4,7 +4,6 @@ import { OtpType, Prisma, RoleName } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
 import { EmailService } from '../email/email.service';
 import { OtpService } from '../otp/otp.service';
 import { OTP_EXPIRY_MINUTES } from '../otp/otp.config';
@@ -39,6 +38,7 @@ import {
 
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const PASSWORD_RESET_EXPIRY_MINUTES = Math.round(PASSWORD_RESET_TTL_MS / 60_000);
 
 interface TokenPair {
   accessToken: string;
@@ -66,7 +66,6 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mail: MailService,
     private readonly email: EmailService,
     private readonly otp: OtpService,
   ) {}
@@ -357,11 +356,17 @@ export class AuthService {
    * Always succeeds with no body. Never reveals whether the email is
    * registered. When a matching active user exists, stores a hashed
    * single-use token (30 min) and enqueues a reset email (NTF-03).
+   * Previous unused tokens for that user are invalidated first.
    */
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+    const email = normalizeEmail(dto.email);
     const user = await this.prisma.user.findFirst({
-      where: {
-        email: { equals: dto.email.trim(), mode: 'insensitive' },
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        status: true,
       },
     });
 
@@ -372,38 +377,36 @@ export class AuthService {
     const rawToken = randomBytes(32).toString('base64url');
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    const now = new Date();
 
-    await this.prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      // Invalidate any outstanding unused tokens so only the latest link works.
+      await tx.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: now },
+      });
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      });
     });
 
-    const appUrl = (process.env.APP_URL ?? 'http://localhost:3000').replace(
-      /\/$/,
-      '',
-    );
-    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    const webOrigin = (
+      process.env.WEB_URL ??
+      process.env.APP_URL ??
+      'http://localhost:3001'
+    ).replace(/\/$/, '');
+    const resetUrl = `${webOrigin}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     try {
-      await this.mail.enqueue({
+      await this.email.sendPasswordResetEmail({
         to: user.email,
-        subject: 'Reset your An Nahda Academy password',
-        text: [
-          'You requested a password reset for your An Nahda Academy account.',
-          '',
-          'Open this link within 30 minutes to choose a new password:',
-          resetUrl,
-          '',
-          'If you did not request this, you can ignore this email.',
-        ].join('\n'),
-        html: `
-          <p>You requested a password reset for your An Nahda Academy account.</p>
-          <p><a href="${resetUrl}">Choose a new password</a> — this link expires in 30 minutes.</p>
-          <p>If you did not request this, you can ignore this email.</p>
-        `.trim(),
+        fullName: user.fullName,
+        resetUrl,
+        expiryMinutes: PASSWORD_RESET_EXPIRY_MINUTES,
       });
     } catch (error) {
       // NTF-04 — a failed enqueue must not fail the endpoint.

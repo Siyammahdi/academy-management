@@ -6,7 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { MailService } from '../src/modules/mail/mail.service';
+import { EmailService } from '../src/modules/email/email.service';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { MoneySerializationInterceptor } from '../src/common/interceptors/money-serialization.interceptor';
 
@@ -29,20 +29,26 @@ function hashToken(token: string): string {
 describe('Password reset (real Postgres)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
-  let mail: { enqueue: jest.Mock };
+  let emailService: {
+    sendPasswordResetEmail: jest.Mock;
+    sendVerificationEmail: jest.Mock;
+  };
 
   const email = `reset-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
   const originalPassword = 'password123';
   const newPassword = 'brand-new-password';
 
   beforeAll(async () => {
-    mail = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    emailService = {
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+      sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    };
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(MailService)
-      .useValue(mail)
+      .overrideProvider(EmailService)
+      .useValue(emailService)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -64,45 +70,90 @@ describe('Password reset (real Postgres)', () => {
   let userId: string;
   let refreshToken: string;
 
-  it('registers a user and establishes a refresh session', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/register')
-      .send({
+  it('creates a verified user and establishes a refresh session', async () => {
+    const passwordHash = await argon2.hash(originalPassword);
+    const user = await prisma.user.create({
+      data: {
         email,
-        password: originalPassword,
+        passwordHash,
         fullName: 'Reset Tester',
         phone: '01700000001',
-      })
-      .expect(201);
+        isEmailVerified: true,
+        roles: { create: { role: 'student' } },
+        student: {
+          create: {
+            studentId: `RST-${Date.now().toString(36).slice(-6).toUpperCase()}`,
+            fullName: 'Reset Tester',
+            phone: '01700000001',
+          },
+        },
+      },
+    });
+    userId = user.id;
 
-    const body = res.body as AuthResponseBody;
-    userId = body.user.id;
+    const login = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email, password: originalPassword })
+      .expect(200);
+    const body = login.body as AuthResponseBody;
     refreshToken = body.refreshToken;
     expect(typeof refreshToken).toBe('string');
   });
 
   it('forgot-password returns 200 for an unknown email without enqueueing', async () => {
-    mail.enqueue.mockClear();
+    emailService.sendPasswordResetEmail.mockClear();
     await request(app.getHttpServer())
       .post('/api/v1/auth/forgot-password')
       .send({ email: `missing-${Date.now()}@example.com` })
       .expect(200);
 
-    expect(mail.enqueue).not.toHaveBeenCalled();
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
   });
 
   it('forgot-password returns 200 for a registered email and enqueues a reset mail', async () => {
-    mail.enqueue.mockClear();
+    emailService.sendPasswordResetEmail.mockClear();
     await request(app.getHttpServer())
       .post('/api/v1/auth/forgot-password')
       .send({ email })
       .expect(200);
 
-    expect(mail.enqueue).toHaveBeenCalledTimes(1);
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: email,
+        resetUrl: expect.stringContaining('/reset-password?token='),
+        expiryMinutes: 30,
+      }),
+    );
     const tokens = await prisma.passwordResetToken.findMany({
-      where: { userId },
+      where: { userId, usedAt: null },
     });
-    expect(tokens.length).toBeGreaterThanOrEqual(1);
+    expect(tokens.length).toBe(1);
+  });
+
+  it('a second forgot-password invalidates the previous unused token', async () => {
+    emailService.sendPasswordResetEmail.mockClear();
+    const before = await prisma.passwordResetToken.findMany({
+      where: { userId, usedAt: null },
+    });
+    expect(before.length).toBe(1);
+    const previousHash = before[0].tokenHash;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/forgot-password')
+      .send({ email })
+      .expect(200);
+
+    const previous = await prisma.passwordResetToken.findUniqueOrThrow({
+      where: { tokenHash: previousHash },
+    });
+    expect(previous.usedAt).not.toBeNull();
+
+    const active = await prisma.passwordResetToken.findMany({
+      where: { userId, usedAt: null },
+    });
+    expect(active.length).toBe(1);
+    expect(active[0].tokenHash).not.toBe(previousHash);
   });
 
   it('rejects an expired reset token with RESET_TOKEN_EXPIRED', async () => {
@@ -152,7 +203,6 @@ describe('Password reset (real Postgres)', () => {
       },
     });
 
-    // Ensure there is at least one active refresh token to revoke.
     const activeBefore = await prisma.refreshToken.count({
       where: { userId, revokedAt: null },
     });
@@ -179,13 +229,11 @@ describe('Password reset (real Postgres)', () => {
       false,
     );
 
-    // Old refresh token must no longer rotate.
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .send({ refreshToken })
       .expect(401);
 
-    // New password logs in.
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email, password: newPassword })

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowUpIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react'
 
@@ -240,6 +241,17 @@ export function SiteFooter() {
             {t.footer.backToTop}
             <ArrowUpIcon className="size-4" aria-hidden />
           </button>
+        </div>
+
+        <div className="border-t border-border py-5 sm:py-6">
+          <Image
+            src="/payment/payment-banner.png"
+            alt={t.footer.paymentBannerAlt}
+            width={5235}
+            height={586}
+            sizes="(min-width: 1280px) 1120px, calc(100vw - 2rem)"
+            className="h-auto w-full max-w-full object-contain"
+          />
         </div>
       </Container>
     </footer>

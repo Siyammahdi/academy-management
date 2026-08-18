@@ -65,6 +65,7 @@ export interface MarketingCopy {
     followLabel: string
     officeLabel: string
     registeredLabel: string
+    paymentBannerAlt: string
     backToTop: string
     social: {
       facebook: string

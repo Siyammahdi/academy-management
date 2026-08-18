@@ -43,6 +43,8 @@ export const en: MarketingCopy = {
     followLabel: 'Follow the academy',
     officeLabel: 'Dhaka office',
     registeredLabel: 'Registered address',
+    paymentBannerAlt:
+      'Pay with Visa, Mastercard, bKash, Nagad and other methods. Verified by SSLCommerz.',
     backToTop: 'Back to top',
     social: {
       facebook: 'Facebook',
@@ -535,7 +537,7 @@ export const en: MarketingCopy = {
       eyebrow: 'Legal',
       title: 'Return & refund policy',
       lead: 'An Nahda Academy sells live educational services and digital portal access, not physical goods. This policy explains when fees may be refunded.',
-      updated: 'Last updated 1 August 2026',
+      updated: 'Last updated 17 August 2026',
       sections: [
         {
           heading: '1. Nature of our services',
@@ -567,14 +569,21 @@ export const en: MarketingCopy = {
           ],
         },
         {
-          heading: '5. Pending and rejected payments',
+          heading: '5. Refund processing timeline',
+          paragraphs: [
+            'Once a refund is approved, we process the return within 7 to 10 working days.',
+            'The amount is sent via the original payment method where possible, or another method we confirm with you. Bank or gateway processing after we initiate the return may add a short further delay.',
+          ],
+        },
+        {
+          heading: '6. Pending and rejected payments',
           paragraphs: [
             'Manual payments that are rejected or expire are not charged as verified fees. Online payments that fail at the gateway do not create a completed academy payment.',
             'If money left your account but the portal still shows a failed or cancelled payment, contact us promptly with the bank or gateway reference so we can investigate.',
           ],
         },
         {
-          heading: '6. Contact',
+          heading: '7. Contact',
           paragraphs: [
             'Refund questions: annahda.net@gmail.com or the phone number published on the Contact page.',
           ],

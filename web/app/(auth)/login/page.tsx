@@ -115,7 +115,7 @@ function LoginForm() {
           Email verified. You can sign in now.
         </p>
       ) : null}
-      <div className="rounded-xl border border-dashed border-primary/30 bg-primary-wash/60 p-3 sm:p-4">
+      <div className="rounded-xl border border-dashed border-primary/30 bg-primary-wash/60 p-3 sm:p-4 hidden">
         <p className="text-xs font-medium tracking-wide text-primary-strong uppercase">
           Temporary · quick fill
         </p>

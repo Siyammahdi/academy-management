@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
+    "start:prod:all": "bash scripts/start-prod-all.sh",
     "start:worker": "tsx src/worker.ts",
     "start:worker:prod": "node dist/src/worker.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

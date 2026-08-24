@@ -22,7 +22,7 @@ envVarGroups:
       - key: APP_URL
         value: https://www.annahda.net
       - key: API_URL
-        value: https://academy-management.onrender.com
+        value: https://academy-management-fkl4.onrender.com
       - key: CORS_ORIGINS
         value: https://annahda.net,https://www.annahda.net,https://annahdanet.vercel.app
       - key: DATABASE_URL
@@ -51,7 +51,7 @@ services:
     runtime: node
     rootDir: api
     buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm build && pnpm exec prisma migrate deploy
-    startCommand: pnpm start:prod
+    startCommand: pnpm start:prod:all
     healthCheckPath: /api/v1/health
     envVars:
       - fromGroup: academy-production

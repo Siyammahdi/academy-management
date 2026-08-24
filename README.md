@@ -150,7 +150,7 @@ pnpm dev
 **Vercel (`annahda`)** — root directory `web/`. Set:
 
 - `NEXT_PUBLIC_API_URL=/api/v1`
-- `API_PROXY_TARGET=https://academy-management.onrender.com` (no `/api/v1` suffix)
+- `API_PROXY_TARGET=https://academy-management-fkl4.onrender.com` (no `/api/v1` suffix)
 
 **Resend** — verify `annahda.net` in Resend before using `noreply@annahda.net` as `MAIL_FROM`; until then, Resend only delivers to your account email.
 

@@ -4,7 +4,7 @@
   "description": "Repo-root shim so Render builds work when Root Directory is not set to api/. Prefer render.yaml rootDir: api.",
   "scripts": {
     "build": "pnpm --dir api install --frozen-lockfile && pnpm --dir api db:generate && pnpm --dir api build && pnpm --dir api exec prisma migrate deploy",
-    "start": "pnpm --dir api start:prod",
+    "start": "pnpm --dir api start:prod:all",
     "start:worker": "pnpm --dir api start:worker:prod"
   },
   "engines": {

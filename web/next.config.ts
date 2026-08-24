@@ -12,9 +12,6 @@ import type { NextConfig } from 'next'
  */
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET?.replace(/\/$/, '')
 
-console.log('NEXT CONFIG LOADED');
-console.log('API_PROXY_TARGET =', API_PROXY_TARGET);
-
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [

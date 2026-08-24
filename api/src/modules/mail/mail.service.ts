@@ -29,8 +29,10 @@ export class MailService {
 
   /** Enqueue a message for asynchronous delivery. Never awaits the send. */
   async enqueue(message: MailMessage): Promise<void> {
-    await this.emailQueue.add(JOB_NAMES.emailDispatch, { message });
-    this.logger.debug(`enqueued email to=${message.to} subject=${message.subject}`);
+    const job = await this.emailQueue.add(JOB_NAMES.emailDispatch, { message });
+    this.logger.log(
+      `enqueued email-dispatch job=${job.id ?? '?'} to=${message.to} subject=${message.subject}`,
+    );
   }
 
   /** Direct send — used only by the email-dispatch worker processor. */

@@ -11,4 +11,11 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  /** Render health check — must stay lightweight (no DB). */
+  @Public()
+  @Get('health')
+  health(): { ok: true } {
+    return { ok: true };
+  }
 }

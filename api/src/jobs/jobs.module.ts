@@ -1,21 +1,9 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from './queues';
+import { parseRedisConnection } from './redis.connection';
 import { JobsSchedulerService } from './jobs-scheduler.service';
 import { JobsController } from './jobs.controller';
-
-function parseRedisConnection(url: string): {
-  host: string;
-  port: number;
-  password?: string;
-} {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : 6379,
-    password: parsed.password || undefined,
-  };
-}
 
 // Queue registration + repeatable-job scheduling only — no @Processor
 // providers here. Those live in worker.module.ts, wired only into the
@@ -31,12 +19,9 @@ function parseRedisConnection(url: string): {
   imports: [
     BullModule.forRootAsync({
       useFactory: () => ({
-        connection: {
-          ...parseRedisConnection(
-            process.env.REDIS_URL ?? 'redis://localhost:6379',
-          ),
-          maxRetriesPerRequest: null,
-        },
+        connection: parseRedisConnection(
+          process.env.REDIS_URL ?? 'redis://localhost:6379',
+        ),
       }),
     }),
     BullModule.registerQueue(

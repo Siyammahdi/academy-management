@@ -26,6 +26,8 @@ function allowedOrigins(): string[] {
     .filter(Boolean);
   return [
     process.env.WEB_URL ?? 'http://localhost:3001',
+    'https://annahda.net',
+    'https://www.annahda.net',
     'https://annahdanet.vercel.app',
     ...extras,
   ];
@@ -65,6 +67,7 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen(port, '0.0.0.0');
 }
 void bootstrap();

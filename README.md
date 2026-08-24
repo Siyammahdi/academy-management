@@ -116,9 +116,10 @@ In a second terminal:
 ```bash
 cd api
 pnpm start:worker
+# production (after build): pnpm start:worker:prod
 ```
 
-This is a separate process — it registers no HTTP listener, only the job processors (`penalty-sweep`, `billing-generation`, `gateway-expiry`). The API process schedules and can manually trigger these jobs (`POST /jobs/:name/trigger`, admin-only); only the worker process consumes them. Without it running, enqueued jobs sit in Redis until a worker starts.
+This is a separate process — it registers no HTTP listener, only the job processors (`penalty-sweep`, `billing-generation`, `gateway-expiry`, **`email-dispatch`**). The API process schedules and can manually trigger these jobs (`POST /jobs/:name/trigger`, admin-only); only the worker process consumes them. Without it running, enqueued jobs sit in Redis until a worker starts. **Registration and password-reset emails require the worker.**
 
 ### 4. Frontend setup
 
@@ -129,7 +130,29 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-`web/.env.example` sets `NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1`, matching the API's `.env.example` port — no collision, no start-order dependency. (Historical note: without these example files, `next dev` and `nest start` both default to port 3000; if you ever run against code defaults instead of the example env files, start the API first — `next dev` falls back to `:3001` — or set `NEXT_PUBLIC_API_URL` explicitly.)
+`web/.env.example` uses same-origin `/api/v1` with `API_PROXY_TARGET` pointing at the Nest server — see `web/next.config.ts`.
+
+---
+
+## Production (Render + Vercel)
+
+| Service | Platform | Name |
+|---------|----------|------|
+| API | Render web service | `academy-management` |
+| Worker | Render background worker | `academy-management-worker` |
+| Redis | Render Key Value | `an-nahda-redis` |
+| Frontend | Vercel | `annahda` → `www.annahda.net` |
+
+**[`render.yaml`](./render.yaml)** defines the API and worker (`rootDir: api`, migrate-on-deploy, Redis wiring). Connect it from the Render dashboard or mirror the same build/start commands manually.
+
+**Render (API + worker)** — both need the env var group in `render.yaml`, especially `DATABASE_URL`, `REDIS_URL`, `RESEND_API_KEY`, `MAIL_FROM`, JWT secrets, and `WEB_URL`/`APP_URL`/`API_URL` for production domains.
+
+**Vercel (`annahda`)** — root directory `web/`. Set:
+
+- `NEXT_PUBLIC_API_URL=/api/v1`
+- `API_PROXY_TARGET=https://academy-management.onrender.com` (no `/api/v1` suffix)
+
+**Resend** — verify `annahda.net` in Resend before using `noreply@annahda.net` as `MAIL_FROM`; until then, Resend only delivers to your account email.
 
 ---
 

@@ -23,6 +23,8 @@ interface WorkspaceHeroProps {
   aside?: ReactNode
   /** Primary action row under the greeting. */
   actions?: ReactNode
+  /** Eyebrow, workspace badge, and student ID — off in the student portal. */
+  showPortalMeta?: boolean
   className?: string
 }
 
@@ -32,6 +34,7 @@ export function WorkspaceHero({
   description,
   aside,
   actions,
+  showPortalMeta = true,
   className,
 }: WorkspaceHeroProps) {
   const pathname = usePathname()
@@ -77,22 +80,24 @@ export function WorkspaceHero({
               className="mt-0.5 hidden sm:flex"
             />
             <div className="min-w-0 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-medium text-primary-strong sm:text-sm">
-                  {greeting.eyebrow}
-                </p>
-                <Badge className="bg-primary text-primary-foreground">
-                  {workspaceLabel(role)}
-                </Badge>
-                {user.studentId && role === 'student' ? (
-                  <Badge
-                    variant="secondary"
-                    className="bg-background/80 text-foreground"
-                  >
-                    {user.studentId}
+              {showPortalMeta ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-medium text-primary-strong sm:text-sm">
+                    {greeting.eyebrow}
+                  </p>
+                  <Badge className="bg-primary text-primary-foreground">
+                    {workspaceLabel(role)}
                   </Badge>
-                ) : null}
-              </div>
+                  {user.studentId && role === 'student' ? (
+                    <Badge
+                      variant="secondary"
+                      className="bg-background/80 text-foreground"
+                    >
+                      {user.studentId}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
               <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 {greeting.title}
               </h1>

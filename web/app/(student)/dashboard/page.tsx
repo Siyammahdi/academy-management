@@ -248,6 +248,7 @@ export default function StudentDashboardPage() {
     <div className="flex flex-col gap-5 sm:gap-7">
       <WorkspaceHero
         user={user}
+        showPortalMeta={false}
         description="Your classroom, homework, and dues — each course stays separate, never mixed into one total."
         aside={
           <div className="shrink-0 rounded-xl bg-background/80 px-3 py-2 text-right">

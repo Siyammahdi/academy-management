@@ -482,7 +482,12 @@ export class AuthService {
   }
 
   private toUserResponse(
-    user: { id: string; email: string; fullName?: string | null },
+    user: {
+      id: string;
+      email: string;
+      fullName?: string | null;
+      avatarMimeType?: string | null;
+    },
     roles: RoleName[],
     student: { studentId: string; fullName: string } | null,
   ): UserResponseDto {
@@ -492,6 +497,9 @@ export class AuthService {
       roles,
       studentId: student?.studentId ?? null,
       fullName: user.fullName ?? student?.fullName ?? null,
+      hasAvatar:
+        typeof user.avatarMimeType === 'string' &&
+        user.avatarMimeType.length > 0,
     };
   }
 }

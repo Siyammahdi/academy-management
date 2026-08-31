@@ -178,6 +178,7 @@ export function OnboardingDashboard({
     <div className="flex flex-col gap-8 sm:gap-10">
       <WorkspaceHero
         user={user}
+        showPortalMeta={false}
         description="Your account is ready. Choose a featured program, enroll in an open batch, then complete payment to unlock class."
         aside={
           <div className="hidden shrink-0 rounded-xl bg-background/80 px-3 py-2 text-right sm:block">
@@ -204,7 +205,7 @@ export function OnboardingDashboard({
               render={<Link href="/dashboard/enroll" />}
             >
               <CompassIcon />
-              Browse all batches
+              Browse all courses
             </Button>
             <Button
               variant="ghost"
@@ -384,7 +385,7 @@ export function OnboardingDashboard({
             className="min-h-11"
             render={<Link href="/dashboard/enroll" />}
           >
-            All open batches
+            All courses
           </Button>
         </div>
 
@@ -408,7 +409,7 @@ export function OnboardingDashboard({
               render={<Link href="/dashboard/enroll" />}
             >
               <CompassIcon />
-              Browse open batches
+              Browse all courses
             </Button>
           </div>
         ) : (

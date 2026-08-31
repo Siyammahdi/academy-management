@@ -20,6 +20,7 @@ export interface AuthUser {
   studentId: string | null
   /** Linked Student.fullName when the account has a student profile. */
   fullName: string | null
+  hasAvatar: boolean
 }
 
 export interface AuthResponse {

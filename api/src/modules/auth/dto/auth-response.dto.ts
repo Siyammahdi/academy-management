@@ -8,6 +8,7 @@ export class UserResponseDto {
   studentId: string | null;
   /** User.fullName, falling back to linked Student.fullName. */
   fullName: string | null;
+  hasAvatar: boolean;
 }
 
 export class AuthResponseDto {

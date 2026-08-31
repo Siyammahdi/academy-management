@@ -115,7 +115,6 @@ export default function RegisterPage() {
                 id="fullName"
                 name="fullName"
                 autoComplete="name"
-                placeholder="Abdullah Rahman"
                 className="h-11"
                 value={fullName}
                 onChange={(e) => {
@@ -138,7 +137,6 @@ export default function RegisterPage() {
                 type="tel"
                 autoComplete="tel"
                 inputMode="tel"
-                placeholder="01XXXXXXXXX"
                 className="h-11"
                 value={phone}
                 onChange={(e) => {
@@ -166,7 +164,6 @@ export default function RegisterPage() {
               type="email"
               autoComplete="email"
               inputMode="email"
-              placeholder="you@example.com"
               className="h-11"
               value={email}
               onChange={(e) => {
@@ -187,7 +184,6 @@ export default function RegisterPage() {
               id="password"
               name="password"
               autoComplete="new-password"
-              placeholder="At least 8 characters"
               className="h-11"
               value={password}
               onChange={(e) => {

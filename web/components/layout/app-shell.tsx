@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   resolveActiveRole,
   roleFromPathname,
+  isStudentPortalPath,
   workspaceLabel,
 } from '@/lib/active-role'
 import { cn } from '@/lib/utils'
@@ -52,6 +53,7 @@ function AppShellChrome({
   const activeRole =
     (fromPath && user?.roles.includes(fromPath) ? fromPath : null) ??
     (user ? resolveActiveRole(user.roles) : null)
+  const hideWorkspaceMeta = isStudentPortalPath(pathname)
 
   return (
     <ActiveWorkspaceSync>
@@ -68,9 +70,11 @@ function AppShellChrome({
               <span className="block truncate font-heading text-base font-semibold tracking-tight text-foreground">
                 {title ?? 'An Nahda'}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {workspaceLabel(activeRole)}
-              </span>
+              {!hideWorkspaceMeta ? (
+                <span className="block truncate text-xs text-muted-foreground">
+                  {workspaceLabel(activeRole)}
+                </span>
+              ) : null}
             </div>
           </div>
 

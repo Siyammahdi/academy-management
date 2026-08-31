@@ -87,7 +87,6 @@ export default function ForgotPasswordPage() {
                 type="email"
                 autoComplete="email"
                 inputMode="email"
-                placeholder="you@example.com"
                 className="h-11"
                 value={email}
                 onChange={(e) => {

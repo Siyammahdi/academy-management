@@ -22,6 +22,7 @@ import {
   profilePathForRole,
   resolveActiveRole,
   roleFromPathname,
+  isStudentPortalPath,
   setStoredActiveRole,
   switchableRoles,
   workspaceLabel,
@@ -57,6 +58,7 @@ export function UserMenu({
     ? profilePathForRole(currentRole)
     : '/dashboard/profile'
   const canSwitch = roles.length > 1
+  const hideRoleMeta = isStudentPortalPath(pathname)
 
   function switchWorkspace(role: RoleName): void {
     if (role === currentRole) return
@@ -93,7 +95,7 @@ export function UserMenu({
                 : 'h-auto min-h-11 w-full justify-start gap-2.5 rounded-lg px-2 py-2',
               className,
             )}
-            aria-label={`${name}, ${workspaceRoleLabel(currentRole)}`}
+            aria-label={hideRoleMeta ? name : `${name}, ${workspaceRoleLabel(currentRole)}`}
           />
         }
       >
@@ -103,9 +105,11 @@ export function UserMenu({
             <span className="block truncate text-sm font-medium text-foreground">
               {name}
             </span>
-            <span className="block truncate text-xs text-muted-foreground">
-              {workspaceRoleLabel(currentRole)}
-            </span>
+            {!hideRoleMeta ? (
+              <span className="block truncate text-xs text-muted-foreground">
+                {workspaceRoleLabel(currentRole)}
+              </span>
+            ) : null}
           </span>
         ) : null}
       </DropdownMenuTrigger>
@@ -120,24 +124,30 @@ export function UserMenu({
               {name}
             </p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-            <p className="text-xs font-medium text-primary-strong">
-              {workspaceLabel(currentRole)}
-              {user.studentId ? ` · ${user.studentId}` : ''}
-            </p>
+            {!hideRoleMeta ? (
+              <p className="text-xs font-medium text-primary-strong">
+                {workspaceLabel(currentRole)}
+                {user.studentId ? ` · ${user.studentId}` : ''}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <DropdownMenuSeparator />
+        {!hideRoleMeta ? (
+          <>
+            <DropdownMenuSeparator />
 
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide">
-            Current role
-          </DropdownMenuLabel>
-          <div className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-foreground">
-            <CheckIcon className="size-4 text-primary-strong" />
-            {workspaceRoleLabel(currentRole)}
-          </div>
-        </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide">
+                Current role
+              </DropdownMenuLabel>
+              <div className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-foreground">
+                <CheckIcon className="size-4 text-primary-strong" />
+                {workspaceRoleLabel(currentRole)}
+              </div>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
 
         {canSwitch ? (
           <>

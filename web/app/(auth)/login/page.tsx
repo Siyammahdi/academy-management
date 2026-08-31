@@ -148,7 +148,6 @@ function LoginForm() {
             type="email"
             autoComplete="email"
             inputMode="email"
-            placeholder="you@example.com"
             className="h-11"
             value={email}
             onChange={(e) => {
@@ -179,7 +178,6 @@ function LoginForm() {
             id="password"
             name="password"
             autoComplete="current-password"
-            placeholder="Your password"
             className="h-11"
             value={password}
             onChange={(e) => {

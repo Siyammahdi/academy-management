@@ -23,6 +23,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useCurrentUser } from '@/components/auth/current-user-provider'
+import { BANGLADESH_DISTRICTS } from '@/lib/bangladesh-districts'
 import { formatDate } from '@/lib/format'
 import { logout } from '@/lib/auth'
 import {
@@ -55,7 +57,6 @@ interface ProfileFormState {
   nationality: string
   nationalId: string
   addressLine: string
-  city: string
   district: string
   postalCode: string
   country: string
@@ -75,8 +76,7 @@ function profileToForm(p: UserProfile): ProfileFormState {
     nationality: p.nationality ?? '',
     nationalId: p.nationalId ?? '',
     addressLine: p.addressLine ?? '',
-    city: p.city ?? '',
-    district: p.district ?? '',
+    district: p.district ?? p.city ?? '',
     postalCode: p.postalCode ?? '',
     country: p.country ?? 'Bangladesh',
     guardianName: p.student?.guardianName ?? '',
@@ -126,11 +126,11 @@ function buildPatch(
   if (form.addressLine !== baseline.addressLine) {
     patch.addressLine = emptyToNull(form.addressLine)
   }
-  if (form.city !== baseline.city) {
-    patch.city = emptyToNull(form.city)
-  }
   if (form.district !== baseline.district) {
     patch.district = emptyToNull(form.district)
+  }
+  if (profile.city && form.district !== baseline.district) {
+    patch.city = null
   }
   if (form.postalCode !== baseline.postalCode) {
     patch.postalCode = emptyToNull(form.postalCode)
@@ -170,6 +170,7 @@ interface ProfileEditorProps {
 
 export function ProfileEditor({ variant, header }: ProfileEditorProps) {
   const router = useRouter()
+  const { reload: reloadCurrentUser } = useCurrentUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [baseline, setBaseline] = useState<ProfileFormState | null>(null)
   const [form, setForm] = useState<ProfileFormState | null>(null)
@@ -371,6 +372,7 @@ export function ProfileEditor({ variant, header }: ProfileEditorProps) {
     try {
       const next = await updateProfile(patch)
       await applyProfile(next)
+      await reloadCurrentUser()
       toast.success('Profile saved')
     } catch (err) {
       toast.error(profileErrorMessage(err, 'Could not save your profile.'))
@@ -679,20 +681,26 @@ export function ProfileEditor({ variant, header }: ProfileEditorProps) {
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="city">City</FieldLabel>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => setField('city', e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="district">State / District</FieldLabel>
-                <Input
+                <FieldLabel htmlFor="district">District</FieldLabel>
+                <select
                   id="district"
+                  className={selectClass}
                   value={form.district}
                   onChange={(e) => setField('district', e.target.value)}
-                />
+                >
+                  <option value="">Select district</option>
+                  {BANGLADESH_DISTRICTS.map((district) => (
+                    <option key={district} value={district}>
+                      {district}
+                    </option>
+                  ))}
+                  {form.district &&
+                  !BANGLADESH_DISTRICTS.includes(
+                    form.district as (typeof BANGLADESH_DISTRICTS)[number],
+                  ) ? (
+                    <option value={form.district}>{form.district}</option>
+                  ) : null}
+                </select>
               </Field>
               <Field>
                 <FieldLabel htmlFor="postalCode">Postal code</FieldLabel>
@@ -719,21 +727,23 @@ export function ProfileEditor({ variant, header }: ProfileEditorProps) {
           >
             <dl className="grid gap-4 sm:grid-cols-2">
               <ReadonlyItem label="User ID" value={profile.id} mono />
-              <ReadonlyItem
-                label="Role"
-                value={
-                  <span className="flex flex-wrap gap-2">
-                    {profile.roles.map((role) => (
-                      <Badge
-                        key={role}
-                        className="bg-primary-wash text-primary-strong"
-                      >
-                        {roleLabel(role)}
-                      </Badge>
-                    ))}
-                  </span>
-                }
-              />
+              {variant !== 'student' ? (
+                <ReadonlyItem
+                  label="Role"
+                  value={
+                    <span className="flex flex-wrap gap-2">
+                      {profile.roles.map((role) => (
+                        <Badge
+                          key={role}
+                          className="bg-primary-wash text-primary-strong"
+                        >
+                          {roleLabel(role)}
+                        </Badge>
+                      ))}
+                    </span>
+                  }
+                />
+              ) : null}
               <ReadonlyItem
                 label="Account status"
                 value={profile.status === 'active' ? 'Active' : 'Disabled'}
@@ -765,11 +775,13 @@ export function ProfileEditor({ variant, header }: ProfileEditorProps) {
               description="Student identity and guardian contacts."
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <ReadonlyItem
-                  label="Student ID"
-                  value={profile.student.studentId}
-                  mono
-                />
+                {variant !== 'student' ? (
+                  <ReadonlyItem
+                    label="Student ID"
+                    value={profile.student.studentId}
+                    mono
+                  />
+                ) : null}
                 <ReadonlyItem
                   label="Enrollment date"
                   value={

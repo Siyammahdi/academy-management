@@ -122,6 +122,14 @@ export function workspaceRoleLabel(role: RoleName | null): string {
   }
 }
 
+/** True when the user is inside the student portal chrome. */
+export function isStudentPortalPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/payments')
+  )
+}
+
 /** Dashboard / chrome workspace name. */
 export function workspaceLabel(role: RoleName | null): string {
   switch (role) {

@@ -31,6 +31,7 @@ import type { AuthUser } from '@/lib/auth'
 import {
   roleFromPathname,
   resolveActiveRole,
+  isStudentPortalPath,
   workspaceLabel,
 } from '@/lib/active-role'
 import { cn } from '@/lib/utils'
@@ -116,6 +117,7 @@ export function Sidebar({
   const activeRole =
     (fromPath && user?.roles.includes(fromPath) ? fromPath : null) ??
     (user ? resolveActiveRole(user.roles) : null)
+  const hideWorkspaceMeta = isStudentPortalPath(pathname)
 
   return (
     <nav className={cn('flex h-full flex-col', className)}>
@@ -125,9 +127,11 @@ export function Sidebar({
           <p className="truncate font-heading text-sm font-semibold tracking-tight text-foreground">
             {title}
           </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {workspaceLabel(activeRole)}
-          </p>
+          {!hideWorkspaceMeta ? (
+            <p className="truncate text-xs text-muted-foreground">
+              {workspaceLabel(activeRole)}
+            </p>
+          ) : null}
         </div>
       </div>
 

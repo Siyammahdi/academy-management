@@ -124,7 +124,6 @@ function VerifyEmailForm() {
               id="code"
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder="6-digit code"
               className="h-11 tracking-[0.3em]"
               maxLength={6}
               value={code}

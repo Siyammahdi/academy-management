@@ -90,7 +90,6 @@ function ResetPasswordForm() {
             id="password"
             name="password"
             autoComplete="new-password"
-            placeholder="At least 8 characters"
             className="h-11"
             value={password}
             onChange={(e) => {
@@ -115,7 +114,6 @@ function ResetPasswordForm() {
             id="confirm"
             name="confirm"
             autoComplete="new-password"
-            placeholder="Repeat the new password"
             className="h-11"
             value={confirm}
             onChange={(e) => {

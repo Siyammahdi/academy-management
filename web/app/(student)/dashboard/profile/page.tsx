@@ -9,7 +9,6 @@ export default function StudentProfilePage() {
       variant="student"
       header={({ title, description, actions }) => (
         <StudentPageHeader
-          eyebrow="Account"
           title={title}
           description={description}
           actions={actions}

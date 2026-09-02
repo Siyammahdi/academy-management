@@ -34,7 +34,6 @@ export const en: MarketingCopy = {
     createAccount: 'Create an account',
     logIn: 'Log in',
     payGuest: 'Pay as a guest',
-    contact: 'Contact admissions',
     terms: 'Terms & conditions',
     privacy: 'Privacy policy',
     refund: 'Return & refund policy',

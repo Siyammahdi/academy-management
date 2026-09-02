@@ -56,7 +56,6 @@ export interface MarketingCopy {
     createAccount: string
     logIn: string
     payGuest: string
-    contact: string
     terms: string
     privacy: string
     refund: string

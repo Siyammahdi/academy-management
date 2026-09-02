@@ -33,7 +33,6 @@ export function SiteFooter() {
         { href: '/register', label: t.footer.createAccount },
         { href: '/login', label: t.footer.logIn },
         { href: '/pay', label: t.footer.payGuest },
-        { href: '/contact', label: t.footer.contact },
       ],
     },
     {
@@ -199,14 +198,14 @@ export function SiteFooter() {
                     {t.contact.officeAddress}
                   </p>
                 </div>
-                {/* <div>
+                <div>
                   <p className="text-xs text-muted-foreground">
                     {t.footer.registeredLabel}
                   </p>
                   <p className="mt-0.5 leading-relaxed text-muted-foreground">
                     {t.contact.registeredAddress}
                   </p>
-                </div> */}
+                </div>
               </div>
             </div>
           </div>

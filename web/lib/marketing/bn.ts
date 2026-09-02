@@ -34,7 +34,6 @@ export const bn: MarketingCopy = {
     createAccount: 'অ্যাকাউন্ট খুলুন',
     logIn: 'লগ ইন',
     payGuest: 'অতিথি হিসেবে পরিশোধ',
-    contact: 'ভর্তি অফিসে যোগাযোগ',
     terms: 'শর্তাবলি',
     privacy: 'গোপনীয়তা নীতি',
     refund: 'রিটার্ন ও রিফান্ড নীতি',
